@@ -293,9 +293,9 @@ def proxmox_configure_vm(
 
 
 @mcp.tool()
-def proxmox_list_templates(node: str | None = None, storage: str = "local") -> str:
+def proxmox_list_templates(node: str | None = None) -> str:
     """List PVE appliance catalog (available templates to download)."""
-    return templates.list_templates(client, node=node, storage=storage)
+    return templates.list_templates(client, node=node)
 
 
 @mcp.tool()
@@ -410,14 +410,17 @@ def proxmox_create_backup(
 
 @mcp.tool()
 def proxmox_restore_backup(
+    node: str | None = None,
     vmid: int | None = None,
     archive: str = "",
     storage: str = "local",
+    vmtype: str = "qemu",
     confirm: bool = False,
 ) -> str:
     """Restore a backup (elevated, confirm required)."""
     return backups.restore_backup(
-        client, vmid=vmid, archive=archive, storage=storage, confirm=confirm,
+        client, node=node, vmid=vmid, archive=archive,
+        storage=storage, vmtype=vmtype, confirm=confirm,
     )
 
 

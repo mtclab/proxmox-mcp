@@ -148,7 +148,7 @@ class TestLxcLifecycle:
 
     def test_create_lxc_auto_vmid(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0001:abc")
-        mock_client.monitor_client.cluster.nextid.get = MagicMock(return_value=201)
+        mock_client.admin_client.cluster.nextid.get = MagicMock(return_value=201)
         result = create_lxc(
             mock_client, node="pve", ostemplate="local:vztmpl/debian.tar.xz", confirm=True
         )
@@ -245,7 +245,7 @@ class TestVmLifecycle:
 
     def test_create_vm_auto_vmid(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0011:abc")
-        mock_client.monitor_client.cluster.nextid.get = MagicMock(return_value=102)
+        mock_client.admin_client.cluster.nextid.get = MagicMock(return_value=102)
         result = create_vm(mock_client, node="pve", name="auto-vm", confirm=True)
         assert "UPID" in result
         call_args = mock_client.safe_api_call.call_args
@@ -315,7 +315,7 @@ class TestVmLifecycle:
 
     def test_clone_vm_auto_newid(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0019:abc")
-        mock_client.monitor_client.cluster.nextid.get = MagicMock(return_value=102)
+        mock_client.admin_client.cluster.nextid.get = MagicMock(return_value=102)
         result = clone_vm(mock_client, node="pve", vmid=100, confirm=True)
         assert "102" in result
 

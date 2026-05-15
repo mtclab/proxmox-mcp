@@ -6,15 +6,18 @@ from typing import Any, Optional
 from proxmox_mcp.utils import confirm_required, format_bytes
 
 
-def list_templates(client: Any, node: Optional[str] = None, storage: str = "local") -> str:
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=client.config.allow_elevated)
+
+
+def list_templates(client: Any, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(
-        client.monitor_client.nodes(node).aplinfo.get,
-        storage=storage,
+        _api(client).nodes(node).aplinfo.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
-    lines = [f"📋 **PVE Appliance Templates** (node: {node}, storage: {storage})\n"]
+    lines = [f"📋 **PVE Appliance Templates** (node: {node})\n"]
     for tmpl in result:
         name = tmpl.get("name", "unknown")
         version = tmpl.get("version", "")
@@ -34,7 +37,7 @@ def list_templates(client: Any, node: Optional[str] = None, storage: str = "loca
 def list_storage_templates(client: Any, node: Optional[str] = None, storage: str = "local") -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(
-        client.monitor_client.nodes(node).storage(storage).content.get,
+        _api(client).nodes(node).storage(storage).content.get,
         content="vztmpl",
     )
     if not isinstance(result, list):

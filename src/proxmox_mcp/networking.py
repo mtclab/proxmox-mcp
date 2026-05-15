@@ -5,13 +5,17 @@ from typing import Any, Optional
 from proxmox_mcp.utils import confirm_required
 
 
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=client.config.allow_elevated)
+
+
 def list_network(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
     resolved_node = client.resolve_node(node)
     result = client.safe_api_call(
-        client.monitor_client.nodes(resolved_node).network.get
+        _api(client).nodes(resolved_node).network.get
     )
     if not isinstance(result, list):
         result = [result] if result else []

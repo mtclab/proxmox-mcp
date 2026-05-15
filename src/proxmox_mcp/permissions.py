@@ -5,9 +5,13 @@ from typing import Any
 from proxmox_mcp.utils import confirm_required
 
 
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=client.config.allow_elevated)
+
+
 def list_acl(client: Any) -> str:
     result = client.safe_api_call(
-        client.monitor_client.access.acl.get
+        _api(client).access.acl.get
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -91,7 +95,7 @@ def delete_acl(
 
 def list_roles(client: Any) -> str:
     result = client.safe_api_call(
-        client.monitor_client.access.roles.get
+        _api(client).access.roles.get
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -107,7 +111,7 @@ def list_roles(client: Any) -> str:
 
 def list_users(client: Any) -> str:
     result = client.safe_api_call(
-        client.monitor_client.access.users.get
+        _api(client).access.users.get
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -126,7 +130,7 @@ def list_tokens(client: Any, userid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required for token listing")
     result = client.safe_api_call(
-        client.monitor_client.access.users(userid).token.get
+        _api(client).access.users(userid).token.get
     )
     if not isinstance(result, list):
         result = [result] if result else []

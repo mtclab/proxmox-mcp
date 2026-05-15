@@ -57,7 +57,7 @@ class TestElevatedCheck:
             from proxmox_mcp.client import ProxmoxClient
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            restore_backup(client, vmid=100, archive="local:backup/vzdump.qemu", confirm=True)
+            restore_backup(client, node="pve", vmid=100, archive="local:backup/vzdump.qemu", confirm=True)
 
 
 class TestListBackups:
@@ -115,13 +115,27 @@ class TestRestoreBackup:
     def test_restore_backup(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0203:abc")
         result = restore_backup(
-            mock_client, vmid=100,
+            mock_client, node="pve", vmid=100,
             archive="local:backup/vzdump-qemu-100.vma.zst",
             confirm=True,
         )
         assert "UPID" in result
         assert "100" in result
 
+    def test_restore_backup_lxc(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0204:abc")
+        result = restore_backup(
+            mock_client, node="pve", vmid=200,
+            archive="local:backup/vzdump-lxc-200.tar.zst",
+            vmtype="lxc", confirm=True,
+        )
+        assert "UPID" in result
+        assert "200" in result
+
     def test_restore_backup_no_archive_raises(self, mock_client):
         with pytest.raises(ValueError, match="archive is required"):
-            restore_backup(mock_client, vmid=100, confirm=True)
+            restore_backup(mock_client, node="pve", vmid=100, confirm=True)
+
+    def test_restore_backup_no_vmid_raises(self, mock_client):
+        with pytest.raises(ValueError, match="vmid is required"):
+            restore_backup(mock_client, node="pve", archive="local:backup/vzdump.qemu", confirm=True)

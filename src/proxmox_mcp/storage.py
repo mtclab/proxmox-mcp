@@ -6,6 +6,10 @@ from typing import Any, Optional
 from proxmox_mcp.utils import confirm_required, format_bytes
 
 
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=client.config.allow_elevated)
+
+
 def list_isos(
     client: Any,
     node: Optional[str] = None,
@@ -13,7 +17,7 @@ def list_isos(
 ) -> str:
     resolved_node = client.resolve_node(node)
     result = client.safe_api_call(
-        client.monitor_client.nodes(resolved_node).storage(storage).content.get,
+        _api(client).nodes(resolved_node).storage(storage).content.get,
         content="iso",
     )
     if not isinstance(result, list):

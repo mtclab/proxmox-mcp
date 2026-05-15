@@ -57,7 +57,7 @@ class TestListTemplates:
                 "size": 150000000,
             },
         ])
-        result = list_templates(mock_client, node="pve", storage="local")
+        result = list_templates(mock_client, node="pve")
         assert "ubuntu-24.04-standard" in result
         assert "24.04-2" in result
         assert "debian-12-standard" in result

@@ -5,6 +5,10 @@ from typing import Any, Optional
 from proxmox_mcp.utils import confirm_required, format_bytes
 
 
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=client.config.allow_elevated)
+
+
 def list_backups(
     client: Any,
     node: Optional[str] = None,
@@ -12,7 +16,7 @@ def list_backups(
 ) -> str:
     resolved_node = client.resolve_node(node)
     result = client.safe_api_call(
-        client.monitor_client.nodes(resolved_node).storage(storage).content.get,
+        _api(client).nodes(resolved_node).storage(storage).content.get,
         content="backup",
     )
     if not isinstance(result, list):
@@ -63,6 +67,8 @@ def restore_backup(
     vmid: Optional[int] = None,
     archive: str = "",
     storage: str = "local",
+    vmtype: str = "qemu",
+    node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
@@ -71,16 +77,20 @@ def restore_backup(
             "archive is required for backup restore. "
             "Use list_backups to find available backup archives."
         )
+    if not vmid:
+        raise ValueError("vmid is required for backup restore")
+    resolved_node = client.resolve_node(node)
     params: dict[str, Any] = {
         "vmid": vmid,
         "archive": archive,
         "storage": storage,
     }
     elevated = client.get_client(elevated=True)
+    vmtype_path = getattr(elevated.nodes(resolved_node), vmtype)
     result = client.safe_api_call(
-        elevated.nodes.vzdump_restore.post,
+        vmtype_path.post,
         elevated=True,
         **params,
     )
     upid = result if isinstance(result, str) else result.get("data", result)
-    return f"Backup restore initiated for VMID {vmid} from {archive!r}. UPID: {upid}"
+    return f"Backup restore initiated for {vmtype} {vmid} from {archive!r} on {resolved_node}. UPID: {upid}"

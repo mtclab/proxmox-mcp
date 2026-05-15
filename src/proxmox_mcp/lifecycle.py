@@ -5,8 +5,12 @@ from typing import Any, Optional
 from proxmox_mcp.utils import confirm_required
 
 
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=client.config.allow_elevated)
+
+
 def _get_next_vmid(client: Any) -> int:
-    result = client.monitor_client.cluster.nextid.get()
+    result = _api(client).cluster.nextid.get()
     return int(result)
 
 
@@ -14,7 +18,7 @@ def _validate_ostemplate(client: Any, node: str, ostemplate: str) -> None:
     storage_name = ostemplate.split(":")[0] if ":" in ostemplate else "local"
     try:
         content = client.safe_api_call(
-            client.monitor_client.nodes(node).storage(storage_name).content.get
+            _api(client).nodes(node).storage(storage_name).content.get
         )
         if isinstance(content, list):
             volids = [item.get("volid", "") for item in content]
