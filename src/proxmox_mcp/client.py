@@ -26,21 +26,25 @@ class ProxmoxClient:
         self.config = config
         self._nodes_cache: Optional[list[dict[str, Any]]] = None
 
+        monitor_user = config.monitor_token_id.split("!")[0]
+        monitor_token_name = config.monitor_token_id.split("!")[1]
         self.monitor_client = ProxmoxAPI(
             config.host,
             port=config.port,
-            user=config.monitor_token_id,
-            token_name=config.monitor_token_id.split("!")[1],
+            user=monitor_user,
+            token_name=monitor_token_name,
             token_value=config.monitor_token_secret,
             verify_ssl=config.verify,
             backend="https",
         )
 
+        admin_user = config.admin_token_id.split("!")[0]
+        admin_token_name = config.admin_token_id.split("!")[1]
         self.admin_client = ProxmoxAPI(
             config.host,
             port=config.port,
-            user=config.admin_token_id,
-            token_name=config.admin_token_id.split("!")[1],
+            user=admin_user,
+            token_name=admin_token_name,
             token_value=config.admin_token_secret,
             verify_ssl=config.verify,
             backend="https",

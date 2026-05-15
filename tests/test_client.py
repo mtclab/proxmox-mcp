@@ -16,7 +16,7 @@ class TestProxmoxClientInit:
         with patch("proxmox_mcp.client.ProxmoxAPI") as mock_api:
             ProxmoxClient(mock_config)
             monitor_call = mock_api.call_args_list[0]
-            assert monitor_call.kwargs["user"] == "zabbix@pve!zabbix"
+            assert monitor_call.kwargs["user"] == "zabbix@pve"
             assert monitor_call.kwargs["token_name"] == "zabbix"
             assert monitor_call.kwargs["token_value"] == "monitor-secret"
             assert monitor_call.kwargs["verify_ssl"] is False
@@ -25,7 +25,7 @@ class TestProxmoxClientInit:
         with patch("proxmox_mcp.client.ProxmoxAPI") as mock_api:
             ProxmoxClient(mock_config)
             admin_call = mock_api.call_args_list[1]
-            assert admin_call.kwargs["user"] == "homepilot@pve!homepilot"
+            assert admin_call.kwargs["user"] == "homepilot@pve"
             assert admin_call.kwargs["token_name"] == "homepilot"
             assert admin_call.kwargs["token_value"] == "admin-secret"
 

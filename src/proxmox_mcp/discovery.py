@@ -5,8 +5,12 @@ from typing import Any, Optional
 from proxmox_mcp.utils import format_bytes, format_uptime
 
 
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=client.config.allow_elevated)
+
+
 def list_nodes(client: Any) -> str:
-    nodes = client.safe_api_call(client.monitor_client.nodes.get)
+    nodes = client.safe_api_call(_api(client).nodes.get)
     if not isinstance(nodes, list):
         nodes = [nodes]
     lines = ["🖥️  **Proxmox Cluster Nodes**\n"]
@@ -27,7 +31,8 @@ def list_nodes(client: Any) -> str:
 
 def node_status(client: Any, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
-    result = client.safe_api_call(client.monitor_client.nodes(node).status.get)
+    pve = _api(client)
+    result = client.safe_api_call(pve.nodes(node).status.get)
     lines = [f"📊 **Node Status: {node}**\n"]
     if isinstance(result, dict):
         lines.append(f"   • Kernel: {result.get('kversion', 'N/A')}")
@@ -41,11 +46,14 @@ def node_status(client: Any, node: Optional[str] = None) -> str:
 
 
 def list_vms(client: Any, node: Optional[str] = None) -> str:
-    result = client.safe_api_call(client.monitor_client.cluster.resources.get, type="vm")
+    result = client.safe_api_call(_api(client).cluster.resources.get)
     if not isinstance(result, list):
         result = [result] if result else []
+    vms = [r for r in result if r.get("type") == "qemu"]
+    if node:
+        vms = [r for r in vms if r.get("node") == node]
     lines = ["💻 **Virtual Machines**\n"]
-    for vm in result:
+    for vm in vms:
         status_icon = "🟢" if vm.get("status") == "running" else "🔴"
         vmtype = "📦" if vm.get("type") == "lxc" else "🖥️"
         name = vm.get("name", vm.get("vmid", "unknown"))
@@ -65,10 +73,10 @@ def list_vms(client: Any, node: Optional[str] = None) -> str:
 def vm_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
     status_data = client.safe_api_call(
-        client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).status.current.get
+        _api(client).nodes(resolved_node).qemu(resolved_vmid).status.current.get
     )
     config_data = client.safe_api_call(
-        client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).config.get
+        _api(client).nodes(resolved_node).qemu(resolved_vmid).config.get
     )
     lines = [f"🖥️ **VM {resolved_vmid} on {resolved_node}**\n"]
     if isinstance(status_data, dict):
@@ -86,9 +94,12 @@ def vm_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None,
 
 
 def list_lxc(client: Any, node: Optional[str] = None) -> str:
-    result = client.safe_api_call(client.monitor_client.cluster.resources.get, type="lxc")
-    if not isinstance(result, list):
-        result = [result] if result else []
+    all_resources = client.safe_api_call(_api(client).cluster.resources.get)
+    if not isinstance(all_resources, list):
+        all_resources = [all_resources] if all_resources else []
+    result = [r for r in all_resources if r.get("type") == "lxc"]
+    if node:
+        result = [r for r in result if r.get("node") == node]
     lines = ["📦 **LXC Containers**\n"]
     for ct in result:
         status_icon = "🟢" if ct.get("status") == "running" else "🔴"
@@ -108,8 +119,8 @@ def list_lxc(client: Any, node: Optional[str] = None) -> str:
 
 def lxc_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
-    status_data = client.safe_api_call(client.monitor_client.nodes(resolved_node).lxc(resolved_vmid).status.current.get)
-    config_data = client.safe_api_call(client.monitor_client.nodes(resolved_node).lxc(resolved_vmid).config.get)
+    status_data = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).status.current.get)
+    config_data = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).config.get)
     lines = [f"📦 **LXC {resolved_vmid} on {resolved_node}**\n"]
     if isinstance(status_data, dict):
         lines.append(f"   • Status: {status_data.get('status', 'unknown')}")
@@ -125,7 +136,7 @@ def lxc_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None
 
 
 def list_storage(client: Any, node: Optional[str] = None) -> str:
-    result = client.safe_api_call(client.monitor_client.storage.get)
+    result = client.safe_api_call(_api(client).storage.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["💾 **Storage Pools**\n"]
@@ -146,7 +157,7 @@ def list_storage(client: Any, node: Optional[str] = None) -> str:
 
 def storage_content(client: Any, node: Optional[str] = None, storage: str = "local") -> str:
     node = client.resolve_node(node)
-    result = client.safe_api_call(client.monitor_client.nodes(node).storage(storage).content.get)
+    result = client.safe_api_call(_api(client).nodes(node).storage(storage).content.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📁 **Storage: {storage} on {node}**\n"]
@@ -159,7 +170,7 @@ def storage_content(client: Any, node: Optional[str] = None, storage: str = "loc
 
 
 def list_tasks(client: Any, node: Optional[str] = None, limit: int = 50) -> str:
-    result = client.safe_api_call(client.monitor_client.cluster.tasks.get)
+    result = client.safe_api_call(_api(client).cluster.tasks.get)
     if not isinstance(result, list):
         result = [result] if result else []
     result = result[:limit]
@@ -175,7 +186,7 @@ def list_tasks(client: Any, node: Optional[str] = None, limit: int = 50) -> str:
 def task_status(client: Any, upid: str) -> str:
     parts = upid.split(":")
     node = parts[1] if len(parts) > 1 else client.resolve_node()
-    result = client.safe_api_call(client.monitor_client.nodes(node).tasks(upid).status.get)
+    result = client.safe_api_call(_api(client).nodes(node).tasks(upid).status.get)
     lines = [f"📋 **Task: {upid}**\n"]
     if isinstance(result, dict):
         lines.append(f"   • Status: {result.get('status', 'unknown')}")
@@ -189,7 +200,7 @@ def task_status(client: Any, upid: str) -> str:
 
 def node_metrics(client: Any, node: Optional[str] = None, timeframe: str = "hour", cf: str = "AVERAGE") -> str:
     node = client.resolve_node(node)
-    result = client.safe_api_call(client.monitor_client.nodes(node).rrddata.get, timeframe=timeframe, cf=cf)
+    result = client.safe_api_call(_api(client).nodes(node).rrddata.get, timeframe=timeframe, cf=cf)
     if not isinstance(result, list):
         return f"No metrics data available for node {node}"
     lines = [f"📈 **Node Metrics: {node}** ({timeframe})\n"]
@@ -208,7 +219,7 @@ def vm_metrics(
 ) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
     result = client.safe_api_call(
-        client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).rrddata.get, timeframe=timeframe
+        _api(client).nodes(resolved_node).qemu(resolved_vmid).rrddata.get, timeframe=timeframe
     )
     if not isinstance(result, list):
         return f"No metrics data available for VM {resolved_vmid}"
@@ -226,7 +237,7 @@ def lxc_metrics(
 ) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
     result = client.safe_api_call(
-        client.monitor_client.nodes(resolved_node).lxc(resolved_vmid).rrddata.get, timeframe=timeframe
+        _api(client).nodes(resolved_node).lxc(resolved_vmid).rrddata.get, timeframe=timeframe
     )
     if not isinstance(result, list):
         return f"No metrics data available for LXC {resolved_vmid}"
@@ -237,7 +248,7 @@ def lxc_metrics(
 
 def list_bridges(client: Any, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
-    result = client.safe_api_call(client.monitor_client.nodes(node).network.get)
+    result = client.safe_api_call(_api(client).nodes(node).network.get)
     if not isinstance(result, list):
         result = [result] if result else []
     bridges = [iface for iface in result if iface.get("type") == "bridge" or iface.get("iface", "").startswith("vmbr")]
@@ -251,7 +262,7 @@ def list_bridges(client: Any, node: Optional[str] = None) -> str:
 
 def list_network(client: Any, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
-    result = client.safe_api_call(client.monitor_client.nodes(node).network.get)
+    result = client.safe_api_call(_api(client).nodes(node).network.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"🌐 **Network Interfaces on {node}**\n"]
