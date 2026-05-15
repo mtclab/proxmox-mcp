@@ -67,3 +67,8 @@ proxmox_mcp/
 ├── storage.py         # Storage content, ISOs
 └── utils.py           # confirm_required, node_resolver, error handling
 ```
+## API References
+
+- **PVE API Viewer**: https://pve.proxmox.com/pve-docs/api-viewer/index.html
+- **PVE Docs Repo**: https://github.com/proxmox/pve-docs
+- **PVE API Wiki**: https://pve.proxmox.com/wiki/Proxmox_VE_API
