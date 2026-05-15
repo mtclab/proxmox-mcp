@@ -2,7 +2,7 @@ import sys
 
 from mcp.server.fastmcp import FastMCP
 
-from proxmox_mcp import backups, discovery, lifecycle, networking, permissions, snapshots, templates
+from proxmox_mcp import backups, cloudinit, discovery, lifecycle, networking, permissions, snapshots, templates
 from proxmox_mcp import storage as storage_mod
 from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.config import Config
@@ -545,6 +545,46 @@ def proxmox_upload_iso(
 def proxmox_list_isos(node: str | None = None, storage: str = "local") -> str:
     """List ISOs in a storage pool."""
     return storage_mod.list_isos(client, node=node, storage=storage)
+
+
+@mcp.tool()
+def proxmox_set_cloudinit(
+    node: str | None = None,
+    vmid: int | None = None,
+    ciuser: str | None = None,
+    cipassword: str | None = None,
+    ipconfig0: str | None = None,
+    sshkeys: str | None = None,
+    confirm: bool = False,
+) -> str:
+    """Set cloud-init parameters on a VM (elevated, confirm required)."""
+    return cloudinit.set_cloudinit(
+        client, node=node, vmid=vmid, ciuser=ciuser,
+        cipassword=cipassword, ipconfig0=ipconfig0,
+        sshkeys=sshkeys, confirm=confirm,
+    )
+
+
+@mcp.tool()
+def proxmox_exec_vm(
+    node: str | None = None,
+    vmid: int | None = None,
+    command: str | None = None,
+    confirm: bool = False,
+) -> str:
+    """Execute a command in a VM via QEMU Guest Agent (elevated, confirm required)."""
+    return cloudinit.exec_vm(client, node=node, vmid=vmid, command=command, confirm=confirm)
+
+
+@mcp.tool()
+def proxmox_exec_lxc(
+    node: str | None = None,
+    vmid: int | None = None,
+    command: str | None = None,
+    confirm: bool = False,
+) -> str:
+    """Execute a command in an LXC container (elevated, confirm required)."""
+    return cloudinit.exec_lxc(client, node=node, vmid=vmid, command=command, confirm=confirm)
 
 
 def main() -> None:
