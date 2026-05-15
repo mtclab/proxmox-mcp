@@ -64,8 +64,12 @@ def list_vms(client: Any, node: Optional[str] = None) -> str:
 
 def vm_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
-    status_data = client.safe_api_call(client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).status.current.get)
-    config_data = client.safe_api_call(client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).config.get)
+    status_data = client.safe_api_call(
+        client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).status.current.get
+    )
+    config_data = client.safe_api_call(
+        client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).config.get
+    )
     lines = [f"🖥️ **VM {resolved_vmid} on {resolved_node}**\n"]
     if isinstance(status_data, dict):
         lines.append(f"   • Status: {status_data.get('status', 'unknown')}")
@@ -195,9 +199,17 @@ def node_metrics(client: Any, node: Optional[str] = None, timeframe: str = "hour
     return "\n".join(lines)
 
 
-def vm_metrics(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None, timeframe: str = "hour") -> str:
+def vm_metrics(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    name: Optional[str] = None,
+    timeframe: str = "hour",
+) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
-    result = client.safe_api_call(client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).rrddata.get, timeframe=timeframe)
+    result = client.safe_api_call(
+        client.monitor_client.nodes(resolved_node).qemu(resolved_vmid).rrddata.get, timeframe=timeframe
+    )
     if not isinstance(result, list):
         return f"No metrics data available for VM {resolved_vmid}"
     lines = [f"📈 **VM {resolved_vmid} Metrics** ({timeframe})\n"]
@@ -205,9 +217,17 @@ def vm_metrics(client: Any, node: Optional[str] = None, vmid: Optional[int] = No
     return "\n".join(lines)
 
 
-def lxc_metrics(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None, timeframe: str = "hour") -> str:
+def lxc_metrics(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    name: Optional[str] = None,
+    timeframe: str = "hour",
+) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
-    result = client.safe_api_call(client.monitor_client.nodes(resolved_node).lxc(resolved_vmid).rrddata.get, timeframe=timeframe)
+    result = client.safe_api_call(
+        client.monitor_client.nodes(resolved_node).lxc(resolved_vmid).rrddata.get, timeframe=timeframe
+    )
     if not isinstance(result, list):
         return f"No metrics data available for LXC {resolved_vmid}"
     lines = [f"📈 **LXC {resolved_vmid} Metrics** ({timeframe})\n"]
