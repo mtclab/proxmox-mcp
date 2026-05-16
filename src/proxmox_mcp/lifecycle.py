@@ -43,6 +43,7 @@ async def create_lxc(
     memory: Optional[int] = None,
     cores: Optional[int] = None,
     rootfs: Optional[str] = None,
+    storage: Optional[str] = None,
     password: Optional[str] = None,
     start: bool = False,
     confirm: bool = False,
@@ -70,6 +71,8 @@ async def create_lxc(
         params["cores"] = cores
     if rootfs:
         params["rootfs"] = rootfs
+    if storage:
+        params["storage"] = storage
     if password:
         params["password"] = password
     if start:
@@ -231,8 +234,7 @@ async def create_vm(
             params["scsi0"] = f"{storage}:{validated_size}"
         else:
             raise ValueError(
-                "storage is required when disk_size is specified "
-                "(PVE requires 'storage:size' format for scsi0)"
+                "storage is required when disk_size is specified (PVE requires 'storage:size' format for scsi0)"
             )
     if storage and not disk_size:
         params["storage"] = storage
