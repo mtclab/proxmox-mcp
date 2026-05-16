@@ -1,3 +1,4 @@
+import os
 import sys
 
 from mcp.server.fastmcp import FastMCP
@@ -5591,7 +5592,12 @@ def main() -> None:
 
     client = MultiClient(multi_config)
 
-    mcp.run()
+    transport = os.environ.get("PROXMOX_MCP_TRANSPORT", "stdio")
+
+    if transport == "sse":
+        mcp.run(transport="sse")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":
