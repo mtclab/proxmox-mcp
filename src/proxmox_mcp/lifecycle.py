@@ -1167,7 +1167,7 @@ def update_vm_config(
     if not parsed:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.post, elevated=True, **parsed)
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **parsed)
     if result is None:
         return f"VM {vmid} config updated on {resolved_node} (no pending changes)"
     upid = result if isinstance(result, str) else result.get("data", result)
