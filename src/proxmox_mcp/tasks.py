@@ -10,19 +10,19 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def task_log(
+async def task_log(
     client: ProxmoxClient,
     upid: str,
     node: Optional[str] = None,
     limit: Optional[int] = None,
 ) -> str:
     parts = upid.split(":")
-    resolved_node = node if node else (parts[1] if len(parts) > 1 else client.resolve_node())
+    resolved_node = node if node else (parts[1] if len(parts) > 1 else await client.resolve_node())
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if limit is not None:
         params["limit"] = limit
-    result = client.safe_api_call(_api(client).nodes(resolved_node).tasks(upid).log.get, **params)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).tasks(upid).log.get, **params)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📋 **Task Log: {upid}** ({len(result)} entries)\n"]
@@ -39,7 +39,7 @@ def task_log(
 
 
 @confirm_required
-def stop_task(
+async def stop_task(
     client: ProxmoxClient,
     node: Optional[str] = None,
     upid: str = "",
@@ -48,9 +48,9 @@ def stop_task(
     client.raise_if_not_elevated()
     if not upid:
         raise ValueError("upid is required")
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).tasks(upid).delete, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).tasks(upid).delete, elevated=True)
     data = result if isinstance(result, str) else result.get("data", result)
     return f"Task {upid} stopped on {resolved_node}: {data}"

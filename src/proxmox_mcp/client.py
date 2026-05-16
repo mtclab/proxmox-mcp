@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import ssl
-import time
 from typing import Any, Optional
 
 from proxmoxer import ProxmoxAPI
@@ -66,7 +66,7 @@ class ProxmoxClient:
                 "Elevated operations are not allowed. Set PROXMOX_ALLOW_ELEVATED=true to enable admin-level operations."
             )
 
-    def retry_with_backoff(
+    async def retry_with_backoff(
         self,
         func,
         *args,
@@ -91,7 +91,7 @@ class ProxmoxClient:
                             delay,
                             exc,
                         )
-                        time.sleep(delay)
+                        await asyncio.sleep(delay)
                         delay *= 2
                         continue
                     logger.error("PVE 595 error persisted after %d retries: %s", max_retries, exc)
@@ -131,9 +131,9 @@ class ProxmoxClient:
                 ) from exc
         raise ProxmoxConnectionError(f"PVE 595 error after {max_retries} retries: {last_exc}")
 
-    def safe_api_call(self, func, *args, elevated: bool = False, **kwargs) -> Any:
+    async def safe_api_call(self, func, *args, elevated: bool = False, **kwargs) -> Any:
         try:
-            return self.retry_with_backoff(func, *args, elevated=elevated, **kwargs)
+            return await self.retry_with_backoff(func, *args, elevated=elevated, **kwargs)
         except ProxmoxNodeError:
             raise
         except ProxmoxNotFoundError:
@@ -155,7 +155,7 @@ class ProxmoxClient:
         except ProxmoxTaskError:
             raise
 
-    def wait_for_task(
+    async def wait_for_task(
         self,
         upid: str,
         elevated: bool = False,
@@ -169,7 +169,7 @@ class ProxmoxClient:
                 result = client.nodes(upid.split(":")[1]).tasks(upid).status.get()
             except ResourceException as exc:
                 if exc.status_code == 595:
-                    time.sleep(poll_interval)
+                    await asyncio.sleep(poll_interval)
                     elapsed += poll_interval
                     continue
                 raise
@@ -179,34 +179,34 @@ class ProxmoxClient:
                 if exitstatus != "OK":
                     raise ProxmoxTaskError(exitstatus, str(result))
                 return result
-            time.sleep(poll_interval)
+            await asyncio.sleep(poll_interval)
             elapsed += poll_interval
         raise ProxmoxTaskError("TIMEOUT", f"Task {upid} did not complete within {timeout}s")
 
-    def discover_nodes(self) -> list[dict[str, Any]]:
+    async def discover_nodes(self) -> list[dict[str, Any]]:
         if self._nodes_cache is not None:
             return self._nodes_cache
 
-        result = self.safe_api_call(self.monitor_client.nodes.get)
+        result = await self.safe_api_call(self.monitor_client.nodes.get)
         self._nodes_cache = list(result) if isinstance(result, list) else [result]
         return self._nodes_cache
 
-    def resolve_node(self, node: Optional[str] = None) -> str:
+    async def resolve_node(self, node: Optional[str] = None) -> str:
         if node:
             return node
 
         if self.config.default_node:
             return self.config.default_node
 
-        nodes = self.discover_nodes()
+        nodes = await self.discover_nodes()
         for n in nodes:
             if n.get("status") == "online" or n.get("state") == "online":
                 return str(n["node"])
 
         raise ValueError("No online node found and PROXMOX_DEFAULT_NODE is not set")
 
-    def resolve_guest(self, identifier: str, node: Optional[str] = None) -> tuple[str, int]:
-        resolved_node = self.resolve_node(node)
+    async def resolve_guest(self, identifier: str, node: Optional[str] = None) -> tuple[str, int]:
+        resolved_node = await self.resolve_node(node)
 
         try:
             vmid = int(identifier)

@@ -10,8 +10,8 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_pools(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(_api(client).pools.get)
+async def list_pools(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(_api(client).pools.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["**Pool List**\n"]
@@ -26,8 +26,8 @@ def list_pools(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_pool(client: ProxmoxClient, poolid: str) -> str:
-    result = client.safe_api_call(_api(client).pools(poolid).get)
+async def get_pool(client: ProxmoxClient, poolid: str) -> str:
+    result = await client.safe_api_call(_api(client).pools(poolid).get)
     lines = [f"**Pool: {poolid}**\n"]
     if isinstance(result, dict):
         comment = result.get("comment", "")
@@ -47,7 +47,7 @@ def get_pool(client: ProxmoxClient, poolid: str) -> str:
 
 
 @confirm_required
-def create_pool(
+async def create_pool(
     client: ProxmoxClient,
     poolid: str = "",
     comment: Optional[str] = None,
@@ -60,12 +60,12 @@ def create_pool(
     if comment is not None:
         params["comment"] = comment
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(elevated.pools.post, elevated=True, **params)
+    await client.safe_api_call(elevated.pools.post, elevated=True, **params)
     return f"Pool {poolid!r} created"
 
 
 @confirm_required
-def update_pool(
+async def update_pool(
     client: ProxmoxClient,
     poolid: str = "",
     comment: Optional[str] = None,
@@ -84,12 +84,12 @@ def update_pool(
     if members is not None:
         params["members"] = members
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(elevated.pools(poolid).put, elevated=True, **params)
+    await client.safe_api_call(elevated.pools(poolid).put, elevated=True, **params)
     return f"Pool {poolid!r} updated"
 
 
 @confirm_required
-def delete_pool(
+async def delete_pool(
     client: ProxmoxClient,
     poolid: str = "",
     confirm: bool = False,
@@ -98,5 +98,5 @@ def delete_pool(
     if not poolid:
         raise ValueError("poolid is required for pool deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(elevated.pools(poolid).delete, elevated=True)
+    await client.safe_api_call(elevated.pools(poolid).delete, elevated=True)
     return f"Pool {poolid!r} deleted"

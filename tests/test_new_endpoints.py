@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -39,90 +39,94 @@ def mock_client(mock_config):
 
 
 class TestLxcMigratePreconditions:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"allowed": 1, "local_disks": 0})
-        result = lxc_migrate_preconditions(mock_client, node="pve", vmid=200)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"allowed": 1, "local_disks": 0})
+        result = await lxc_migrate_preconditions(mock_client, node="pve", vmid=200)
         assert "LXC 200" in result
         assert "pve" in result
         mock_client.safe_api_call.assert_called_once()
 
-    def test_resolves_node(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={})
-        result = lxc_migrate_preconditions(mock_client, vmid=200)
+    async def test_resolves_node(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={})
+        result = await lxc_migrate_preconditions(mock_client, vmid=200)
         assert result is not None
         mock_client.safe_api_call.assert_called_once()
 
 
 class TestVmMigratePreconditions:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"allowed": 1, "local_disks": 0})
-        result = vm_migrate_preconditions(mock_client, node="pve", vmid=100)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"allowed": 1, "local_disks": 0})
+        result = await vm_migrate_preconditions(mock_client, node="pve", vmid=100)
         assert "VM 100" in result
         assert "pve" in result
         mock_client.safe_api_call.assert_called_once()
 
 
 class TestStorageMetrics:
-    def test_returns_data_points_count(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[{"time": 1}, {"time": 2}])
-        result = storage_metrics(mock_client, node="pve", storage="local")
+    async def test_returns_data_points_count(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[{"time": 1}, {"time": 2}])
+        result = await storage_metrics(mock_client, node="pve", storage="local")
         assert "2 data points" in result
         assert "local" in result
 
-    def test_returns_no_data(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = storage_metrics(mock_client, node="pve", storage="local")
+    async def test_returns_no_data(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await storage_metrics(mock_client, node="pve", storage="local")
         assert "No metrics data" in result
 
 
 class TestStorageIdentity:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"storage": "local", "type": "dir"})
-        result = storage_identity(mock_client, node="pve", storage="local")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"storage": "local", "type": "dir"})
+        result = await storage_identity(mock_client, node="pve", storage="local")
         assert "local" in result
         assert "dir" in result
 
-    def test_resolves_node(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={})
-        result = storage_identity(mock_client, storage="local")
+    async def test_resolves_node(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={})
+        result = await storage_identity(mock_client, storage="local")
         assert result is not None
         mock_client.safe_api_call.assert_called_once()
 
 
 class TestAllocateDisk:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            allocate_disk(mock_client, node="pve", storage="local", size="1G")
+            await allocate_disk(mock_client, node="pve", storage="local", size="1G")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
 
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            allocate_disk(client, node="pve", storage="local", size="1G", confirm=True)
+            await allocate_disk(client, node="pve", storage="local", size="1G", confirm=True)
 
-    def test_allocates_disk(self, mock_client):
+    async def test_allocates_disk(self, mock_client):
         mock_api = MagicMock()
         mock_api.nodes.return_value.storage.return_value.content.post.return_value = "UPID:pve:001:abc"
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:001:abc")
-        result = allocate_disk(mock_client, node="pve", storage="local", size="1G", confirm=True)
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:001:abc")
+        result = await allocate_disk(mock_client, node="pve", storage="local", size="1G", confirm=True)
         assert "UPID" in result
 
-    def test_allocates_disk_with_vmid(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:002:abc")
-        result = allocate_disk(mock_client, node="pve", storage="local", vmid=100, size="10G", confirm=True)
+    async def test_allocates_disk_with_vmid(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:002:abc")
+        result = await allocate_disk(mock_client, node="pve", storage="local", vmid=100, size="10G", confirm=True)
         assert "UPID" in result
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["vmid"] == 100
         assert call_args[1]["size"] == "10G"
 
-    def test_allocates_disk_with_filename_and_format(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:003:abc")
-        result = allocate_disk(
-            mock_client, node="pve", storage="local",
-            filename="vm-100-disk-0", size="10G", format="qcow2",
+    async def test_allocates_disk_with_filename_and_format(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:003:abc")
+        result = await allocate_disk(
+            mock_client,
+            node="pve",
+            storage="local",
+            filename="vm-100-disk-0",
+            size="10G",
+            format="qcow2",
             confirm=True,
         )
         assert "UPID" in result
@@ -132,99 +136,105 @@ class TestAllocateDisk:
 
 
 class TestListNodeLxc:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"vmid": 200, "name": "ct1", "status": "running", "cpu": 0.1, "mem": 500000000},
-            {"vmid": 201, "name": "ct2", "status": "stopped"},
-        ])
-        result = list_node_lxc(mock_client, node="pve")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"vmid": 200, "name": "ct1", "status": "running", "cpu": 0.1, "mem": 500000000},
+                {"vmid": 201, "name": "ct2", "status": "stopped"},
+            ]
+        )
+        result = await list_node_lxc(mock_client, node="pve")
         assert "ct1" in result
         assert "ct2" in result
         mock_client.safe_api_call.assert_called_once()
 
-    def test_empty_list(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_node_lxc(mock_client, node="pve")
+    async def test_empty_list(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_node_lxc(mock_client, node="pve")
         assert "No LXC containers" in result
 
 
 class TestListNodeVms:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"vmid": 100, "name": "vm1", "status": "running", "cpu": 0.2, "mem": 1000000000},
-        ])
-        result = list_node_vms(mock_client, node="pve")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"vmid": 100, "name": "vm1", "status": "running", "cpu": 0.2, "mem": 1000000000},
+            ]
+        )
+        result = await list_node_vms(mock_client, node="pve")
         assert "vm1" in result
         mock_client.safe_api_call.assert_called_once()
 
-    def test_empty_list(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_node_vms(mock_client, node="pve")
+    async def test_empty_list(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_node_vms(mock_client, node="pve")
         assert "No VMs" in result
 
 
 class TestListNodeTasks:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"upid": "UPID:pve:001:abc", "status": "OK"},
-            {"upid": "UPID:pve:002:def", "status": "stopped"},
-        ])
-        result = list_node_tasks(mock_client, node="pve")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"upid": "UPID:pve:001:abc", "status": "OK"},
+                {"upid": "UPID:pve:002:def", "status": "stopped"},
+            ]
+        )
+        result = await list_node_tasks(mock_client, node="pve")
         assert "UPID:pve:001" in result
         mock_client.safe_api_call.assert_called_once()
 
-    def test_passes_limit(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        list_node_tasks(mock_client, node="pve", limit=10)
+    async def test_passes_limit(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        await list_node_tasks(mock_client, node="pve", limit=10)
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["limit"] == 10
 
 
 class TestNodeIndex:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"node": "pve", "status": "online", "cpu": 0.5})
-        result = node_index(mock_client, node="pve")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"node": "pve", "status": "online", "cpu": 0.5})
+        result = await node_index(mock_client, node="pve")
         assert "pve" in result
         mock_client.safe_api_call.assert_called_once()
 
 
 class TestRegenerateCloudinit:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            regenerate_cloudinit(mock_client, node="pve", vmid=100)
+            await regenerate_cloudinit(mock_client, node="pve", vmid=100)
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
 
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            regenerate_cloudinit(client, node="pve", vmid=100, confirm=True)
+            await regenerate_cloudinit(client, node="pve", vmid=100, confirm=True)
 
-    def test_regenerates(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:100:abc")
-        result = regenerate_cloudinit(mock_client, node="pve", vmid=100, confirm=True)
+    async def test_regenerates(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:100:abc")
+        result = await regenerate_cloudinit(mock_client, node="pve", vmid=100, confirm=True)
         assert "UPID" in result
         assert "100" in result
 
 
 class TestRevertNetwork:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            revert_network(mock_client, node="pve")
+            await revert_network(mock_client, node="pve")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
 
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            revert_network(client, node="pve", confirm=True)
+            await revert_network(client, node="pve", confirm=True)
 
-    def test_reverts_network(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:network:revert")
-        result = revert_network(mock_client, node="pve", confirm=True)
+    async def test_reverts_network(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:network:revert")
+        result = await revert_network(mock_client, node="pve", confirm=True)
         assert "reverted" in result.lower()
         mock_client.safe_api_call.assert_called_once()

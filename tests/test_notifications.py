@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -40,6 +40,7 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     client.admin_client = MagicMock()
@@ -48,203 +49,216 @@ def mock_client(mock_config):
 
 
 class TestListNotificationTargets:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"name": "target1", "type": "sendmail"},
-            {"name": "target2", "type": "gotify"},
-        ])
-        result = list_notification_targets(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"name": "target1", "type": "sendmail"},
+                {"name": "target2", "type": "gotify"},
+            ]
+        )
+        result = await list_notification_targets(mock_client)
         assert "Notification Targets" in result
         assert "target1" in result
         assert "target2" in result
 
-    def test_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_notification_targets(mock_client)
+    async def test_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_notification_targets(mock_client)
         assert "No notification targets found" in result
 
 
 class TestListNotificationMatchers:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"name": "matcher1", "comment": "test"},
-        ])
-        result = list_notification_matchers(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"name": "matcher1", "comment": "test"},
+            ]
+        )
+        result = await list_notification_matchers(mock_client)
         assert "Notification Matchers" in result
         assert "matcher1" in result
 
-    def test_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_notification_matchers(mock_client)
+    async def test_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_notification_matchers(mock_client)
         assert "No notification matchers found" in result
 
 
 class TestGetNotificationMatcher:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"name": "matcher1"})
-        result = get_notification_matcher(mock_client, name="matcher1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"name": "matcher1"})
+        result = await get_notification_matcher(mock_client, name="matcher1")
         assert "matcher1" in result
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            get_notification_matcher(mock_client, name="")
+            await get_notification_matcher(mock_client, name="")
 
 
 class TestListSendmailEndpoints:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"name": "email1", "comment": "test"},
-        ])
-        result = list_sendmail_endpoints(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"name": "email1", "comment": "test"},
+            ]
+        )
+        result = await list_sendmail_endpoints(mock_client)
         assert "Sendmail" in result
         assert "email1" in result
 
 
 class TestCreateSendmailEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            create_sendmail_endpoint(mock_client, name="test")
+            await create_sendmail_endpoint(mock_client, name="test")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            create_sendmail_endpoint(client, name="test", confirm=True)
+            await create_sendmail_endpoint(client, name="test", confirm=True)
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            create_sendmail_endpoint(mock_client, name="", confirm=True)
+            await create_sendmail_endpoint(mock_client, name="", confirm=True)
 
-    def test_create(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = create_sendmail_endpoint(mock_client, name="test", confirm=True)
+    async def test_create(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await create_sendmail_endpoint(mock_client, name="test", confirm=True)
         assert "test" in result
         assert "created" in result.lower()
 
 
 class TestDeleteSendmailEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            delete_sendmail_endpoint(mock_client, name="test")
+            await delete_sendmail_endpoint(mock_client, name="test")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            delete_sendmail_endpoint(mock_client, name="", confirm=True)
+            await delete_sendmail_endpoint(mock_client, name="", confirm=True)
 
-    def test_delete(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = delete_sendmail_endpoint(mock_client, name="test", confirm=True)
+    async def test_delete(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await delete_sendmail_endpoint(mock_client, name="test", confirm=True)
         assert "test" in result
         assert "deleted" in result.lower()
 
 
 class TestListSmtpEndpoints:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"name": "smtp1", "server": "mail.example.com"},
-        ])
-        result = list_smtp_endpoints(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"name": "smtp1", "server": "mail.example.com"},
+            ]
+        )
+        result = await list_smtp_endpoints(mock_client)
         assert "SMTP" in result
         assert "smtp1" in result
 
 
 class TestCreateSmtpEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            create_smtp_endpoint(mock_client, name="test")
+            await create_smtp_endpoint(mock_client, name="test")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            create_smtp_endpoint(mock_client, name="", confirm=True)
+            await create_smtp_endpoint(mock_client, name="", confirm=True)
 
-    def test_create(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = create_smtp_endpoint(mock_client, name="test", server="mail.example.com", confirm=True)
+    async def test_create(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await create_smtp_endpoint(mock_client, name="test", server="mail.example.com", confirm=True)
         assert "test" in result
 
 
 class TestDeleteSmtpEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            delete_smtp_endpoint(mock_client, name="test")
+            await delete_smtp_endpoint(mock_client, name="test")
 
-    def test_delete(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = delete_smtp_endpoint(mock_client, name="test", confirm=True)
+    async def test_delete(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await delete_smtp_endpoint(mock_client, name="test", confirm=True)
         assert "deleted" in result.lower()
 
 
 class TestListGotifyEndpoints:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"name": "gotify1"},
-        ])
-        result = list_gotify_endpoints(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"name": "gotify1"},
+            ]
+        )
+        result = await list_gotify_endpoints(mock_client)
         assert "Gotify" in result
         assert "gotify1" in result
 
 
 class TestCreateGotifyEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            create_gotify_endpoint(mock_client, name="test")
+            await create_gotify_endpoint(mock_client, name="test")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            create_gotify_endpoint(mock_client, name="", confirm=True)
+            await create_gotify_endpoint(mock_client, name="", confirm=True)
 
-    def test_create(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = create_gotify_endpoint(mock_client, name="test", confirm=True)
+    async def test_create(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await create_gotify_endpoint(mock_client, name="test", confirm=True)
         assert "test" in result
         assert "created" in result.lower()
 
 
 class TestDeleteGotifyEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            delete_gotify_endpoint(mock_client, name="test")
+            await delete_gotify_endpoint(mock_client, name="test")
 
-    def test_delete(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = delete_gotify_endpoint(mock_client, name="test", confirm=True)
+    async def test_delete(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await delete_gotify_endpoint(mock_client, name="test", confirm=True)
         assert "deleted" in result.lower()
 
 
 class TestListWebhookEndpoints:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"name": "hook1"},
-        ])
-        result = list_webhook_endpoints(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"name": "hook1"},
+            ]
+        )
+        result = await list_webhook_endpoints(mock_client)
         assert "Webhook" in result
         assert "hook1" in result
 
 
 class TestCreateWebhookEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            create_webhook_endpoint(mock_client, name="test")
+            await create_webhook_endpoint(mock_client, name="test")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            create_webhook_endpoint(mock_client, name="", confirm=True)
+            await create_webhook_endpoint(mock_client, name="", confirm=True)
 
-    def test_create(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = create_webhook_endpoint(mock_client, name="test", confirm=True)
+    async def test_create(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await create_webhook_endpoint(mock_client, name="test", confirm=True)
         assert "test" in result
         assert "created" in result.lower()
 
 
 class TestDeleteWebhookEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            delete_webhook_endpoint(mock_client, name="test")
+            await delete_webhook_endpoint(mock_client, name="test")
 
-    def test_delete(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = delete_webhook_endpoint(mock_client, name="test", confirm=True)
+    async def test_delete(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await delete_webhook_endpoint(mock_client, name="test", confirm=True)
         assert "deleted" in result.lower()

@@ -10,8 +10,8 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_tfa(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_tfa(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).access.tfa.get,
     )
     if not isinstance(result, list):
@@ -26,10 +26,10 @@ def list_tfa(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_user_tfa(client: ProxmoxClient, userid: str = "") -> str:
+async def get_user_tfa(client: ProxmoxClient, userid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access.tfa(userid).get,
     )
     lines = [f"\U0001f512 **TFA for {userid}**\n"]
@@ -47,7 +47,7 @@ def get_user_tfa(client: ProxmoxClient, userid: str = "") -> str:
 
 
 @confirm_required
-def add_tfa_entry(
+async def add_tfa_entry(
     client: ProxmoxClient,
     userid: str = "",
     type: str = "",
@@ -66,7 +66,7 @@ def add_tfa_entry(
     if value is not None:
         params["value"] = value
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.tfa(userid).post,
         elevated=True,
         **params,
@@ -75,7 +75,7 @@ def add_tfa_entry(
 
 
 @confirm_required
-def delete_tfa_entry(
+async def delete_tfa_entry(
     client: ProxmoxClient,
     userid: str = "",
     id: str = "",
@@ -87,19 +87,19 @@ def delete_tfa_entry(
     if not id:
         raise ValueError("id is required for TFA entry deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.tfa(userid)(id).delete,
         elevated=True,
     )
     return f"TFA entry {id!r} deleted for {userid!r}"
 
 
-def get_tfa_entry(client: ProxmoxClient, userid: str = "", id: str = "") -> str:
+async def get_tfa_entry(client: ProxmoxClient, userid: str = "", id: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
     if not id:
         raise ValueError("id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access.tfa(userid)(id).get,
     )
     lines = [f"\U0001f512 **TFA Entry: {userid}/{id}**\n"]
@@ -112,7 +112,7 @@ def get_tfa_entry(client: ProxmoxClient, userid: str = "", id: str = "") -> str:
 
 
 @confirm_required
-def update_tfa_entry(
+async def update_tfa_entry(
     client: ProxmoxClient,
     userid: str = "",
     id: str = "",
@@ -131,7 +131,7 @@ def update_tfa_entry(
     if enable is not None:
         params["enable"] = 1 if enable else 0
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.tfa(userid)(id).put,
         elevated=True,
         **params,
@@ -140,7 +140,7 @@ def update_tfa_entry(
 
 
 @confirm_required
-def unlock_tfa(
+async def unlock_tfa(
     client: ProxmoxClient,
     userid: str = "",
     confirm: bool = False,
@@ -149,15 +149,15 @@ def unlock_tfa(
     if not userid:
         raise ValueError("userid is required")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.users(userid)("unlock-tfa").put,
         elevated=True,
     )
     return f"TFA unlocked for {userid!r}"
 
 
-def list_domains(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_domains(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).access.domains.get,
     )
     if not isinstance(result, list):
@@ -172,10 +172,10 @@ def list_domains(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_domain(client: ProxmoxClient, realm: str = "") -> str:
+async def get_domain(client: ProxmoxClient, realm: str = "") -> str:
     if not realm:
         raise ValueError("realm is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access.domains(realm).get,
     )
     lines = [f"\U0001f310 **Auth Domain: {realm}**\n"]
@@ -188,7 +188,7 @@ def get_domain(client: ProxmoxClient, realm: str = "") -> str:
 
 
 @confirm_required
-def sync_domain(
+async def sync_domain(
     client: ProxmoxClient,
     realm: str = "",
     confirm: bool = False,
@@ -197,7 +197,7 @@ def sync_domain(
     if not realm:
         raise ValueError("realm is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.access.domains(realm).sync.post,
         elevated=True,
     )
@@ -206,7 +206,7 @@ def sync_domain(
 
 
 @confirm_required
-def create_domain(
+async def create_domain(
     client: ProxmoxClient,
     realm: str = "",
     type: str = "",
@@ -221,7 +221,7 @@ def create_domain(
     params: dict[str, Any] = {"realm": realm, "type": type}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.domains.post,
         elevated=True,
         **params,
@@ -230,7 +230,7 @@ def create_domain(
 
 
 @confirm_required
-def update_domain(
+async def update_domain(
     client: ProxmoxClient,
     realm: str = "",
     confirm: bool = False,
@@ -242,7 +242,7 @@ def update_domain(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.domains(realm).put,
         elevated=True,
         **kwargs,
@@ -252,7 +252,7 @@ def update_domain(
 
 
 @confirm_required
-def delete_domain(
+async def delete_domain(
     client: ProxmoxClient,
     realm: str = "",
     confirm: bool = False,
@@ -261,17 +261,17 @@ def delete_domain(
     if not realm:
         raise ValueError("realm is required for domain deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.domains(realm).delete,
         elevated=True,
     )
     return f"Auth domain {realm!r} deleted"
 
 
-def get_user_tfa_types(client: ProxmoxClient, userid: str = "") -> str:
+async def get_user_tfa_types(client: ProxmoxClient, userid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access.users(userid).tfa.get,
     )
     lines = [f"\U0001f512 **TFA Types for {userid}**\n"]
@@ -287,10 +287,10 @@ def get_user_tfa_types(client: ProxmoxClient, userid: str = "") -> str:
     return "\n".join(lines)
 
 
-def openid_auth_url(client: ProxmoxClient, realm: str = "") -> str:
+async def openid_auth_url(client: ProxmoxClient, realm: str = "") -> str:
     if not realm:
         raise ValueError("realm is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access.openid("auth-url").post,
         realm=realm,
     )
@@ -307,7 +307,7 @@ def openid_auth_url(client: ProxmoxClient, realm: str = "") -> str:
     return "\n".join(lines)
 
 
-def openid_login(client: ProxmoxClient, realm: str = "", code: str = "", state: str = "") -> str:
+async def openid_login(client: ProxmoxClient, realm: str = "", code: str = "", state: str = "") -> str:
     if not realm:
         raise ValueError("realm is required")
     if not code:
@@ -315,7 +315,7 @@ def openid_login(client: ProxmoxClient, realm: str = "", code: str = "", state: 
     params: dict[str, Any] = {"realm": realm, "code": code}
     if state:
         params["state"] = state
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access.openid.login.post,
         **params,
     )
@@ -329,7 +329,7 @@ def openid_login(client: ProxmoxClient, realm: str = "", code: str = "", state: 
 
 
 @confirm_required
-def change_password(
+async def change_password(
     client: ProxmoxClient,
     userid: str = "",
     password: str = "",
@@ -342,7 +342,7 @@ def change_password(
         raise ValueError("password is required")
     elevated = client.get_client(elevated=True)
     params: dict[str, Any] = {"userid": userid, "password": password}
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.access.password.put,
         elevated=True,
         **params,
@@ -350,7 +350,7 @@ def change_password(
     return f"Password changed for {userid!r}"
 
 
-def create_ticket(
+async def create_ticket(
     client: ProxmoxClient,
     username: str = "",
     password: str = "",
@@ -360,7 +360,7 @@ def create_ticket(
     if not password:
         raise ValueError("password is required")
     params: dict[str, Any] = {"username": username, "password": password}
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access.ticket.post,
         **params,
     )
@@ -377,7 +377,7 @@ def create_ticket(
     return "\n".join(lines)
 
 
-def create_vnc_ticket(
+async def create_vnc_ticket(
     client: ProxmoxClient,
     port: int | None = None,
     vnc: str | None = None,
@@ -387,7 +387,7 @@ def create_vnc_ticket(
         params["port"] = port
     if vnc is not None:
         params["vnc"] = vnc
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).access("vncticket").post,
         **params,
     )

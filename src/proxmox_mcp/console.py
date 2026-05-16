@@ -11,18 +11,18 @@ def _api(client: ProxmoxClient) -> Any:
 
 
 @confirm_required
-def vm_vnc_proxy(
+async def vm_vnc_proxy(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).vncproxy.post,
         elevated=True,
     )
@@ -36,18 +36,18 @@ def vm_vnc_proxy(
 
 
 @confirm_required
-def vm_spice_proxy(
+async def vm_spice_proxy(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).spiceproxy.post,
         elevated=True,
     )
@@ -61,18 +61,18 @@ def vm_spice_proxy(
 
 
 @confirm_required
-def vm_termproxy(
+async def vm_termproxy(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).termproxy.post,
         elevated=True,
     )
@@ -86,18 +86,18 @@ def vm_termproxy(
 
 
 @confirm_required
-def lxc_vnc_proxy(
+async def lxc_vnc_proxy(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).vncproxy.post,
         elevated=True,
     )
@@ -111,18 +111,18 @@ def lxc_vnc_proxy(
 
 
 @confirm_required
-def lxc_termproxy(
+async def lxc_termproxy(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).termproxy.post,
         elevated=True,
     )
@@ -136,16 +136,16 @@ def lxc_termproxy(
 
 
 @confirm_required
-def node_vncshell(
+async def node_vncshell(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).vncshell.post,
         elevated=True,
     )
@@ -159,16 +159,16 @@ def node_vncshell(
 
 
 @confirm_required
-def node_spiceshell(
+async def node_spiceshell(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).spiceshell.post,
         elevated=True,
     )
@@ -182,16 +182,16 @@ def node_spiceshell(
 
 
 @confirm_required
-def node_termproxy(
+async def node_termproxy(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).termproxy.post,
         elevated=True,
     )
@@ -205,18 +205,18 @@ def node_termproxy(
 
 
 @confirm_required
-def lxc_spice_proxy(
+async def lxc_spice_proxy(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).spiceproxy.post,
         elevated=True,
     )
@@ -229,15 +229,15 @@ def lxc_spice_proxy(
     return "\n".join(lines)
 
 
-def lxc_vnc_websocket(
+async def lxc_vnc_websocket(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).lxc(vmid).vncwebsocket.get,
     )
     lines = [f"\U0001f5a5 **VNC WebSocket: CT {vmid} on {resolved_node}**\n"]

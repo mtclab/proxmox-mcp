@@ -10,8 +10,8 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_acme_accounts(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_acme_accounts(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.acme.account.get,
     )
     if not isinstance(result, list):
@@ -31,10 +31,10 @@ def list_acme_accounts(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_acme_account(client: ProxmoxClient, name: str = "") -> str:
+async def get_acme_account(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.acme.account(name).get,
     )
     lines = [f"\U0001f512 **ACME Account: {name}**\n"]
@@ -45,7 +45,7 @@ def get_acme_account(client: ProxmoxClient, name: str = "") -> str:
 
 
 @confirm_required
-def create_acme_account(
+async def create_acme_account(
     client: ProxmoxClient,
     name: str = "",
     contact: str = "",
@@ -63,7 +63,7 @@ def create_acme_account(
         params["directory"] = directory
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.acme.account.post,
         elevated=True,
         **params,
@@ -72,7 +72,7 @@ def create_acme_account(
 
 
 @confirm_required
-def update_acme_plugin(
+async def update_acme_plugin(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -84,7 +84,7 @@ def update_acme_plugin(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.acme.plugins(id).put,
         elevated=True,
         **kwargs,
@@ -93,10 +93,10 @@ def update_acme_plugin(
     return f"ACME plugin {id!r} updated: {opts}"
 
 
-def get_acme_plugin(client: ProxmoxClient, id: str = "") -> str:
+async def get_acme_plugin(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.acme.plugins(id).get,
     )
     lines = [f"\U0001f50c **ACME Plugin: {id}**\n"]
@@ -106,8 +106,8 @@ def get_acme_plugin(client: ProxmoxClient, id: str = "") -> str:
     return "\n".join(lines)
 
 
-def acme_meta(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def acme_meta(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.acme.meta.get,
     )
     lines = ["\U0001f512 **ACME Meta**\n"]
@@ -124,7 +124,7 @@ def acme_meta(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def delete_acme_account(
+async def delete_acme_account(
     client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
@@ -133,7 +133,7 @@ def delete_acme_account(
     if not name:
         raise ValueError("name is required for ACME account deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.acme.account(name).delete,
         elevated=True,
     )
@@ -141,7 +141,7 @@ def delete_acme_account(
 
 
 @confirm_required
-def update_acme_account(
+async def update_acme_account(
     client: ProxmoxClient,
     name: str = "",
     contact: Optional[str] = None,
@@ -158,7 +158,7 @@ def update_acme_account(
     if not params:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.acme.account(name).put,
         elevated=True,
         **params,
@@ -167,8 +167,8 @@ def update_acme_account(
     return f"ACME account {name!r} updated: {opts}"
 
 
-def list_acme_directories(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_acme_directories(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.acme.directories.get,
     )
     if not isinstance(result, list):
@@ -185,8 +185,8 @@ def list_acme_directories(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def list_acme_plugins(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_acme_plugins(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.acme.plugins.get,
     )
     if not isinstance(result, list):
@@ -202,7 +202,7 @@ def list_acme_plugins(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def create_acme_plugin(
+async def create_acme_plugin(
     client: ProxmoxClient,
     id: str = "",
     type: str = "",
@@ -217,7 +217,7 @@ def create_acme_plugin(
     params: dict[str, Any] = {"id": id, "type": type}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.acme.plugins.post,
         elevated=True,
         **params,
@@ -226,7 +226,7 @@ def create_acme_plugin(
 
 
 @confirm_required
-def delete_acme_plugin(
+async def delete_acme_plugin(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -235,15 +235,15 @@ def delete_acme_plugin(
     if not id:
         raise ValueError("id is required for ACME plugin deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.acme.plugins(id).delete,
         elevated=True,
     )
     return f"ACME plugin {id!r} deleted"
 
 
-def get_acme_challenge_schema(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def get_acme_challenge_schema(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.acme("challenge-schema").get,
     )
     lines = ["\U0001f512 **ACME Challenge Schema**\n"]
@@ -259,8 +259,8 @@ def get_acme_challenge_schema(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def list_acme_tos(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_acme_tos(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.acme.tos.get,
     )
     lines = ["\U0001f512 **ACME Terms of Service**\n"]

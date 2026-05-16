@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -24,6 +24,7 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     client.monitor_client = MagicMock()
@@ -31,105 +32,117 @@ def mock_client(mock_config):
 
 
 class TestListPci:
-    def test_list_pci_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {
-                "id": "0000:00:02.0",
-                "device_name": "VGA compatible controller",
-                "vendor_name": "Intel Corporation",
-                "subsystem_name": "HD Graphics 630",
-                "iommu_group": "1",
-            },
-        ])
-        result = list_pci(mock_client, node="pve")
+    async def test_list_pci_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {
+                    "id": "0000:00:02.0",
+                    "device_name": "VGA compatible controller",
+                    "vendor_name": "Intel Corporation",
+                    "subsystem_name": "HD Graphics 630",
+                    "iommu_group": "1",
+                },
+            ]
+        )
+        result = await list_pci(mock_client, node="pve")
         assert "0000:00:02.0" in result
         assert "Intel" in result
         assert "PCI" in result
 
-    def test_list_pci_minimal(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"id": "0000:01:00.0"},
-        ])
-        result = list_pci(mock_client, node="pve")
+    async def test_list_pci_minimal(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"id": "0000:01:00.0"},
+            ]
+        )
+        result = await list_pci(mock_client, node="pve")
         assert "0000:01:00.0" in result
 
-    def test_list_pci_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_pci(mock_client, node="pve")
+    async def test_list_pci_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_pci(mock_client, node="pve")
         assert "No PCI" in result
 
-    def test_list_pci_invalid_node(self, mock_client):
+    async def test_list_pci_invalid_node(self, mock_client):
         with pytest.raises(ValueError, match="Invalid node name"):
-            list_pci(mock_client, node="bad!node")
+            await list_pci(mock_client, node="bad!node")
 
 
 class TestListUsb:
-    def test_list_usb_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {
-                "id": "usb-1d6b-0001",
-                "product": "USB Keyboard",
-                "vendor": "Logitech",
-                "busnum": "1",
-                "devnum": "2",
-                "port": "1",
-            },
-        ])
-        result = list_usb(mock_client, node="pve")
+    async def test_list_usb_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {
+                    "id": "usb-1d6b-0001",
+                    "product": "USB Keyboard",
+                    "vendor": "Logitech",
+                    "busnum": "1",
+                    "devnum": "2",
+                    "port": "1",
+                },
+            ]
+        )
+        result = await list_usb(mock_client, node="pve")
         assert "usb-1d6b-0001" in result
         assert "Logitech" in result
         assert "USB" in result
 
-    def test_list_usb_minimal(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"id": "usb-1d6b-0002"},
-        ])
-        result = list_usb(mock_client, node="pve")
+    async def test_list_usb_minimal(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"id": "usb-1d6b-0002"},
+            ]
+        )
+        result = await list_usb(mock_client, node="pve")
         assert "usb-1d6b-0002" in result
 
-    def test_list_usb_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_usb(mock_client, node="pve")
+    async def test_list_usb_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_usb(mock_client, node="pve")
         assert "No USB" in result
 
-    def test_list_usb_invalid_node(self, mock_client):
+    async def test_list_usb_invalid_node(self, mock_client):
         with pytest.raises(ValueError, match="Invalid node name"):
-            list_usb(mock_client, node="bad!node")
+            await list_usb(mock_client, node="bad!node")
 
 
 class TestGetPciDevice:
-    def test_get_pci_device_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "device_name": "VGA compatible controller",
-            "vendor_name": "Intel Corporation",
-        })
-        result = get_pci_device(mock_client, node="pve", pciid="0000:00:02.0")
+    async def test_get_pci_device_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "device_name": "VGA compatible controller",
+                "vendor_name": "Intel Corporation",
+            }
+        )
+        result = await get_pci_device(mock_client, node="pve", pciid="0000:00:02.0")
         assert "0000:00:02.0" in result
         assert "pve" in result
 
-    def test_get_pci_device_no_pciid_raises(self, mock_client):
+    async def test_get_pci_device_no_pciid_raises(self, mock_client):
         with pytest.raises(ValueError, match="pciid is required"):
-            get_pci_device(mock_client, node="pve", pciid="")
+            await get_pci_device(mock_client, node="pve", pciid="")
 
-    def test_get_pci_device_invalid_node(self, mock_client):
+    async def test_get_pci_device_invalid_node(self, mock_client):
         with pytest.raises(ValueError, match="Invalid node name"):
-            get_pci_device(mock_client, node="bad!node", pciid="0000:00:02.0")
+            await get_pci_device(mock_client, node="bad!node", pciid="0000:00:02.0")
 
 
 class TestListPciMdev:
-    def test_list_pci_mdev_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"type": "nvidia-42", "description": "NVIDIA GPU", "available": "16"},
-        ])
-        result = list_pci_mdev(mock_client, node="pve", pciid="0000:01:00.0")
+    async def test_list_pci_mdev_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"type": "nvidia-42", "description": "NVIDIA GPU", "available": "16"},
+            ]
+        )
+        result = await list_pci_mdev(mock_client, node="pve", pciid="0000:01:00.0")
         assert "nvidia-42" in result
         assert "pve" in result
 
-    def test_list_pci_mdev_no_pciid_raises(self, mock_client):
+    async def test_list_pci_mdev_no_pciid_raises(self, mock_client):
         with pytest.raises(ValueError, match="pciid is required"):
-            list_pci_mdev(mock_client, node="pve", pciid="")
+            await list_pci_mdev(mock_client, node="pve", pciid="")
 
-    def test_list_pci_mdev_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_pci_mdev(mock_client, node="pve", pciid="0000:01:00.0")
+    async def test_list_pci_mdev_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_pci_mdev(mock_client, node="pve", pciid="0000:01:00.0")
         assert "No mediated device types found" in result

@@ -17,7 +17,7 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def snapshot_config(
+async def snapshot_config(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -25,10 +25,10 @@ def snapshot_config(
     vmtype: str = "qemu",
 ) -> str:
     _validate_vmtype(vmtype)
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         getattr(_api(client).nodes(resolved_node), vmtype)(vmid).snapshot(snapname).config.get
     )
     if not isinstance(result, dict):
@@ -39,15 +39,15 @@ def snapshot_config(
     return "\n".join(lines)
 
 
-def list_snapshots(
+async def list_snapshots(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
 ) -> str:
     _validate_vmtype(vmtype)
-    resolved_node = client.resolve_node(node)
-    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).snapshot.get)
+    resolved_node = await client.resolve_node(node)
+    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).snapshot.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f4f8 **Snapshots for {vmtype} {vmid} on {resolved_node}**\n"]
@@ -67,7 +67,7 @@ def list_snapshots(
 
 
 @confirm_required
-def create_snapshot(
+async def create_snapshot(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -78,12 +78,12 @@ def create_snapshot(
 ) -> str:
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     params: dict[str, Any] = {"snapname": snapname}
     if description:
         params["description"] = description
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot.post,
         elevated=True,
         **params,
@@ -93,7 +93,7 @@ def create_snapshot(
 
 
 @confirm_required
-def delete_snapshot(
+async def delete_snapshot(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -111,9 +111,9 @@ def delete_snapshot(
     """
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).delete,
         elevated=True,
     )
@@ -122,7 +122,7 @@ def delete_snapshot(
 
 
 @confirm_required
-def update_snapshot_config(
+async def update_snapshot_config(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -134,7 +134,7 @@ def update_snapshot_config(
 ) -> str:
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {}
@@ -142,7 +142,7 @@ def update_snapshot_config(
         params["description"] = description
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).config.put,
         elevated=True,
         **params,
@@ -151,7 +151,7 @@ def update_snapshot_config(
 
 
 @confirm_required
-def rollback_snapshot(
+async def rollback_snapshot(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -161,9 +161,9 @@ def rollback_snapshot(
 ) -> str:
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).rollback.post,
         elevated=True,
     )

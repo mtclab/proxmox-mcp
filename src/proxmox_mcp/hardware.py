@@ -10,10 +10,10 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_pci(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = client.resolve_node(node)
+async def list_pci(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).hardware.pci.get,
     )
     if not isinstance(result, list):
@@ -39,11 +39,11 @@ def list_pci(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_usb(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = client.resolve_node(node)
+async def list_usb(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).hardware.usb.get,
         elevated=True,
     )
@@ -71,12 +71,12 @@ def list_usb(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def get_pci_device(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
-    resolved_node = client.resolve_node(node)
+async def get_pci_device(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not pciid:
         raise ValueError("pciid is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).hardware.pci(pciid).get,
     )
     lines = [f"🔌 **PCI Device: {pciid} on {resolved_node}**\n"]
@@ -88,12 +88,12 @@ def get_pci_device(client: ProxmoxClient, node: Optional[str] = None, pciid: str
     return "\n".join(lines)
 
 
-def list_pci_mdev(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
-    resolved_node = client.resolve_node(node)
+async def list_pci_mdev(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not pciid:
         raise ValueError("pciid is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).hardware.pci(pciid).mdev.get,
     )
     if not isinstance(result, list):

@@ -13,13 +13,11 @@ Run with: pytest tests/integration/test_pve_gotchas.py -m integration -v
 from __future__ import annotations
 
 import os
-import re
 
 import pytest
 
 from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.config import Config
-from proxmox_mcp.exceptions import ProxmoxNotFoundError
 
 PVE_NODE = os.environ.get("PROXMOX_DEFAULT_NODE", "pve")
 NONEXISTENT_NODE = "no-such-node-xyz"
@@ -94,14 +92,17 @@ class TestTemplateDownload:
         cfg._allow_elevated = False
         cfg.allow_elevated = False
         from unittest.mock import patch
+
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             c = ProxmoxClient(cfg)
         from proxmox_mcp.templates import download_template
 
         with pytest.raises(ValueError, match="Elevated"):
             download_template(
-                c, url="http://example.com/template.tar.gz",
-                storage="local", confirm=True,
+                c,
+                url="http://example.com/template.tar.gz",
+                storage="local",
+                confirm=True,
             )
 
     def test_download_template_rejects_empty_url(self, client: ProxmoxClient) -> None:
@@ -125,17 +126,13 @@ class TestVM404Errors:
         from proxmox_mcp.lifecycle import get_vm_config
 
         result = get_vm_config(client, node=PVE_NODE, vmid=NONEXISTENT_VMID)
-        assert "not found" in result.lower(), (
-            f"Expected 'not found' message for VMID {NONEXISTENT_VMID}, got: {result}"
-        )
+        assert "not found" in result.lower(), f"Expected 'not found' message for VMID {NONEXISTENT_VMID}, got: {result}"
 
     def test_lxc_config_nonexistent_vmid(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.lifecycle import get_lxc_config
 
         result = get_lxc_config(client, node=PVE_NODE, vmid=NONEXISTENT_VMID)
-        assert "not found" in result.lower(), (
-            f"Expected 'not found' message for VMID {NONEXISTENT_VMID}, got: {result}"
-        )
+        assert "not found" in result.lower(), f"Expected 'not found' message for VMID {NONEXISTENT_VMID}, got: {result}"
 
 
 @pytest.mark.integration
@@ -170,9 +167,7 @@ class TestMachineTypes:
 
         result = list_machine_types(client, node=PVE_NODE)
         assert "Machine Types" in result
-        assert "q35" in result or "pc" in result or "Machine" in result, (
-            f"Expected common machine types, got: {result}"
-        )
+        assert "q35" in result or "pc" in result or "Machine" in result, f"Expected common machine types, got: {result}"
 
     def test_list_cpu_models_returns_data(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.capabilities import list_cpu_models
@@ -196,9 +191,7 @@ class TestStorageListing:
         from proxmox_mcp.discovery import list_storage
 
         result = list_storage(client)
-        assert "type" in result.lower() or "(" in result, (
-            f"Expected storage type info in output, got: {result}"
-        )
+        assert "type" in result.lower() or "(" in result, f"Expected storage type info in output, got: {result}"
 
 
 @pytest.mark.integration

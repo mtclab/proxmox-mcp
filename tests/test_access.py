@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -36,6 +36,7 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     admin_mock = MagicMock()
@@ -45,76 +46,85 @@ def mock_client(mock_config):
 
 
 class TestListTfa:
-    def test_list_tfa_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"userid": "admin@pve", "type": "totp"},
-            {"userid": "user@pve", "type": "webauthn"},
-        ])
-        result = list_tfa(mock_client)
+    async def test_list_tfa_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"userid": "admin@pve", "type": "totp"},
+                {"userid": "user@pve", "type": "webauthn"},
+            ]
+        )
+        result = await list_tfa(mock_client)
         assert "admin@pve" in result
         assert "user@pve" in result
 
-    def test_list_tfa_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_tfa(mock_client)
+    async def test_list_tfa_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_tfa(mock_client)
         assert "No TFA entries found" in result
 
 
 class TestGetUserTfa:
-    def test_no_userid_raises(self, mock_client):
+    async def test_no_userid_raises(self, mock_client):
         with pytest.raises(ValueError, match="userid is required"):
-            get_user_tfa(mock_client, userid="")
+            await get_user_tfa(mock_client, userid="")
 
-    def test_get_user_tfa(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"id": "totp-0", "type": "totp"},
-        ])
-        result = get_user_tfa(mock_client, userid="admin@pve")
+    async def test_get_user_tfa(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"id": "totp-0", "type": "totp"},
+            ]
+        )
+        result = await get_user_tfa(mock_client, userid="admin@pve")
         assert "admin@pve" in result
 
-    def test_get_user_tfa_dict(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"id": "totp-0", "type": "totp"})
-        result = get_user_tfa(mock_client, userid="admin@pve")
+    async def test_get_user_tfa_dict(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"id": "totp-0", "type": "totp"})
+        result = await get_user_tfa(mock_client, userid="admin@pve")
         assert "admin@pve" in result
 
-    def test_get_user_tfa_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = get_user_tfa(mock_client, userid="admin@pve")
+    async def test_get_user_tfa_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await get_user_tfa(mock_client, userid="admin@pve")
         assert "No TFA entries found" in result
 
 
 class TestAddTfaEntry:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            add_tfa_entry(mock_client, userid="admin@pve", type="totp")
+            await add_tfa_entry(mock_client, userid="admin@pve", type="totp")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            add_tfa_entry(client, userid="admin@pve", type="totp", confirm=True)
+            await add_tfa_entry(client, userid="admin@pve", type="totp", confirm=True)
 
-    def test_no_userid_raises(self, mock_client):
+    async def test_no_userid_raises(self, mock_client):
         with pytest.raises(ValueError, match="userid is required"):
-            add_tfa_entry(mock_client, userid="", type="totp", confirm=True)
+            await add_tfa_entry(mock_client, userid="", type="totp", confirm=True)
 
-    def test_no_type_raises(self, mock_client):
+    async def test_no_type_raises(self, mock_client):
         with pytest.raises(ValueError, match="type is required"):
-            add_tfa_entry(mock_client, userid="admin@pve", type="", confirm=True)
+            await add_tfa_entry(mock_client, userid="admin@pve", type="", confirm=True)
 
-    def test_add_tfa_entry(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        result = add_tfa_entry(mock_client, userid="admin@pve", type="totp", confirm=True)
+    async def test_add_tfa_entry(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        result = await add_tfa_entry(mock_client, userid="admin@pve", type="totp", confirm=True)
         assert "admin@pve" in result
         assert "totp" in result
 
-    def test_add_tfa_entry_with_optional(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        result = add_tfa_entry(
-            mock_client, userid="admin@pve", type="totp",
-            description="my device", value="secret", confirm=True,
+    async def test_add_tfa_entry_with_optional(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        result = await add_tfa_entry(
+            mock_client,
+            userid="admin@pve",
+            type="totp",
+            description="my device",
+            value="secret",
+            confirm=True,
         )
         assert "admin@pve" in result
         call_args = mock_client.safe_api_call.call_args
@@ -123,193 +133,204 @@ class TestAddTfaEntry:
 
 
 class TestDeleteTfaEntry:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            delete_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
+            await delete_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            delete_tfa_entry(client, userid="admin@pve", id="totp-0", confirm=True)
+            await delete_tfa_entry(client, userid="admin@pve", id="totp-0", confirm=True)
 
-    def test_no_userid_raises(self, mock_client):
+    async def test_no_userid_raises(self, mock_client):
         with pytest.raises(ValueError, match="userid is required"):
-            delete_tfa_entry(mock_client, userid="", id="totp-0", confirm=True)
+            await delete_tfa_entry(mock_client, userid="", id="totp-0", confirm=True)
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            delete_tfa_entry(mock_client, userid="admin@pve", id="", confirm=True)
+            await delete_tfa_entry(mock_client, userid="admin@pve", id="", confirm=True)
 
-    def test_delete_tfa_entry(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        result = delete_tfa_entry(mock_client, userid="admin@pve", id="totp-0", confirm=True)
+    async def test_delete_tfa_entry(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        result = await delete_tfa_entry(mock_client, userid="admin@pve", id="totp-0", confirm=True)
         assert "admin@pve" in result
         assert "totp-0" in result
 
 
 class TestGetTfaEntry:
-    def test_no_userid_raises(self, mock_client):
+    async def test_no_userid_raises(self, mock_client):
         with pytest.raises(ValueError, match="userid is required"):
-            get_tfa_entry(mock_client, userid="", id="totp-0")
+            await get_tfa_entry(mock_client, userid="", id="totp-0")
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            get_tfa_entry(mock_client, userid="admin@pve", id="")
+            await get_tfa_entry(mock_client, userid="admin@pve", id="")
 
-    def test_get_tfa_entry(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"id": "totp-0", "type": "totp"})
-        result = get_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
+    async def test_get_tfa_entry(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"id": "totp-0", "type": "totp"})
+        result = await get_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
         assert "admin@pve" in result
         assert "totp-0" in result
 
-    def test_get_tfa_entry_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = get_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
+    async def test_get_tfa_entry_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await get_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
         assert "No data returned" in result
 
 
 class TestUpdateTfaEntry:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            update_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
+            await update_tfa_entry(mock_client, userid="admin@pve", id="totp-0")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            update_tfa_entry(client, userid="admin@pve", id="totp-0", confirm=True)
+            await update_tfa_entry(client, userid="admin@pve", id="totp-0", confirm=True)
 
-    def test_no_userid_raises(self, mock_client):
+    async def test_no_userid_raises(self, mock_client):
         with pytest.raises(ValueError, match="userid is required"):
-            update_tfa_entry(mock_client, userid="", id="totp-0", confirm=True)
+            await update_tfa_entry(mock_client, userid="", id="totp-0", confirm=True)
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            update_tfa_entry(mock_client, userid="admin@pve", id="", confirm=True)
+            await update_tfa_entry(mock_client, userid="admin@pve", id="", confirm=True)
 
-    def test_update_tfa_entry(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        result = update_tfa_entry(
-            mock_client, userid="admin@pve", id="totp-0", description="updated", confirm=True,
+    async def test_update_tfa_entry(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        result = await update_tfa_entry(
+            mock_client,
+            userid="admin@pve",
+            id="totp-0",
+            description="updated",
+            confirm=True,
         )
         assert "admin@pve" in result
         assert "totp-0" in result
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["description"] == "updated"
 
-    def test_update_tfa_enable_false(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        update_tfa_entry(mock_client, userid="admin@pve", id="totp-0", enable=False, confirm=True)
+    async def test_update_tfa_enable_false(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        await update_tfa_entry(mock_client, userid="admin@pve", id="totp-0", enable=False, confirm=True)
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["enable"] == 0
 
 
 class TestUnlockTfa:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            unlock_tfa(mock_client, userid="admin@pve")
+            await unlock_tfa(mock_client, userid="admin@pve")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            unlock_tfa(client, userid="admin@pve", confirm=True)
+            await unlock_tfa(client, userid="admin@pve", confirm=True)
 
-    def test_no_userid_raises(self, mock_client):
+    async def test_no_userid_raises(self, mock_client):
         with pytest.raises(ValueError, match="userid is required"):
-            unlock_tfa(mock_client, userid="", confirm=True)
+            await unlock_tfa(mock_client, userid="", confirm=True)
 
-    def test_unlock_tfa(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        result = unlock_tfa(mock_client, userid="admin@pve", confirm=True)
+    async def test_unlock_tfa(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        result = await unlock_tfa(mock_client, userid="admin@pve", confirm=True)
         assert "admin@pve" in result
         assert "unlocked" in result.lower()
 
 
 class TestListDomains:
-    def test_list_domains_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"realm": "pve", "plugin": "pve"},
-            {"realm": "ldap", "plugin": "ldap"},
-        ])
-        result = list_domains(mock_client)
+    async def test_list_domains_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"realm": "pve", "plugin": "pve"},
+                {"realm": "ldap", "plugin": "ldap"},
+            ]
+        )
+        result = await list_domains(mock_client)
         assert "pve" in result
         assert "ldap" in result
 
-    def test_list_domains_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_domains(mock_client)
+    async def test_list_domains_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_domains(mock_client)
         assert "No auth domains found" in result
 
 
 class TestGetDomain:
-    def test_no_realm_raises(self, mock_client):
+    async def test_no_realm_raises(self, mock_client):
         with pytest.raises(ValueError, match="realm is required"):
-            get_domain(mock_client, realm="")
+            await get_domain(mock_client, realm="")
 
-    def test_get_domain(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"realm": "pve", "type": "pve"})
-        result = get_domain(mock_client, realm="pve")
+    async def test_get_domain(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"realm": "pve", "type": "pve"})
+        result = await get_domain(mock_client, realm="pve")
         assert "pve" in result
 
-    def test_get_domain_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = get_domain(mock_client, realm="pve")
+    async def test_get_domain_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await get_domain(mock_client, realm="pve")
         assert "No data returned" in result
 
 
 class TestSyncDomain:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            sync_domain(mock_client, realm="ldap")
+            await sync_domain(mock_client, realm="ldap")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            sync_domain(client, realm="ldap", confirm=True)
+            await sync_domain(client, realm="ldap", confirm=True)
 
-    def test_no_realm_raises(self, mock_client):
+    async def test_no_realm_raises(self, mock_client):
         with pytest.raises(ValueError, match="realm is required"):
-            sync_domain(mock_client, realm="", confirm=True)
+            await sync_domain(mock_client, realm="", confirm=True)
 
-    def test_sync_domain(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "UPID:pve:123"})
-        result = sync_domain(mock_client, realm="ldap", confirm=True)
+    async def test_sync_domain(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "UPID:pve:123"})
+        result = await sync_domain(mock_client, realm="ldap", confirm=True)
         assert "ldap" in result
 
 
 class TestChangePassword:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            change_password(mock_client, userid="admin@pve", password="newpass")
+            await change_password(mock_client, userid="admin@pve", password="newpass")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            change_password(client, userid="admin@pve", password="newpass", confirm=True)
+            await change_password(client, userid="admin@pve", password="newpass", confirm=True)
 
-    def test_no_userid_raises(self, mock_client):
+    async def test_no_userid_raises(self, mock_client):
         with pytest.raises(ValueError, match="userid is required"):
-            change_password(mock_client, userid="", password="newpass", confirm=True)
+            await change_password(mock_client, userid="", password="newpass", confirm=True)
 
-    def test_no_password_raises(self, mock_client):
+    async def test_no_password_raises(self, mock_client):
         with pytest.raises(ValueError, match="password is required"):
-            change_password(mock_client, userid="admin@pve", password="", confirm=True)
+            await change_password(mock_client, userid="admin@pve", password="", confirm=True)
 
-    def test_change_password(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        result = change_password(mock_client, userid="admin@pve", password="newpass", confirm=True)
+    async def test_change_password(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        result = await change_password(mock_client, userid="admin@pve", password="newpass", confirm=True)
         assert "admin@pve" in result

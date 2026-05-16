@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -71,6 +71,7 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     client.admin_client = MagicMock()
@@ -79,474 +80,483 @@ def mock_client(mock_config):
 
 
 class TestNotificationIndex:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"endpoints": 3, "matchers": 1})
-        result = notif_notification_index(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"endpoints": 3, "matchers": 1})
+        result = await notif_notification_index(mock_client)
         assert "Notification Index" in result
 
-    def test_non_dict(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="some data")
-        result = notif_notification_index(mock_client)
+    async def test_non_dict(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="some data")
+        result = await notif_notification_index(mock_client)
         assert "some data" in result
 
 
 class TestNotificationEndpointsIndex:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"sendmail": 1, "smtp": 1})
-        result = notif_notification_endpoints_index(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"sendmail": 1, "smtp": 1})
+        result = await notif_notification_endpoints_index(mock_client)
         assert "Notification Endpoints Index" in result
 
 
 class TestGetNotificationTarget:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"name": "target1", "type": "sendmail"})
-        result = notif_get_notification_target(mock_client, name="target1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"name": "target1", "type": "sendmail"})
+        result = await notif_get_notification_target(mock_client, name="target1")
         assert "target1" in result
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_get_notification_target(mock_client, name="")
+            await notif_get_notification_target(mock_client, name="")
 
 
 class TestTestNotificationTarget:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_test_notification_target(mock_client, name="target1")
+            await notif_test_notification_target(mock_client, name="target1")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            notif_test_notification_target(client, name="target1", confirm=True)
+            await notif_test_notification_target(client, name="target1", confirm=True)
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_test_notification_target(mock_client, name="", confirm=True)
+            await notif_test_notification_target(mock_client, name="", confirm=True)
 
-    def test_test(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_test_notification_target(mock_client, name="target1", confirm=True)
+    async def test_test(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_test_notification_target(mock_client, name="target1", confirm=True)
         assert "target1" in result
 
 
 class TestNotificationMatcherFields:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[{"name": "field1"}])
-        result = notif_notification_matcher_fields(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[{"name": "field1"}])
+        result = await notif_notification_matcher_fields(mock_client)
         assert "Matcher Fields" in result
 
-    def test_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = notif_notification_matcher_fields(mock_client)
+    async def test_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await notif_notification_matcher_fields(mock_client)
         assert "No matcher fields found" in result
 
 
 class TestNotificationMatcherFieldValues:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[{"name": "value1"}])
-        result = notif_notification_matcher_field_values(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[{"name": "value1"}])
+        result = await notif_notification_matcher_field_values(mock_client)
         assert "Matcher Field Values" in result
 
-    def test_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = notif_notification_matcher_field_values(mock_client)
+    async def test_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await notif_notification_matcher_field_values(mock_client)
         assert "No matcher field values found" in result
 
 
 class TestCreateNotificationMatcher:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_create_notification_matcher(mock_client, name="m1")
+            await notif_create_notification_matcher(mock_client, name="m1")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            notif_create_notification_matcher(client, name="m1", confirm=True)
+            await notif_create_notification_matcher(client, name="m1", confirm=True)
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_create_notification_matcher(mock_client, name="", confirm=True)
+            await notif_create_notification_matcher(mock_client, name="", confirm=True)
 
-    def test_create(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_create_notification_matcher(mock_client, name="m1", confirm=True)
+    async def test_create(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_create_notification_matcher(mock_client, name="m1", confirm=True)
         assert "m1" in result
         assert "created" in result.lower()
 
 
 class TestUpdateNotificationMatcher:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_update_notification_matcher(mock_client, name="m1")
+            await notif_update_notification_matcher(mock_client, name="m1")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_update_notification_matcher(mock_client, name="", comment="x", confirm=True)
+            await notif_update_notification_matcher(mock_client, name="", comment="x", confirm=True)
 
-    def test_no_params_raises(self, mock_client):
+    async def test_no_params_raises(self, mock_client):
         with pytest.raises(ValueError, match="At least one"):
-            notif_update_notification_matcher(mock_client, name="m1", confirm=True)
+            await notif_update_notification_matcher(mock_client, name="m1", confirm=True)
 
-    def test_update(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_update_notification_matcher(mock_client, name="m1", comment="updated", confirm=True)
+    async def test_update(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_update_notification_matcher(mock_client, name="m1", comment="updated", confirm=True)
         assert "m1" in result
         assert "updated" in result.lower()
 
 
 class TestDeleteNotificationMatcher:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_delete_notification_matcher(mock_client, name="m1")
+            await notif_delete_notification_matcher(mock_client, name="m1")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_delete_notification_matcher(mock_client, name="", confirm=True)
+            await notif_delete_notification_matcher(mock_client, name="", confirm=True)
 
-    def test_delete(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_delete_notification_matcher(mock_client, name="m1", confirm=True)
+    async def test_delete(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_delete_notification_matcher(mock_client, name="m1", confirm=True)
         assert "m1" in result
         assert "deleted" in result.lower()
 
 
 class TestGetSendmailEndpoint:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"name": "sm1", "mailto": "a@b.com"})
-        result = notif_get_sendmail_endpoint(mock_client, name="sm1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"name": "sm1", "mailto": "a@b.com"})
+        result = await notif_get_sendmail_endpoint(mock_client, name="sm1")
         assert "sm1" in result
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_get_sendmail_endpoint(mock_client, name="")
+            await notif_get_sendmail_endpoint(mock_client, name="")
 
 
 class TestUpdateSendmailEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_update_sendmail_endpoint(mock_client, name="sm1")
+            await notif_update_sendmail_endpoint(mock_client, name="sm1")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_update_sendmail_endpoint(mock_client, name="", comment="x", confirm=True)
+            await notif_update_sendmail_endpoint(mock_client, name="", comment="x", confirm=True)
 
-    def test_no_params_raises(self, mock_client):
+    async def test_no_params_raises(self, mock_client):
         with pytest.raises(ValueError, match="At least one"):
-            notif_update_sendmail_endpoint(mock_client, name="sm1", confirm=True)
+            await notif_update_sendmail_endpoint(mock_client, name="sm1", confirm=True)
 
-    def test_update(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_update_sendmail_endpoint(mock_client, name="sm1", comment="updated", confirm=True)
+    async def test_update(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_update_sendmail_endpoint(mock_client, name="sm1", comment="updated", confirm=True)
         assert "sm1" in result
 
 
 class TestGetSmtpEndpoint:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"name": "smtp1", "server": "mail.com"})
-        result = notif_get_smtp_endpoint(mock_client, name="smtp1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"name": "smtp1", "server": "mail.com"})
+        result = await notif_get_smtp_endpoint(mock_client, name="smtp1")
         assert "smtp1" in result
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_get_smtp_endpoint(mock_client, name="")
+            await notif_get_smtp_endpoint(mock_client, name="")
 
 
 class TestUpdateSmtpEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_update_smtp_endpoint(mock_client, name="smtp1")
+            await notif_update_smtp_endpoint(mock_client, name="smtp1")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_update_smtp_endpoint(mock_client, name="", comment="x", confirm=True)
+            await notif_update_smtp_endpoint(mock_client, name="", comment="x", confirm=True)
 
-    def test_no_params_raises(self, mock_client):
+    async def test_no_params_raises(self, mock_client):
         with pytest.raises(ValueError, match="At least one"):
-            notif_update_smtp_endpoint(mock_client, name="smtp1", confirm=True)
+            await notif_update_smtp_endpoint(mock_client, name="smtp1", confirm=True)
 
-    def test_update(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_update_smtp_endpoint(mock_client, name="smtp1", comment="updated", confirm=True)
+    async def test_update(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_update_smtp_endpoint(mock_client, name="smtp1", comment="updated", confirm=True)
         assert "smtp1" in result
 
 
 class TestGetGotifyEndpoint:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"name": "got1", "server": "gotify.local"})
-        result = notif_get_gotify_endpoint(mock_client, name="got1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"name": "got1", "server": "gotify.local"})
+        result = await notif_get_gotify_endpoint(mock_client, name="got1")
         assert "got1" in result
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_get_gotify_endpoint(mock_client, name="")
+            await notif_get_gotify_endpoint(mock_client, name="")
 
 
 class TestUpdateGotifyEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_update_gotify_endpoint(mock_client, name="got1")
+            await notif_update_gotify_endpoint(mock_client, name="got1")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_update_gotify_endpoint(mock_client, name="", comment="x", confirm=True)
+            await notif_update_gotify_endpoint(mock_client, name="", comment="x", confirm=True)
 
-    def test_no_params_raises(self, mock_client):
+    async def test_no_params_raises(self, mock_client):
         with pytest.raises(ValueError, match="At least one"):
-            notif_update_gotify_endpoint(mock_client, name="got1", confirm=True)
+            await notif_update_gotify_endpoint(mock_client, name="got1", confirm=True)
 
-    def test_update(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_update_gotify_endpoint(mock_client, name="got1", comment="updated", confirm=True)
+    async def test_update(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_update_gotify_endpoint(mock_client, name="got1", comment="updated", confirm=True)
         assert "got1" in result
 
 
 class TestGetWebhookEndpoint:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"name": "wh1", "url": "https://hook.local"})
-        result = notif_get_webhook_endpoint(mock_client, name="wh1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"name": "wh1", "url": "https://hook.local"})
+        result = await notif_get_webhook_endpoint(mock_client, name="wh1")
         assert "wh1" in result
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_get_webhook_endpoint(mock_client, name="")
+            await notif_get_webhook_endpoint(mock_client, name="")
 
 
 class TestUpdateWebhookEndpoint:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            notif_update_webhook_endpoint(mock_client, name="wh1")
+            await notif_update_webhook_endpoint(mock_client, name="wh1")
 
-    def test_no_name_raises(self, mock_client):
+    async def test_no_name_raises(self, mock_client):
         with pytest.raises(ValueError, match="name is required"):
-            notif_update_webhook_endpoint(mock_client, name="", comment="x", confirm=True)
+            await notif_update_webhook_endpoint(mock_client, name="", comment="x", confirm=True)
 
-    def test_no_params_raises(self, mock_client):
+    async def test_no_params_raises(self, mock_client):
         with pytest.raises(ValueError, match="At least one"):
-            notif_update_webhook_endpoint(mock_client, name="wh1", confirm=True)
+            await notif_update_webhook_endpoint(mock_client, name="wh1", confirm=True)
 
-    def test_update(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = notif_update_webhook_endpoint(mock_client, name="wh1", comment="updated", confirm=True)
+    async def test_update(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await notif_update_webhook_endpoint(mock_client, name="wh1", comment="updated", confirm=True)
         assert "wh1" in result
 
 
 class TestGetAcmePlugin:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"plugin": "dns_ACME", "type": "dns"})
-        result = acme_get_acme_plugin(mock_client, id="dns_ACME")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"plugin": "dns_ACME", "type": "dns"})
+        result = await acme_get_acme_plugin(mock_client, id="dns_ACME")
         assert "dns_ACME" in result
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            acme_get_acme_plugin(mock_client, id="")
+            await acme_get_acme_plugin(mock_client, id="")
 
 
 class TestUpdateAcmePlugin:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            acme_update_acme_plugin(mock_client, id="p1")
+            await acme_update_acme_plugin(mock_client, id="p1")
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            acme_update_acme_plugin(mock_client, id="", api="new", confirm=True)
+            await acme_update_acme_plugin(mock_client, id="", api="new", confirm=True)
 
-    def test_no_params_raises(self, mock_client):
+    async def test_no_params_raises(self, mock_client):
         with pytest.raises(ValueError, match="At least one"):
-            acme_update_acme_plugin(mock_client, id="p1", confirm=True)
+            await acme_update_acme_plugin(mock_client, id="p1", confirm=True)
 
-    def test_update(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = acme_update_acme_plugin(mock_client, id="p1", api="updated", confirm=True)
+    async def test_update(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await acme_update_acme_plugin(mock_client, id="p1", api="updated", confirm=True)
         assert "p1" in result
 
 
 class TestAcmeMeta:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"termsOfService": "https://example.com/tos"})
-        result = acme_acme_meta(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"termsOfService": "https://example.com/tos"})
+        result = await acme_acme_meta(mock_client)
         assert "ACME Meta" in result
 
 
 class TestMappingIndex:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[{"id": "pci-maps", "type": "pci"}])
-        result = mapping_mapping_index(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[{"id": "pci-maps", "type": "pci"}])
+        result = await mapping_mapping_index(mock_client)
         assert "Mapping Index" in result
 
-    def test_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = mapping_mapping_index(mock_client)
+    async def test_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await mapping_mapping_index(mock_client)
         assert "No mappings found" in result
 
 
 class TestListDirMappings:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[{"id": "dir1", "description": "test"}])
-        result = mapping_list_dir_mappings(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[{"id": "dir1", "description": "test"}])
+        result = await mapping_list_dir_mappings(mock_client)
         assert "Directory Mappings" in result
         assert "dir1" in result
 
-    def test_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = mapping_list_dir_mappings(mock_client)
+    async def test_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await mapping_list_dir_mappings(mock_client)
         assert "No directory mappings found" in result
 
 
 class TestGetDirMapping:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"id": "dir1", "path": "/mnt/data"})
-        result = mapping_get_dir_mapping(mock_client, id="dir1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"id": "dir1", "path": "/mnt/data"})
+        result = await mapping_get_dir_mapping(mock_client, id="dir1")
         assert "dir1" in result
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            mapping_get_dir_mapping(mock_client, id="")
+            await mapping_get_dir_mapping(mock_client, id="")
 
 
 class TestCreateDirMapping:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            mapping_create_dir_mapping(mock_client, id="dir1")
+            await mapping_create_dir_mapping(mock_client, id="dir1")
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            mapping_create_dir_mapping(client, id="dir1", confirm=True)
+            await mapping_create_dir_mapping(client, id="dir1", confirm=True)
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            mapping_create_dir_mapping(mock_client, id="", confirm=True)
+            await mapping_create_dir_mapping(mock_client, id="", confirm=True)
 
-    def test_create(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = mapping_create_dir_mapping(mock_client, id="dir1", description="test", confirm=True)
+    async def test_create(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await mapping_create_dir_mapping(mock_client, id="dir1", description="test", confirm=True)
         assert "dir1" in result
         assert "created" in result.lower()
 
 
 class TestUpdateDirMapping:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            mapping_update_dir_mapping(mock_client, id="dir1")
+            await mapping_update_dir_mapping(mock_client, id="dir1")
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            mapping_update_dir_mapping(mock_client, id="", description="x", confirm=True)
+            await mapping_update_dir_mapping(mock_client, id="", description="x", confirm=True)
 
-    def test_no_params_raises(self, mock_client):
+    async def test_no_params_raises(self, mock_client):
         with pytest.raises(ValueError, match="At least one"):
-            mapping_update_dir_mapping(mock_client, id="dir1", confirm=True)
+            await mapping_update_dir_mapping(mock_client, id="dir1", confirm=True)
 
-    def test_update(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = mapping_update_dir_mapping(mock_client, id="dir1", description="updated", confirm=True)
+    async def test_update(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await mapping_update_dir_mapping(mock_client, id="dir1", description="updated", confirm=True)
         assert "dir1" in result
         assert "updated" in result.lower()
 
 
 class TestDeleteDirMapping:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            mapping_delete_dir_mapping(mock_client, id="dir1")
+            await mapping_delete_dir_mapping(mock_client, id="dir1")
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            mapping_delete_dir_mapping(mock_client, id="", confirm=True)
+            await mapping_delete_dir_mapping(mock_client, id="", confirm=True)
 
-    def test_delete(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = mapping_delete_dir_mapping(mock_client, id="dir1", confirm=True)
+    async def test_delete(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await mapping_delete_dir_mapping(mock_client, id="dir1", confirm=True)
         assert "dir1" in result
         assert "deleted" in result.lower()
 
 
 class TestMetricsIndex:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"server": 1, "export": 1})
-        result = metrics_metrics_index(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"server": 1, "export": 1})
+        result = await metrics_metrics_index(mock_client)
         assert "Metrics Index" in result
 
 
 class TestExportMetrics:
-    def test_returns_formatted_list(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"id": "metric1", "value": 42},
-        ])
-        result = metrics_export_metrics(mock_client)
+    async def test_returns_formatted_list(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"id": "metric1", "value": 42},
+            ]
+        )
+        result = await metrics_export_metrics(mock_client)
         assert "Cluster Metrics Export" in result
         assert "metric1" in result
 
-    def test_returns_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = metrics_export_metrics(mock_client)
+    async def test_returns_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await metrics_export_metrics(mock_client)
         assert "No metrics data found" in result
 
-    def test_dict_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"key1": "val1"})
-        result = metrics_export_metrics(mock_client)
+    async def test_dict_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"key1": "val1"})
+        result = await metrics_export_metrics(mock_client)
         assert "key1" in result
 
 
 class TestClusterConfigTotem:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": {"token": "12345", "version": 2}})
-        result = cluster_cluster_config_totem(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": {"token": "12345", "version": 2}})
+        result = await cluster_cluster_config_totem(mock_client)
         assert "Totem" in result
 
-    def test_non_dict(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="some data")
-        result = cluster_cluster_config_totem(mock_client)
+    async def test_non_dict(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="some data")
+        result = await cluster_cluster_config_totem(mock_client)
         assert "some data" in result
 
 
 class TestClusterConfigQdevice:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": {"state": "active"}})
-        result = cluster_cluster_config_qdevice(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": {"state": "active"}})
+        result = await cluster_cluster_config_qdevice(mock_client)
         assert "QDevice" in result
 
-    def test_non_dict(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="some data")
-        result = cluster_cluster_config_qdevice(mock_client)
+    async def test_non_dict(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="some data")
+        result = await cluster_cluster_config_qdevice(mock_client)
         assert "some data" in result
 
 
 class TestBackupInfoIndex:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[{"id": "policy1"}])
-        result = cluster_backup_info_index(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[{"id": "policy1"}])
+        result = await cluster_backup_info_index(mock_client)
         assert "Backup Info Index" in result
 
-    def test_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = cluster_backup_info_index(mock_client)
+    async def test_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await cluster_backup_info_index(mock_client)
         assert "No backup info entries found" in result
 
 
 class TestBackupJobIncludedVolumes:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"vmid": 100, "type": "qemu"},
-        ])
-        result = cluster_backup_job_included_volumes(mock_client, id="job1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"vmid": 100, "type": "qemu"},
+            ]
+        )
+        result = await cluster_backup_job_included_volumes(mock_client, id="job1")
         assert "job1" in result
         assert "100" in result
 
-    def test_no_id_raises(self, mock_client):
+    async def test_no_id_raises(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            cluster_backup_job_included_volumes(mock_client, id="")
+            await cluster_backup_job_included_volumes(mock_client, id="")
 
-    def test_dict_data(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "data": [{"vmid": 200, "type": "lxc"}],
-        })
-        result = cluster_backup_job_included_volumes(mock_client, id="job2")
+    async def test_dict_data(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "data": [{"vmid": 200, "type": "lxc"}],
+            }
+        )
+        result = await cluster_backup_job_included_volumes(mock_client, id="job2")
         assert "job2" in result

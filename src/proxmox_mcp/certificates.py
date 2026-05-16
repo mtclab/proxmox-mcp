@@ -10,10 +10,10 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_certificates(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = client.resolve_node(node)
+async def list_certificates(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).certificates.info.get,
     )
     if not isinstance(result, list):
@@ -43,21 +43,21 @@ def list_certificates(client: ProxmoxClient, node: Optional[str] = None) -> str:
 
 
 @confirm_required
-def order_acme_certificate(
+async def order_acme_certificate(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
             params[k] = v
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).certificates.acme.certificate.post,
         elevated=True,
         **params,
@@ -67,21 +67,21 @@ def order_acme_certificate(
 
 
 @confirm_required
-def renew_acme_certificate(
+async def renew_acme_certificate(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
             params[k] = v
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).certificates.acme.certificate.put,
         elevated=True,
         **params,
@@ -91,21 +91,21 @@ def renew_acme_certificate(
 
 
 @confirm_required
-def revoke_certificate(
+async def revoke_certificate(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
             params[k] = v
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).certificates.acme.certificate.delete,
         elevated=True,
         **params,
@@ -115,7 +115,7 @@ def revoke_certificate(
 
 
 @confirm_required
-def upload_custom_certificate(
+async def upload_custom_certificate(
     client: ProxmoxClient,
     node: Optional[str] = None,
     certificates: Optional[str] = None,
@@ -124,7 +124,7 @@ def upload_custom_certificate(
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not certificates or not key:
         raise ValueError("Both 'certificates' and 'key' are required for custom certificate upload")
@@ -133,7 +133,7 @@ def upload_custom_certificate(
     for k, v in kwargs.items():
         if v is not None:
             params[k] = v
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).certificates.custom.post,
         elevated=True,
         **params,
@@ -143,21 +143,21 @@ def upload_custom_certificate(
 
 
 @confirm_required
-def delete_custom_certificate(
+async def delete_custom_certificate(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
             params[k] = v
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).certificates.custom.delete,
         elevated=True,
         **params,
@@ -166,10 +166,10 @@ def delete_custom_certificate(
     return f"Custom certificate deleted on {resolved_node}. UPID: {upid}"
 
 
-def list_acme_certs(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = client.resolve_node(node)
+async def list_acme_certs(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).certificates.acme.get,
     )
     if not isinstance(result, list):

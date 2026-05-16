@@ -10,14 +10,14 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_backups(
+async def list_backups(
     client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_storage_name(storage)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).storage(storage).content.get,
         content="backup",
     )
@@ -35,7 +35,7 @@ def list_backups(
 
 
 @confirm_required
-def create_backup(
+async def create_backup(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -46,7 +46,7 @@ def create_backup(
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
     validate_storage_name(storage)
     params: dict[str, Any] = {
@@ -57,7 +57,7 @@ def create_backup(
         "type": vmtype,
     }
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).vzdump.post,
         elevated=True,
         **params,
@@ -67,7 +67,7 @@ def create_backup(
 
 
 @confirm_required
-def restore_backup(
+async def restore_backup(
     client: ProxmoxClient,
     vmid: Optional[int] = None,
     archive: str = "",
@@ -83,7 +83,7 @@ def restore_backup(
         raise ValueError("vmid is required for backup restore")
     validate_vmid(vmid)
     validate_storage_name(storage)
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     elevated = client.get_client(elevated=True)
     if vmtype == "lxc":
         params: dict[str, Any] = {
@@ -92,7 +92,7 @@ def restore_backup(
             "storage": storage,
             "restore": 1,
         }
-        result = client.safe_api_call(
+        result = await client.safe_api_call(
             elevated.nodes(resolved_node).lxc.post,
             elevated=True,
             **params,
@@ -104,7 +104,7 @@ def restore_backup(
             "storage": storage,
             "restore": 1,
         }
-        result = client.safe_api_call(
+        result = await client.safe_api_call(
             elevated.nodes(resolved_node).qemu.post,
             elevated=True,
             **params,

@@ -10,10 +10,10 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_updates(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = client.resolve_node(node)
+async def list_updates(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).apt.update.get,
     )
     if not isinstance(result, list):
@@ -35,16 +35,16 @@ def list_updates(client: ProxmoxClient, node: Optional[str] = None) -> str:
 
 
 @confirm_required
-def refresh_updates(
+async def refresh_updates(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).apt.update.post,
         elevated=True,
     )
@@ -52,10 +52,10 @@ def refresh_updates(
     return f"APT update refresh initiated on {resolved_node}. UPID: {upid}"
 
 
-def list_repositories(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = client.resolve_node(node)
+async def list_repositories(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).apt.repositories.get,
     )
     lines = [f"📦 **APT Repositories on {resolved_node}**\n"]
@@ -87,10 +87,10 @@ def list_repositories(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_versions(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = client.resolve_node(node)
+async def list_versions(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).apt.versions.get,
     )
     if not isinstance(result, list):
@@ -112,7 +112,7 @@ def list_versions(client: ProxmoxClient, node: Optional[str] = None) -> str:
 
 
 @confirm_required
-def add_apt_repo(
+async def add_apt_repo(
     client: ProxmoxClient,
     node: Optional[str] = None,
     path: Optional[str] = None,
@@ -122,7 +122,7 @@ def add_apt_repo(
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     params: dict[str, Any] = {}
@@ -133,7 +133,7 @@ def add_apt_repo(
     if enabled is not None:
         params["enabled"] = 1 if enabled else 0
     params.update(kwargs)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(resolved_node).apt.repositories.post,
         elevated=True,
         **params,
@@ -142,7 +142,7 @@ def add_apt_repo(
 
 
 @confirm_required
-def update_apt_repo(
+async def update_apt_repo(
     client: ProxmoxClient,
     node: Optional[str] = None,
     path: Optional[str] = None,
@@ -152,7 +152,7 @@ def update_apt_repo(
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     params: dict[str, Any] = {}
@@ -163,7 +163,7 @@ def update_apt_repo(
     if enabled is not None:
         params["enabled"] = 1 if enabled else 0
     params.update(kwargs)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(resolved_node).apt.repositories.put,
         elevated=True,
         **params,
@@ -171,14 +171,14 @@ def update_apt_repo(
     return f"APT repository updated on {resolved_node}"
 
 
-def list_apt_changelog(
+async def list_apt_changelog(
     client: ProxmoxClient,
     node: Optional[str] = None,
     name: Optional[str] = None,
     version: Optional[str] = None,
     **kwargs: Any,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if name is not None:
@@ -186,7 +186,7 @@ def list_apt_changelog(
     if version is not None:
         params["version"] = version
     params.update(kwargs)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).apt.changelog.get,
         **params,
     )

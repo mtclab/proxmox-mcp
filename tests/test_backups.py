@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -24,6 +24,7 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     admin_mock = MagicMock()
@@ -33,81 +34,86 @@ def mock_client(mock_config):
 
 
 class TestConfirmRequired:
-    def test_create_backup_requires_confirm(self, mock_client):
+    async def test_create_backup_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            create_backup(mock_client, node="pve", vmid=100)
+            await create_backup(mock_client, node="pve", vmid=100)
 
-    def test_restore_backup_requires_confirm(self, mock_client):
+    async def test_restore_backup_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            restore_backup(mock_client, vmid=100, archive="local:backup/vzdump.qemu")
+            await restore_backup(mock_client, vmid=100, archive="local:backup/vzdump.qemu")
 
 
 class TestElevatedCheck:
-    def test_create_backup_requires_elevated(self, mock_config):
+    async def test_create_backup_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
-            client = ProxmoxClient(mock_config)
-        with pytest.raises(ValueError, match="Elevated"):
-            create_backup(client, node="pve", vmid=100, confirm=True)
 
-    def test_restore_backup_requires_elevated(self, mock_config):
+            client = ProxmoxClient(mock_config)
+        with pytest.raises(ValueError, match="Elevated"):
+            await create_backup(client, node="pve", vmid=100, confirm=True)
+
+    async def test_restore_backup_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            restore_backup(client, node="pve", vmid=100, archive="local:backup/vzdump.qemu", confirm=True)
+            await restore_backup(client, node="pve", vmid=100, archive="local:backup/vzdump.qemu", confirm=True)
 
 
 class TestListBackups:
-    def test_list_backups_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"volid": "local:backup/vzdump-qemu-100.vma.zst", "size": 1073741824, "content": "backup"},
-            {"volid": "local:backup/vzdump-lxc-200.tar.zst", "size": 536870912, "content": "backup"},
-        ])
-        result = list_backups(mock_client, node="pve", storage="local")
+    async def test_list_backups_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"volid": "local:backup/vzdump-qemu-100.vma.zst", "size": 1073741824, "content": "backup"},
+                {"volid": "local:backup/vzdump-lxc-200.tar.zst", "size": 536870912, "content": "backup"},
+            ]
+        )
+        result = await list_backups(mock_client, node="pve", storage="local")
         assert "vzdump-qemu-100" in result
         assert "vzdump-lxc-200" in result
         mock_client.safe_api_call.assert_called_once()
 
-    def test_list_backups_empty(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_backups(mock_client, node="pve")
+    async def test_list_backups_empty(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_backups(mock_client, node="pve")
         assert "No backups found" in result
 
-    def test_list_backups_passes_content_filter(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        list_backups(mock_client, node="pve", storage="local-lvm")
+    async def test_list_backups_passes_content_filter(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        await list_backups(mock_client, node="pve", storage="local-lvm")
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["content"] == "backup"
 
 
 class TestCreateBackup:
-    def test_create_backup(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0200:abc")
-        result = create_backup(
-            mock_client, node="pve", vmid=100, confirm=True
-        )
+    async def test_create_backup(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0200:abc")
+        result = await create_backup(mock_client, node="pve", vmid=100, confirm=True)
         assert "UPID" in result
         assert "qemu 100" in result
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["type"] == "qemu"
 
-    def test_create_backup_lxc(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0201:abc")
-        result = create_backup(
-            mock_client, node="pve", vmid=200, vmtype="lxc", confirm=True
-        )
+    async def test_create_backup_lxc(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0201:abc")
+        result = await create_backup(mock_client, node="pve", vmid=200, vmtype="lxc", confirm=True)
         assert "lxc 200" in result
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["type"] == "lxc"
 
-    def test_create_backup_with_params(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0202:abc")
-        create_backup(
-            mock_client, node="pve", vmid=100, storage="local",
-            mode="stop", compress="gzip", confirm=True,
+    async def test_create_backup_with_params(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0202:abc")
+        await create_backup(
+            mock_client,
+            node="pve",
+            vmid=100,
+            storage="local",
+            mode="stop",
+            compress="gzip",
+            confirm=True,
         )
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1]["storage"] == "local"
@@ -117,10 +123,12 @@ class TestCreateBackup:
 
 
 class TestRestoreBackup:
-    def test_restore_backup_qemu(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0203:abc")
-        result = restore_backup(
-            mock_client, node="pve", vmid=100,
+    async def test_restore_backup_qemu(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0203:abc")
+        result = await restore_backup(
+            mock_client,
+            node="pve",
+            vmid=100,
             archive="local:backup/vzdump-qemu-100.vma.zst",
             confirm=True,
         )
@@ -130,12 +138,15 @@ class TestRestoreBackup:
         assert call_args[1]["archive"] == "local:backup/vzdump-qemu-100.vma.zst"
         assert call_args[1]["restore"] == 1
 
-    def test_restore_backup_lxc(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0204:abc")
-        result = restore_backup(
-            mock_client, node="pve", vmid=200,
+    async def test_restore_backup_lxc(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0204:abc")
+        result = await restore_backup(
+            mock_client,
+            node="pve",
+            vmid=200,
             archive="local:backup/vzdump-lxc-200.tar.zst",
-            vmtype="lxc", confirm=True,
+            vmtype="lxc",
+            confirm=True,
         )
         assert "UPID" in result
         assert "200" in result
@@ -144,10 +155,10 @@ class TestRestoreBackup:
         assert call_args[1]["restore"] == 1
         assert "archive" not in call_args[1]
 
-    def test_restore_backup_no_archive_raises(self, mock_client):
+    async def test_restore_backup_no_archive_raises(self, mock_client):
         with pytest.raises(ValueError, match="archive is required"):
-            restore_backup(mock_client, node="pve", vmid=100, confirm=True)
+            await restore_backup(mock_client, node="pve", vmid=100, confirm=True)
 
-    def test_restore_backup_no_vmid_raises(self, mock_client):
+    async def test_restore_backup_no_vmid_raises(self, mock_client):
         with pytest.raises(ValueError, match="vmid is required"):
-            restore_backup(mock_client, node="pve", archive="local:backup/vzdump.qemu", confirm=True)
+            await restore_backup(mock_client, node="pve", archive="local:backup/vzdump.qemu", confirm=True)

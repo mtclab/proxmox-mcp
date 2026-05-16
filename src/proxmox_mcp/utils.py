@@ -16,7 +16,7 @@ _IFACE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._:\-]*$")
 
 def confirm_required(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         confirm = kwargs.get("confirm", False)
         if isinstance(confirm, str):
             confirm = confirm.lower() in ("true", "1", "yes")
@@ -25,21 +25,21 @@ def confirm_required(func: Callable[..., Any]) -> Callable[..., Any]:
                 f"Operation {func.__name__!r} requires confirm=true to execute. "
                 "This is a destructive operation — pass confirm=true to proceed."
             )
-        return func(*args, **kwargs)
+        return await func(*args, **kwargs)
 
     return wrapper
 
 
 def resolve_node_for(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         if "node" not in kwargs or kwargs["node"] is None:
             from proxmox_mcp.client import ProxmoxClient
 
             client = kwargs.get("client") or args[0] if args else None
             if isinstance(client, ProxmoxClient):
-                kwargs["node"] = client.resolve_node()
-        return func(*args, **kwargs)
+                kwargs["node"] = await client.resolve_node()
+        return await func(*args, **kwargs)
 
     return wrapper
 

@@ -13,9 +13,9 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_templates(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    node = client.resolve_node(node)
-    result = client.safe_api_call(
+async def list_templates(client: ProxmoxClient, node: Optional[str] = None) -> str:
+    node = await client.resolve_node(node)
+    result = await client.safe_api_call(
         _api(client).nodes(node).aplinfo.get,
     )
     if not isinstance(result, list):
@@ -37,10 +37,10 @@ def list_templates(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_storage_templates(client: ProxmoxClient, node: Optional[str] = None, storage: str = "local") -> str:
-    node = client.resolve_node(node)
+async def list_storage_templates(client: ProxmoxClient, node: Optional[str] = None, storage: str = "local") -> str:
+    node = await client.resolve_node(node)
     validate_storage_name(storage)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(node).storage(storage).content.get,
         content="vztmpl",
     )
@@ -57,7 +57,7 @@ def list_storage_templates(client: ProxmoxClient, node: Optional[str] = None, st
 
 
 @confirm_required
-def download_template(
+async def download_template(
     client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
@@ -66,7 +66,7 @@ def download_template(
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_storage_name(storage)
     if not url:
         raise ValueError("url is required for template download. Use list_templates to find available template URLs.")
@@ -78,7 +78,7 @@ def download_template(
     if filename:
         params["filename"] = filename
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).download_url.post,
         elevated=True,
         **params,
@@ -88,7 +88,7 @@ def download_template(
 
 
 @confirm_required
-def upload_template(
+async def upload_template(
     client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
@@ -96,7 +96,7 @@ def upload_template(
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_storage_name(storage)
     if not filepath:
         raise ValueError("filepath is required for template upload")

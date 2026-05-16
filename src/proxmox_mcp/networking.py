@@ -13,12 +13,12 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def _is_management_interface(client: ProxmoxClient, node: str, iface: str) -> bool:
+async def _is_management_interface(client: ProxmoxClient, node: str, iface: str) -> bool:
     if iface == "vmbr0":
         return True
     try:
         host = client.config.host
-        result = client.safe_api_call(client.get_client(elevated=False).nodes(node).network.get)
+        result = await client.safe_api_call(client.get_client(elevated=False).nodes(node).network.get)
         if isinstance(result, list):
             for ent in result:
                 if ent.get("iface") == iface:
@@ -30,20 +30,20 @@ def _is_management_interface(client: ProxmoxClient, node: str, iface: str) -> bo
     return False
 
 
-def _apply_network(client: ProxmoxClient, node: str, iface: str = "") -> None:
+async def _apply_network(client: ProxmoxClient, node: str, iface: str = "") -> None:
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(node).network.put,
         elevated=True,
     )
 
 
-def list_network(
+async def list_network(
     client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).network.get)
+    resolved_node = await client.resolve_node(node)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).network.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f310 **Network Interfaces on {resolved_node}**\n"]
@@ -66,7 +66,7 @@ def list_network(
 
 
 @confirm_required
-def create_network(
+async def create_network(
     client: ProxmoxClient,
     node: Optional[str] = None,
     iface: str = "",
@@ -79,7 +79,7 @@ def create_network(
     apply: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     if not iface:
         raise ValueError("iface is required for network interface creation")
     validate_iface_name(iface)
@@ -93,7 +93,7 @@ def create_network(
     if bridge_ports:
         params["bridge_ports"] = bridge_ports
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).network.post,
         elevated=True,
         **params,
@@ -102,16 +102,16 @@ def create_network(
     msg = f"Network interface {iface!r} creation initiated on {resolved_node}. UPID: {upid}"
     if apply:
         warnings: list[str] = []
-        if _is_management_interface(client, resolved_node, iface):
+        if await _is_management_interface(client, resolved_node, iface):
             warnings.append(" WARNING: Applying changes to management interface may disconnect the agent.")
-        _apply_network(client, resolved_node, iface)
+        await _apply_network(client, resolved_node, iface)
         msg += " Network changes applied."
         msg += "".join(warnings)
     return msg
 
 
 @confirm_required
-def update_network(
+async def update_network(
     client: ProxmoxClient,
     node: Optional[str] = None,
     iface: str = "",
@@ -122,7 +122,7 @@ def update_network(
     apply: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     if not iface:
         raise ValueError("iface is required for network interface update")
     validate_iface_name(iface)
@@ -134,7 +134,7 @@ def update_network(
     if gateway:
         params["gateway"] = gateway
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).network(iface).put,
         elevated=True,
         **params,
@@ -143,16 +143,16 @@ def update_network(
     msg = f"Network interface {iface!r} update initiated on {resolved_node}. UPID: {upid}"
     if apply:
         warnings: list[str] = []
-        if _is_management_interface(client, resolved_node, iface):
+        if await _is_management_interface(client, resolved_node, iface):
             warnings.append(" WARNING: Applying changes to management interface may disconnect the agent.")
-        _apply_network(client, resolved_node, iface)
+        await _apply_network(client, resolved_node, iface)
         msg += " Network changes applied."
         msg += "".join(warnings)
     return msg
 
 
 @confirm_required
-def delete_network(
+async def delete_network(
     client: ProxmoxClient,
     node: Optional[str] = None,
     iface: str = "",
@@ -160,12 +160,12 @@ def delete_network(
     apply: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     if not iface:
         raise ValueError("iface is required for network interface deletion")
     validate_iface_name(iface)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).network(iface).delete,
         elevated=True,
     )
@@ -173,24 +173,24 @@ def delete_network(
     msg = f"Network interface {iface!r} deletion initiated on {resolved_node}. UPID: {upid}"
     if apply:
         warnings: list[str] = []
-        if _is_management_interface(client, resolved_node, iface):
+        if await _is_management_interface(client, resolved_node, iface):
             warnings.append(" WARNING: Applying changes to management interface may disconnect the agent.")
-        _apply_network(client, resolved_node, iface)
+        await _apply_network(client, resolved_node, iface)
         msg += " Network changes applied."
         msg += "".join(warnings)
     return msg
 
 
 @confirm_required
-def revert_network(
+async def revert_network(
     client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).network.delete,
         elevated=True,
     )

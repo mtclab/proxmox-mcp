@@ -11,25 +11,25 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def cloudinit_dump(
+async def cloudinit_dump(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     type: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {}
     if type:
         params["type"] = type
-    result = client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).cloudinit.dump.get, **params)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).cloudinit.dump.get, **params)
     data = result.get("data", result) if isinstance(result, dict) else result
     return str(data)
 
 
 @confirm_required
-def set_cloudinit(
+async def set_cloudinit(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -40,7 +40,7 @@ def set_cloudinit(
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     params: dict[str, Any] = {}
@@ -54,31 +54,31 @@ def set_cloudinit(
         params["sshkeys"] = sshkeys
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Cloud-init configured for VM {vmid} on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
-def regenerate_cloudinit(
+async def regenerate_cloudinit(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).cloudinit.put, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).cloudinit.put, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Cloud-init drive regenerated for VM {vmid} on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
-def exec_vm(
+async def exec_vm(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -87,7 +87,7 @@ def exec_vm(
     allowed_commands: Optional[list[str]] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     if not command:
@@ -101,38 +101,40 @@ def exec_vm(
     params: dict[str, Any] = {"command": command}
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("exec").post, elevated=True, **params)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("exec").post, elevated=True, **params
+    )
     pid = result if isinstance(result, str) else result.get("data", result)
     return f"Command executed in VM {vmid} on {resolved_node}. PID: {pid}"
 
 
-def agent_ping(
+async def agent_ping(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("ping").post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("ping").post, elevated=True)
     data = result if isinstance(result, str) else result.get("data", result)
     return f"Agent ping for VM {vmid} on {resolved_node}: {data}"
 
 
-def agent_info(
+async def agent_info(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("info").get, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("info").get, elevated=True)
     data = result if isinstance(result, dict) else result.get("data", result) if isinstance(result, dict) else result
     lines = []
     if isinstance(data, dict):
@@ -143,17 +145,17 @@ def agent_info(
     return f"Agent info for VM {vmid} on {resolved_node}:\n" + "\n".join(lines)
 
 
-def agent_network_interfaces(
+async def agent_network_interfaces(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("network-get-interfaces").get, elevated=True
     )
     data = result.get("data", result) if isinstance(result, dict) else result
@@ -173,17 +175,17 @@ def agent_network_interfaces(
     return "\n".join(lines)
 
 
-def agent_osinfo(
+async def agent_osinfo(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-osinfo").get, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-osinfo").get, elevated=True)
     data = result.get("data", result) if isinstance(result, dict) else result
     lines = [f"OS info for VM {vmid} on {resolved_node}:"]
     if isinstance(data, dict):
@@ -194,17 +196,17 @@ def agent_osinfo(
     return "\n".join(lines)
 
 
-def agent_fsinfo(
+async def agent_fsinfo(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-fsinfo").get, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-fsinfo").get, elevated=True)
     data = result.get("data", result) if isinstance(result, dict) else result
     if not isinstance(data, list):
         return f"Filesystem info for VM {vmid} on {resolved_node}: {data}"
@@ -221,21 +223,21 @@ def agent_fsinfo(
     return "\n".join(lines)
 
 
-def agent_exec_status(
+async def agent_exec_status(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     pid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     if pid is None:
         raise ValueError("pid is required for agent exec-status")
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("exec-status").get,
         elevated=True,
         pid=pid,
@@ -251,67 +253,73 @@ def agent_exec_status(
 
 
 @confirm_required
-def agent_fsfreeze(
+async def agent_fsfreeze(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-freeze").post, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-freeze").post, elevated=True
+    )
     data = result if isinstance(result, str) else result.get("data", result)
     return f"Filesystem frozen for VM {vmid} on {resolved_node}: {data}"
 
 
 @confirm_required
-def agent_fsthaw(
+async def agent_fsthaw(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-thaw").post, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-thaw").post, elevated=True
+    )
     data = result if isinstance(result, str) else result.get("data", result)
     return f"Filesystem thawed for VM {vmid} on {resolved_node}: {data}"
 
 
 @confirm_required
-def agent_fstrim(
+async def agent_fstrim(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("fstrim").post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("fstrim").post, elevated=True)
     data = result if isinstance(result, str) else result.get("data", result)
     return f"Fstrim executed for VM {vmid} on {resolved_node}: {data}"
 
 
-def agent_fsfreeze_status(
+async def agent_fsfreeze_status(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-status").post, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-status").post, elevated=True
+    )
     data = result if isinstance(result, str) else result.get("data", result)
     lines = [f"**Fsfreeze status for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
@@ -322,17 +330,19 @@ def agent_fsfreeze_status(
     return "\n".join(lines)
 
 
-def agent_get_host_name(
+async def agent_get_host_name(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-host-name").get, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-host-name").get, elevated=True
+    )
     data = result.get("data", result) if isinstance(result, dict) else result
     lines = [f"**Host name for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
@@ -343,17 +353,17 @@ def agent_get_host_name(
     return "\n".join(lines)
 
 
-def agent_get_memory_block_info(
+async def agent_get_memory_block_info(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("get-memory-block-info").get, elevated=True
     )
     data = result.get("data", result) if isinstance(result, dict) else result
@@ -366,17 +376,17 @@ def agent_get_memory_block_info(
     return "\n".join(lines)
 
 
-def agent_get_memory_blocks(
+async def agent_get_memory_blocks(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("get-memory-blocks").get, elevated=True
     )
     data = result.get("data", result) if isinstance(result, dict) else result
@@ -389,17 +399,17 @@ def agent_get_memory_blocks(
     return "\n".join(lines)
 
 
-def agent_get_time(
+async def agent_get_time(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-time").get, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-time").get, elevated=True)
     data = result.get("data", result) if isinstance(result, dict) else result
     lines = [f"**Time for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
@@ -410,17 +420,19 @@ def agent_get_time(
     return "\n".join(lines)
 
 
-def agent_get_timezone(
+async def agent_get_timezone(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-timezone").get, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-timezone").get, elevated=True
+    )
     data = result.get("data", result) if isinstance(result, dict) else result
     lines = [f"**Timezone for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
@@ -431,17 +443,17 @@ def agent_get_timezone(
     return "\n".join(lines)
 
 
-def agent_get_users(
+async def agent_get_users(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-users").get, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-users").get, elevated=True)
     data = result.get("data", result) if isinstance(result, dict) else result
     if not isinstance(data, list):
         data = [data] if data else []
@@ -457,17 +469,17 @@ def agent_get_users(
     return "\n".join(lines)
 
 
-def agent_get_vcpus(
+async def agent_get_vcpus(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-vcpus").get, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-vcpus").get, elevated=True)
     data = result.get("data", result) if isinstance(result, dict) else result
     lines = [f"**VCPUs for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, list):
@@ -487,7 +499,7 @@ def agent_get_vcpus(
 
 
 @confirm_required
-def agent_set_user_password(
+async def agent_set_user_password(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -496,7 +508,7 @@ def agent_set_user_password(
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
     if not username:
         raise ValueError("username is required")
@@ -504,7 +516,7 @@ def agent_set_user_password(
         raise ValueError("password is required")
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("set-user-password").post,
         elevated=True,
         username=username,
@@ -514,20 +526,20 @@ def agent_set_user_password(
     return f"Password set for user {username!r} on VM {vmid} on {resolved_node}: {data}"
 
 
-def agent_file_read(
+async def agent_file_read(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     filepath: str = "",
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
     if not filepath:
         raise ValueError("filepath is required")
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("file-read").get,
         elevated=True,
         file=filepath,
@@ -545,7 +557,7 @@ def agent_file_read(
 
 
 @confirm_required
-def agent_file_write(
+async def agent_file_write(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
@@ -554,7 +566,7 @@ def agent_file_write(
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
     if not filepath:
         raise ValueError("filepath is required")
@@ -563,7 +575,7 @@ def agent_file_write(
     params: dict[str, Any] = {"path": filepath}
     if content:
         params["content"] = content
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("file-write").post,
         elevated=True,
         **params,
@@ -572,68 +584,74 @@ def agent_file_write(
 
 
 @confirm_required
-def agent_shutdown(
+async def agent_shutdown(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("shutdown").post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("shutdown").post, elevated=True)
     data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
     return f"Agent shutdown initiated for VM {vmid} on {resolved_node}: {data}"
 
 
 @confirm_required
-def agent_suspend_disk(
+async def agent_suspend_disk(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("suspend-disk").post, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("suspend-disk").post, elevated=True
+    )
     data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
     return f"Agent suspend-to-disk initiated for VM {vmid} on {resolved_node}: {data}"
 
 
 @confirm_required
-def agent_suspend_ram(
+async def agent_suspend_ram(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("suspend-ram").post, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("suspend-ram").post, elevated=True
+    )
     data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
     return f"Agent suspend-to-RAM initiated for VM {vmid} on {resolved_node}: {data}"
 
 
 @confirm_required
-def agent_suspend_hybrid(
+async def agent_suspend_hybrid(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("suspend-hybrid").post, elevated=True)
+    result = await client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("suspend-hybrid").post, elevated=True
+    )
     data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
     return f"Agent hybrid suspend initiated for VM {vmid} on {resolved_node}: {data}"

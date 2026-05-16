@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -40,6 +40,7 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     client.admin_client = MagicMock()
@@ -48,268 +49,313 @@ def mock_client(mock_config):
 
 
 class TestQueryUrlMetadata:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "data": {"filename": "test.iso", "size": 1073741824, "mimetype": "application/x-iso9660-image"},
-        })
-        result = query_url_metadata(mock_client, node="pve", url="https://example.com/test.iso")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "data": {"filename": "test.iso", "size": 1073741824, "mimetype": "application/x-iso9660-image"},
+            }
+        )
+        result = await query_url_metadata(mock_client, node="pve", url="https://example.com/test.iso")
         assert "URL Metadata" in result
         assert "test.iso" in result
 
-    def test_requires_url(self, mock_client):
+    async def test_requires_url(self, mock_client):
         with pytest.raises(ValueError, match="url is required"):
-            query_url_metadata(mock_client, node="pve", url="")
+            await query_url_metadata(mock_client, node="pve", url="")
 
 
 class TestWakeOnLan:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            wake_on_lan(mock_client, node="pve", macaddr="aa:bb:cc:dd:ee:ff")
+            await wake_on_lan(mock_client, node="pve", macaddr="aa:bb:cc:dd:ee:ff")
 
-    def test_requires_macaddr(self, mock_client):
+    async def test_requires_macaddr(self, mock_client):
         with pytest.raises(ValueError, match="macaddr is required"):
-            wake_on_lan(mock_client, node="pve", macaddr="", confirm=True)
+            await wake_on_lan(mock_client, node="pve", macaddr="", confirm=True)
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            wake_on_lan(client, node="pve", macaddr="aa:bb:cc:dd:ee:ff", confirm=True)
+            await wake_on_lan(client, node="pve", macaddr="aa:bb:cc:dd:ee:ff", confirm=True)
 
-    def test_success(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0001:abc")
-        result = wake_on_lan(mock_client, node="pve", macaddr="aa:bb:cc:dd:ee:ff", confirm=True)
+    async def test_success(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0001:abc")
+        result = await wake_on_lan(mock_client, node="pve", macaddr="aa:bb:cc:dd:ee:ff", confirm=True)
         assert "Wake-on-LAN" in result
         assert "aa:bb:cc:dd:ee:ff" in result
 
 
 class TestGetStorageOnNode:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "storage": "local", "type": "dir", "content": "iso,vztmpl,backup",
-        })
-        result = get_storage_on_node(mock_client, node="pve", storage="local")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "storage": "local",
+                "type": "dir",
+                "content": "iso,vztmpl,backup",
+            }
+        )
+        result = await get_storage_on_node(mock_client, node="pve", storage="local")
         assert "Storage Detail" in result
         assert "local" in result
 
-    def test_empty_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={})
-        result = get_storage_on_node(mock_client, node="pve", storage="local")
+    async def test_empty_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={})
+        result = await get_storage_on_node(mock_client, node="pve", storage="local")
         assert "Storage Detail" in result
 
 
 class TestCopyVolume:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            copy_volume(mock_client, node="pve", storage="local", volume="local:iso/test.iso", target="nfs")
+            await copy_volume(mock_client, node="pve", storage="local", volume="local:iso/test.iso", target="nfs")
 
-    def test_requires_volume(self, mock_client):
+    async def test_requires_volume(self, mock_client):
         with pytest.raises(ValueError, match="volume is required"):
-            copy_volume(mock_client, node="pve", storage="local", volume="", target="nfs", confirm=True)
+            await copy_volume(mock_client, node="pve", storage="local", volume="", target="nfs", confirm=True)
 
-    def test_requires_target(self, mock_client):
+    async def test_requires_target(self, mock_client):
         with pytest.raises(ValueError, match="target is required"):
-            copy_volume(mock_client, node="pve", storage="local", volume="vol1", target="", confirm=True)
+            await copy_volume(mock_client, node="pve", storage="local", volume="vol1", target="", confirm=True)
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            copy_volume(client, node="pve", storage="local", volume="vol1", target="nfs", confirm=True)
+            await copy_volume(client, node="pve", storage="local", volume="vol1", target="nfs", confirm=True)
 
-    def test_success(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0001:abc")
-        result = copy_volume(mock_client, node="pve", storage="local", volume="vol1", target="nfs", confirm=True)
+    async def test_success(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0001:abc")
+        result = await copy_volume(mock_client, node="pve", storage="local", volume="vol1", target="nfs", confirm=True)
         assert "copy" in result.lower()
         assert "UPID" in result
 
 
 class TestUpdateVolumeAttributes:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            update_volume_attributes(mock_client, node="pve", storage="local", volume="vol1", comment="test")
+            await update_volume_attributes(mock_client, node="pve", storage="local", volume="vol1", comment="test")
 
-    def test_requires_volume(self, mock_client):
+    async def test_requires_volume(self, mock_client):
         with pytest.raises(ValueError, match="volume is required"):
-            update_volume_attributes(mock_client, node="pve", storage="local", volume="", confirm=True, comment="test")
+            await update_volume_attributes(
+                mock_client, node="pve", storage="local", volume="", confirm=True, comment="test"
+            )
 
-    def test_requires_attributes(self, mock_client):
+    async def test_requires_attributes(self, mock_client):
         with pytest.raises(ValueError, match="At least one attribute"):
-            update_volume_attributes(mock_client, node="pve", storage="local", volume="vol1", confirm=True)
+            await update_volume_attributes(mock_client, node="pve", storage="local", volume="vol1", confirm=True)
 
-    def test_success(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=None)
-        result = update_volume_attributes(
-            mock_client, node="pve", storage="local",
-            volume="vol1", confirm=True, comment="updated",
+    async def test_success(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=None)
+        result = await update_volume_attributes(
+            mock_client,
+            node="pve",
+            storage="local",
+            volume="vol1",
+            confirm=True,
+            comment="updated",
         )
         assert "updated" in result.lower()
 
 
 class TestFileRestoreList:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"filename": "backup.vma.zst", "type": "file", "size": 1024},
-        ])
-        result = file_restore_list(mock_client, node="pve", storage="local")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"filename": "backup.vma.zst", "type": "file", "size": 1024},
+            ]
+        )
+        result = await file_restore_list(mock_client, node="pve", storage="local")
         assert "File Restore List" in result
         assert "backup.vma.zst" in result
 
-    def test_empty_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = file_restore_list(mock_client, node="pve", storage="local")
+    async def test_empty_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await file_restore_list(mock_client, node="pve", storage="local")
         assert "No file restore entries" in result
 
 
 class TestFileRestoreDownload:
-    def test_requires_filepath(self, mock_client):
+    async def test_requires_filepath(self, mock_client):
         with pytest.raises(ValueError, match="filepath is required"):
-            file_restore_download(mock_client, node="pve", storage="local", filepath="")
+            await file_restore_download(mock_client, node="pve", storage="local", filepath="")
 
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "data": {"filename": "test.txt", "size": 100},
-        })
-        result = file_restore_download(mock_client, node="pve", storage="local", filepath="/etc/hosts")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "data": {"filename": "test.txt", "size": 100},
+            }
+        )
+        result = await file_restore_download(mock_client, node="pve", storage="local", filepath="/etc/hosts")
         assert "File Restore Download" in result
 
 
 class TestStorageImportMetadata:
-    def test_returns_formatted_dict(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "data": {"format": "raw", "type": "disk"},
-        })
-        result = storage_import_metadata(mock_client, node="pve", storage="local", volume="local:100/vm-100-disk-0.raw")
+    async def test_returns_formatted_dict(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "data": {"format": "raw", "type": "disk"},
+            }
+        )
+        result = await storage_import_metadata(
+            mock_client, node="pve", storage="local", volume="local:100/vm-100-disk-0.raw"
+        )
         assert "Storage Import Metadata" in result
 
-    def test_returns_list(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"filename": "disk0.qcow2", "type": "disk"},
-        ])
-        result = storage_import_metadata(mock_client, node="pve", storage="local", volume="local:100/vm-100-disk-0.raw")
+    async def test_returns_list(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"filename": "disk0.qcow2", "type": "disk"},
+            ]
+        )
+        result = await storage_import_metadata(
+            mock_client, node="pve", storage="local", volume="local:100/vm-100-disk-0.raw"
+        )
         assert "Storage Import Metadata" in result
 
-    def test_empty_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = storage_import_metadata(mock_client, node="pve", storage="local", volume="local:100/vm-100-disk-0.raw")
+    async def test_empty_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await storage_import_metadata(
+            mock_client, node="pve", storage="local", volume="local:100/vm-100-disk-0.raw"
+        )
         assert "No import metadata" in result
 
-    def test_requires_volume(self, mock_client):
+    async def test_requires_volume(self, mock_client):
         with pytest.raises(ValueError, match="volume is required"):
-            storage_import_metadata(mock_client, node="pve", storage="local", volume="")
+            await storage_import_metadata(mock_client, node="pve", storage="local", volume="")
 
 
 class TestOciRegistryPull:
-    def test_requires_confirm(self, mock_client):
+    async def test_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            oci_registry_pull(mock_client, node="pve", storage="local", image="ubuntu:latest")
+            await oci_registry_pull(mock_client, node="pve", storage="local", image="ubuntu:latest")
 
-    def test_requires_image(self, mock_client):
+    async def test_requires_image(self, mock_client):
         with pytest.raises(ValueError, match="image is required"):
-            oci_registry_pull(mock_client, node="pve", storage="local", image="", confirm=True)
+            await oci_registry_pull(mock_client, node="pve", storage="local", image="", confirm=True)
 
-    def test_requires_elevated(self, mock_config):
+    async def test_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            oci_registry_pull(client, node="pve", storage="local", image="ubuntu:latest", confirm=True)
+            await oci_registry_pull(client, node="pve", storage="local", image="ubuntu:latest", confirm=True)
 
-    def test_success(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0001:abc")
-        result = oci_registry_pull(mock_client, node="pve", storage="local", image="ubuntu:latest", confirm=True)
+    async def test_success(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="UPID:pve:0001:abc")
+        result = await oci_registry_pull(mock_client, node="pve", storage="local", image="ubuntu:latest", confirm=True)
         assert "OCI registry pull" in result
         assert "ubuntu:latest" in result
 
 
 class TestClusterConfigApiversion:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "data": {"version": "1.0", "release": "8.0"},
-        })
-        result = cluster_config_apiversion(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "data": {"version": "1.0", "release": "8.0"},
+            }
+        )
+        result = await cluster_config_apiversion(mock_client)
         assert "Cluster API Version" in result
         assert "version" in result
 
-    def test_empty_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={})
-        result = cluster_config_apiversion(mock_client)
+    async def test_empty_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={})
+        result = await cluster_config_apiversion(mock_client)
         assert "Cluster API Version" in result
 
 
 class TestClusterJobsIndex:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"id": "job1", "type": "realm-sync"},
-            {"id": "job2", "type": "backup"},
-        ])
-        result = cluster_jobs_index(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"id": "job1", "type": "realm-sync"},
+                {"id": "job2", "type": "backup"},
+            ]
+        )
+        result = await cluster_jobs_index(mock_client)
         assert "Cluster Jobs" in result
         assert "job1" in result
 
-    def test_empty_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = cluster_jobs_index(mock_client)
+    async def test_empty_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await cluster_jobs_index(mock_client)
         assert "No cluster jobs" in result
 
 
 class TestListRealmSyncJobs:
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[
-            {"id": "sync1", "realm": "ldap", "schedule": "0 2 * * *"},
-        ])
-        result = list_realm_sync_jobs(mock_client)
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value=[
+                {"id": "sync1", "realm": "ldap", "schedule": "0 2 * * *"},
+            ]
+        )
+        result = await list_realm_sync_jobs(mock_client)
         assert "Realm Sync Jobs" in result
         assert "sync1" in result
 
-    def test_empty_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = list_realm_sync_jobs(mock_client)
+    async def test_empty_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await list_realm_sync_jobs(mock_client)
         assert "No realm sync jobs" in result
 
 
 class TestGetRealmSyncJob:
-    def test_requires_id(self, mock_client):
+    async def test_requires_id(self, mock_client):
         with pytest.raises(ValueError, match="id is required"):
-            get_realm_sync_job(mock_client, id="")
+            await get_realm_sync_job(mock_client, id="")
 
-    def test_returns_formatted(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "id": "sync1", "realm": "ldap", "schedule": "0 2 * * *",
-        })
-        result = get_realm_sync_job(mock_client, id="sync1")
+    async def test_returns_formatted(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "id": "sync1",
+                "realm": "ldap",
+                "schedule": "0 2 * * *",
+            }
+        )
+        result = await get_realm_sync_job(mock_client, id="sync1")
         assert "Realm Sync Job" in result
         assert "sync1" in result
 
 
 class TestVmRrd:
-    def test_returns_formatted_dict(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "cpu": 0.5, "maxcpu": 4,
-        })
-        result = vm_rrd(mock_client, node="pve", vmid=100)
+    async def test_returns_formatted_dict(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "cpu": 0.5,
+                "maxcpu": 4,
+            }
+        )
+        result = await vm_rrd(mock_client, node="pve", vmid=100)
         assert "VM 100 RRD" in result
 
-    def test_returns_binary(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=b"\x89PNG")
-        result = vm_rrd(mock_client, node="pve", vmid=100)
+    async def test_returns_binary(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=b"\x89PNG")
+        result = await vm_rrd(mock_client, node="pve", vmid=100)
         assert "RRD" in result
 
 
 class TestLxcRrd:
-    def test_returns_formatted_dict(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={
-            "cpu": 0.3, "maxcpu": 2,
-        })
-        result = lxc_rrd(mock_client, node="pve", vmid=200)
+    async def test_returns_formatted_dict(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(
+            return_value={
+                "cpu": 0.3,
+                "maxcpu": 2,
+            }
+        )
+        result = await lxc_rrd(mock_client, node="pve", vmid=200)
         assert "LXC 200 RRD" in result
 
-    def test_returns_binary(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=b"\x89PNG")
-        result = lxc_rrd(mock_client, node="pve", vmid=200)
+    async def test_returns_binary(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=b"\x89PNG")
+        result = await lxc_rrd(mock_client, node="pve", vmid=200)
         assert "RRD" in result

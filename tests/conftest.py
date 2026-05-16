@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -116,5 +116,6 @@ def mock_client(
 
     client.monitor_client = mock_api
     client.admin_client = MagicMock()
+    client.safe_api_call = AsyncMock(return_value={})
 
     return client

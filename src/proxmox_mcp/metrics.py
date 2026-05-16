@@ -10,8 +10,8 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_metric_servers(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_metric_servers(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.metrics.server.get,
     )
     if not isinstance(result, list):
@@ -27,10 +27,10 @@ def list_metric_servers(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_metric_server(client: ProxmoxClient, id: str = "") -> str:
+async def get_metric_server(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.metrics.server(id).get,
     )
     lines = [f"📊 **Metric Server: {id}**\n"]
@@ -41,7 +41,7 @@ def get_metric_server(client: ProxmoxClient, id: str = "") -> str:
 
 
 @confirm_required
-def create_metric_server(
+async def create_metric_server(
     client: ProxmoxClient,
     id: str = "",
     type: str = "graphite",
@@ -66,7 +66,7 @@ def create_metric_server(
         params["comment"] = comment
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.metrics.server(id).post,
         elevated=True,
         **params,
@@ -75,7 +75,7 @@ def create_metric_server(
 
 
 @confirm_required
-def update_metric_server(
+async def update_metric_server(
     client: ProxmoxClient,
     id: str = "",
     server: Optional[str] = None,
@@ -98,7 +98,7 @@ def update_metric_server(
     if not params:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.metrics.server(id).put,
         elevated=True,
         **params,
@@ -108,7 +108,7 @@ def update_metric_server(
 
 
 @confirm_required
-def delete_metric_server(
+async def delete_metric_server(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -117,15 +117,15 @@ def delete_metric_server(
     if not id:
         raise ValueError("id is required for metric server deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.metrics.server(id).delete,
         elevated=True,
     )
     return f"Metric server {id!r} deleted"
 
 
-def metrics_index(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def metrics_index(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.metrics.get,
     )
     lines = ["\U0001f4ca **Metrics Index**\n"]
@@ -137,8 +137,8 @@ def metrics_index(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def export_metrics(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def export_metrics(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.metrics.export.get,
     )
     lines = ["\U0001f4ca **Cluster Metrics Export**\n"]

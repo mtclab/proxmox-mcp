@@ -10,8 +10,8 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_sdn_zones(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_zones(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.zones.get,
     )
     if not isinstance(result, list):
@@ -26,10 +26,10 @@ def list_sdn_zones(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_sdn_zone(client: ProxmoxClient, zone: str = "") -> str:
+async def get_sdn_zone(client: ProxmoxClient, zone: str = "") -> str:
     if not zone:
         raise ValueError("zone is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.zones(zone).get,
     )
     lines = [f"🌐 **SDN Zone: {zone}**\n"]
@@ -40,7 +40,7 @@ def get_sdn_zone(client: ProxmoxClient, zone: str = "") -> str:
 
 
 @confirm_required
-def create_sdn_zone(
+async def create_sdn_zone(
     client: ProxmoxClient,
     zone: str = "",
     type: str = "",
@@ -61,7 +61,7 @@ def create_sdn_zone(
         params["nodes"] = nodes
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.zones.post,
         elevated=True,
         **params,
@@ -70,7 +70,7 @@ def create_sdn_zone(
 
 
 @confirm_required
-def update_sdn_zone(
+async def update_sdn_zone(
     client: ProxmoxClient,
     zone: str = "",
     comment: Optional[str] = None,
@@ -90,7 +90,7 @@ def update_sdn_zone(
     if not params:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.zones(zone).put,
         elevated=True,
         **params,
@@ -100,7 +100,7 @@ def update_sdn_zone(
 
 
 @confirm_required
-def delete_sdn_zone(
+async def delete_sdn_zone(
     client: ProxmoxClient,
     zone: str = "",
     confirm: bool = False,
@@ -109,15 +109,15 @@ def delete_sdn_zone(
     if not zone:
         raise ValueError("zone is required for SDN zone deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.zones(zone).delete,
         elevated=True,
     )
     return f"SDN zone {zone!r} deleted"
 
 
-def list_sdn_vnets(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_vnets(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.vnets.get,
     )
     if not isinstance(result, list):
@@ -132,10 +132,10 @@ def list_sdn_vnets(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_sdn_vnet(client: ProxmoxClient, vnet: str = "") -> str:
+async def get_sdn_vnet(client: ProxmoxClient, vnet: str = "") -> str:
     if not vnet:
         raise ValueError("vnet is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.vnets(vnet).get,
     )
     lines = [f"🌐 **SDN VNet: {vnet}**\n"]
@@ -146,7 +146,7 @@ def get_sdn_vnet(client: ProxmoxClient, vnet: str = "") -> str:
 
 
 @confirm_required
-def create_sdn_vnet(
+async def create_sdn_vnet(
     client: ProxmoxClient,
     vnet: str = "",
     zone: str = "",
@@ -164,7 +164,7 @@ def create_sdn_vnet(
         params["comment"] = comment
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets.post,
         elevated=True,
         **params,
@@ -173,7 +173,7 @@ def create_sdn_vnet(
 
 
 @confirm_required
-def update_sdn_vnet(
+async def update_sdn_vnet(
     client: ProxmoxClient,
     vnet: str = "",
     comment: Optional[str] = None,
@@ -190,7 +190,7 @@ def update_sdn_vnet(
     if not params:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).put,
         elevated=True,
         **params,
@@ -200,7 +200,7 @@ def update_sdn_vnet(
 
 
 @confirm_required
-def delete_sdn_vnet(
+async def delete_sdn_vnet(
     client: ProxmoxClient,
     vnet: str = "",
     confirm: bool = False,
@@ -209,17 +209,17 @@ def delete_sdn_vnet(
     if not vnet:
         raise ValueError("vnet is required for SDN VNet deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).delete,
         elevated=True,
     )
     return f"SDN VNet {vnet!r} deleted"
 
 
-def list_sdn_subnets(client: ProxmoxClient, vnet: str = "") -> str:
+async def list_sdn_subnets(client: ProxmoxClient, vnet: str = "") -> str:
     if not vnet:
         raise ValueError("vnet is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.vnets(vnet).subnets.get,
     )
     if not isinstance(result, list):
@@ -234,7 +234,7 @@ def list_sdn_subnets(client: ProxmoxClient, vnet: str = "") -> str:
 
 
 @confirm_required
-def create_sdn_subnet(
+async def create_sdn_subnet(
     client: ProxmoxClient,
     vnet: str = "",
     subnet: str = "",
@@ -249,7 +249,7 @@ def create_sdn_subnet(
     params: dict[str, Any] = {"subnet": subnet}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).subnets.post,
         elevated=True,
         **params,
@@ -258,7 +258,7 @@ def create_sdn_subnet(
 
 
 @confirm_required
-def delete_sdn_subnet(
+async def delete_sdn_subnet(
     client: ProxmoxClient,
     vnet: str = "",
     subnet: str = "",
@@ -270,15 +270,15 @@ def delete_sdn_subnet(
     if not subnet:
         raise ValueError("subnet is required for SDN subnet deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).subnets(subnet).delete,
         elevated=True,
     )
     return f"SDN subnet {subnet!r} deleted from VNet {vnet!r}"
 
 
-def list_sdn_controllers(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_controllers(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.controllers.get,
     )
     if not isinstance(result, list):
@@ -294,7 +294,7 @@ def list_sdn_controllers(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def create_sdn_controller(
+async def create_sdn_controller(
     client: ProxmoxClient,
     controller: str = "",
     type: str = "",
@@ -309,7 +309,7 @@ def create_sdn_controller(
     params: dict[str, Any] = {"controller": controller, "type": type}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.controllers.post,
         elevated=True,
         **params,
@@ -318,7 +318,7 @@ def create_sdn_controller(
 
 
 @confirm_required
-def delete_sdn_controller(
+async def delete_sdn_controller(
     client: ProxmoxClient,
     controller: str = "",
     confirm: bool = False,
@@ -327,15 +327,15 @@ def delete_sdn_controller(
     if not controller:
         raise ValueError("controller is required for SDN controller deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.controllers(controller).delete,
         elevated=True,
     )
     return f"SDN controller {controller!r} deleted"
 
 
-def list_sdn_dns(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_dns(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.dns.get,
     )
     if not isinstance(result, list):
@@ -351,7 +351,7 @@ def list_sdn_dns(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def create_sdn_dns(
+async def create_sdn_dns(
     client: ProxmoxClient,
     dns: str = "",
     type: str = "",
@@ -366,7 +366,7 @@ def create_sdn_dns(
     params: dict[str, Any] = {"dns": dns, "type": type}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.dns.post,
         elevated=True,
         **params,
@@ -375,7 +375,7 @@ def create_sdn_dns(
 
 
 @confirm_required
-def delete_sdn_dns(
+async def delete_sdn_dns(
     client: ProxmoxClient,
     dns: str = "",
     confirm: bool = False,
@@ -384,15 +384,15 @@ def delete_sdn_dns(
     if not dns:
         raise ValueError("dns is required for SDN DNS deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.dns(dns).delete,
         elevated=True,
     )
     return f"SDN DNS {dns!r} deleted"
 
 
-def list_sdn_ipams(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_ipams(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.ipams.get,
     )
     if not isinstance(result, list):
@@ -408,7 +408,7 @@ def list_sdn_ipams(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def create_sdn_ipam(
+async def create_sdn_ipam(
     client: ProxmoxClient,
     ipam: str = "",
     type: str = "",
@@ -423,7 +423,7 @@ def create_sdn_ipam(
     params: dict[str, Any] = {"ipam": ipam, "type": type}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.ipams.post,
         elevated=True,
         **params,
@@ -432,7 +432,7 @@ def create_sdn_ipam(
 
 
 @confirm_required
-def delete_sdn_ipam(
+async def delete_sdn_ipam(
     client: ProxmoxClient,
     ipam: str = "",
     confirm: bool = False,
@@ -441,7 +441,7 @@ def delete_sdn_ipam(
     if not ipam:
         raise ValueError("ipam is required for SDN IPAM deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.ipams(ipam).delete,
         elevated=True,
     )
@@ -449,26 +449,26 @@ def delete_sdn_ipam(
 
 
 @confirm_required
-def apply_sdn(
+async def apply_sdn(
     client: ProxmoxClient,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.put,
         elevated=True,
     )
     return "SDN changes applied"
 
 
-def list_node_sdn_zones(
+async def list_node_sdn_zones(
     client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).sdn.zones.get,
     )
     if not isinstance(result, list):
@@ -483,16 +483,16 @@ def list_node_sdn_zones(
     return "\n".join(lines)
 
 
-def get_node_sdn_zone_status(
+async def get_node_sdn_zone_status(
     client: ProxmoxClient,
     node: Optional[str] = None,
     zone: str = "",
 ) -> str:
     if not zone:
         raise ValueError("zone is required")
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).sdn.zones(zone).get,
     )
     lines = [f"🌐 **SDN Zone Status: {zone} on {resolved_node}**\n"]
@@ -507,10 +507,10 @@ def get_node_sdn_zone_status(
     return "\n".join(lines)
 
 
-def get_sdn_ipam_status(client: ProxmoxClient, ipam: str = "") -> str:
+async def get_sdn_ipam_status(client: ProxmoxClient, ipam: str = "") -> str:
     if not ipam:
         raise ValueError("ipam is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.ipams(ipam).status.get,
     )
     if not isinstance(result, list):
@@ -527,8 +527,8 @@ def get_sdn_ipam_status(client: ProxmoxClient, ipam: str = "") -> str:
     return "\n".join(lines)
 
 
-def list_sdn_fabrics(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_fabrics(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.fabrics.get,
     )
     if not isinstance(result, list):
@@ -543,10 +543,10 @@ def list_sdn_fabrics(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def list_sdn_fabric_detail(client: ProxmoxClient, fabric: str = "") -> str:
+async def list_sdn_fabric_detail(client: ProxmoxClient, fabric: str = "") -> str:
     if not fabric:
         raise ValueError("fabric is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.fabrics.fabric(fabric).get,
     )
     lines = [f"🌐 **SDN Fabric: {fabric}**\n"]
@@ -557,7 +557,7 @@ def list_sdn_fabric_detail(client: ProxmoxClient, fabric: str = "") -> str:
 
 
 @confirm_required
-def create_sdn_fabric(
+async def create_sdn_fabric(
     client: ProxmoxClient,
     fabric: str = "",
     type: str = "",
@@ -572,7 +572,7 @@ def create_sdn_fabric(
     params: dict[str, Any] = {"fabric": fabric, "type": type}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.fabrics.fabric.post,
         elevated=True,
         **params,
@@ -581,7 +581,7 @@ def create_sdn_fabric(
 
 
 @confirm_required
-def delete_sdn_fabric(
+async def delete_sdn_fabric(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -590,7 +590,7 @@ def delete_sdn_fabric(
     if not id:
         raise ValueError("id is required for SDN fabric deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.fabrics.fabric(id).delete,
         elevated=True,
     )
@@ -598,7 +598,7 @@ def delete_sdn_fabric(
 
 
 @confirm_required
-def update_sdn_fabric(
+async def update_sdn_fabric(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -610,7 +610,7 @@ def update_sdn_fabric(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.fabrics.fabric(id).put,
         elevated=True,
         **kwargs,
@@ -619,8 +619,8 @@ def update_sdn_fabric(
     return f"SDN fabric {id!r} updated: {opts}"
 
 
-def list_sdn_prefix_lists(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_prefix_lists(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn("prefix-lists").get,
     )
     if not isinstance(result, list):
@@ -635,7 +635,7 @@ def list_sdn_prefix_lists(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def create_sdn_prefix_list(
+async def create_sdn_prefix_list(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -647,7 +647,7 @@ def create_sdn_prefix_list(
     params: dict[str, Any] = {"id": id}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("prefix-lists").post,
         elevated=True,
         **params,
@@ -656,7 +656,7 @@ def create_sdn_prefix_list(
 
 
 @confirm_required
-def delete_sdn_prefix_list(
+async def delete_sdn_prefix_list(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -665,15 +665,15 @@ def delete_sdn_prefix_list(
     if not id:
         raise ValueError("id is required for SDN prefix list deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("prefix-lists")(id).delete,
         elevated=True,
     )
     return f"SDN prefix list {id!r} deleted"
 
 
-def list_sdn_route_maps(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_sdn_route_maps(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn("route-maps").entries.get,
     )
     if not isinstance(result, list):
@@ -688,13 +688,13 @@ def list_sdn_route_maps(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def acquire_sdn_lock(
+async def acquire_sdn_lock(
     client: ProxmoxClient,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.cluster.sdn.lock.post,
         elevated=True,
     )
@@ -703,13 +703,13 @@ def acquire_sdn_lock(
 
 
 @confirm_required
-def release_sdn_lock(
+async def release_sdn_lock(
     client: ProxmoxClient,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.lock.delete,
         elevated=True,
     )
@@ -717,23 +717,23 @@ def release_sdn_lock(
 
 
 @confirm_required
-def sdn_rollback(
+async def sdn_rollback(
     client: ProxmoxClient,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.rollback.post,
         elevated=True,
     )
     return "SDN rollback initiated"
 
 
-def get_sdn_ipam(client: ProxmoxClient, ipam: str = "") -> str:
+async def get_sdn_ipam(client: ProxmoxClient, ipam: str = "") -> str:
     if not ipam:
         raise ValueError("ipam is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.ipams(ipam).get,
     )
     lines = [f"🌐 **SDN IPAM: {ipam}**\n"]
@@ -744,7 +744,7 @@ def get_sdn_ipam(client: ProxmoxClient, ipam: str = "") -> str:
 
 
 @confirm_required
-def update_sdn_ipam(
+async def update_sdn_ipam(
     client: ProxmoxClient,
     ipam: str = "",
     confirm: bool = False,
@@ -756,7 +756,7 @@ def update_sdn_ipam(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.ipams(ipam).put,
         elevated=True,
         **kwargs,
@@ -765,10 +765,10 @@ def update_sdn_ipam(
     return f"SDN IPAM {ipam!r} updated: {opts}"
 
 
-def get_sdn_dns(client: ProxmoxClient, dns: str = "") -> str:
+async def get_sdn_dns(client: ProxmoxClient, dns: str = "") -> str:
     if not dns:
         raise ValueError("dns is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.dns(dns).get,
     )
     lines = [f"🌐 **SDN DNS: {dns}**\n"]
@@ -779,7 +779,7 @@ def get_sdn_dns(client: ProxmoxClient, dns: str = "") -> str:
 
 
 @confirm_required
-def update_sdn_dns(
+async def update_sdn_dns(
     client: ProxmoxClient,
     dns: str = "",
     confirm: bool = False,
@@ -791,7 +791,7 @@ def update_sdn_dns(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.dns(dns).put,
         elevated=True,
         **kwargs,
@@ -800,10 +800,10 @@ def update_sdn_dns(
     return f"SDN DNS {dns!r} updated: {opts}"
 
 
-def get_sdn_controller(client: ProxmoxClient, controller: str = "") -> str:
+async def get_sdn_controller(client: ProxmoxClient, controller: str = "") -> str:
     if not controller:
         raise ValueError("controller is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.controllers(controller).get,
     )
     lines = [f"🌐 **SDN Controller: {controller}**\n"]
@@ -814,7 +814,7 @@ def get_sdn_controller(client: ProxmoxClient, controller: str = "") -> str:
 
 
 @confirm_required
-def update_sdn_controller(
+async def update_sdn_controller(
     client: ProxmoxClient,
     controller: str = "",
     confirm: bool = False,
@@ -826,7 +826,7 @@ def update_sdn_controller(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.controllers(controller).put,
         elevated=True,
         **kwargs,
@@ -835,10 +835,10 @@ def update_sdn_controller(
     return f"SDN controller {controller!r} updated: {opts}"
 
 
-def list_sdn_fabric_nodes(client: ProxmoxClient, fabric_id: str = "") -> str:
+async def list_sdn_fabric_nodes(client: ProxmoxClient, fabric_id: str = "") -> str:
     if not fabric_id:
         raise ValueError("fabric_id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.fabrics.node(fabric_id).get,
     )
     if not isinstance(result, list):
@@ -853,7 +853,7 @@ def list_sdn_fabric_nodes(client: ProxmoxClient, fabric_id: str = "") -> str:
 
 
 @confirm_required
-def add_sdn_fabric_node(
+async def add_sdn_fabric_node(
     client: ProxmoxClient,
     fabric_id: str = "",
     node: str = "",
@@ -868,7 +868,7 @@ def add_sdn_fabric_node(
     params: dict[str, Any] = {"node": node}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.fabrics.node(fabric_id).post,
         elevated=True,
         **params,
@@ -876,12 +876,12 @@ def add_sdn_fabric_node(
     return f"SDN fabric node {node!r} added to fabric {fabric_id!r}"
 
 
-def get_sdn_fabric_node(client: ProxmoxClient, fabric_id: str = "", node_id: str = "") -> str:
+async def get_sdn_fabric_node(client: ProxmoxClient, fabric_id: str = "", node_id: str = "") -> str:
     if not fabric_id:
         raise ValueError("fabric_id is required")
     if not node_id:
         raise ValueError("node_id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.fabrics.node(fabric_id)(node_id).get,
     )
     lines = [f"🌐 **SDN Fabric Node: {node_id} in {fabric_id}**\n"]
@@ -892,7 +892,7 @@ def get_sdn_fabric_node(client: ProxmoxClient, fabric_id: str = "", node_id: str
 
 
 @confirm_required
-def update_sdn_fabric_node(
+async def update_sdn_fabric_node(
     client: ProxmoxClient,
     fabric_id: str = "",
     node_id: str = "",
@@ -907,7 +907,7 @@ def update_sdn_fabric_node(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.fabrics.node(fabric_id)(node_id).put,
         elevated=True,
         **kwargs,
@@ -917,7 +917,7 @@ def update_sdn_fabric_node(
 
 
 @confirm_required
-def remove_sdn_fabric_node(
+async def remove_sdn_fabric_node(
     client: ProxmoxClient,
     fabric_id: str = "",
     node_id: str = "",
@@ -929,7 +929,7 @@ def remove_sdn_fabric_node(
     if not node_id:
         raise ValueError("node_id is required for SDN fabric node removal")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.fabrics.node(fabric_id)(node_id).delete,
         elevated=True,
     )
@@ -937,7 +937,7 @@ def remove_sdn_fabric_node(
 
 
 @confirm_required
-def create_sdn_vnet_ip(
+async def create_sdn_vnet_ip(
     client: ProxmoxClient,
     vnet: str = "",
     confirm: bool = False,
@@ -949,7 +949,7 @@ def create_sdn_vnet_ip(
     params: dict[str, Any] = {}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).ips.post,
         elevated=True,
         **params,
@@ -958,7 +958,7 @@ def create_sdn_vnet_ip(
 
 
 @confirm_required
-def update_sdn_vnet_ip(
+async def update_sdn_vnet_ip(
     client: ProxmoxClient,
     vnet: str = "",
     confirm: bool = False,
@@ -970,7 +970,7 @@ def update_sdn_vnet_ip(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).ips.put,
         elevated=True,
         **kwargs,
@@ -980,7 +980,7 @@ def update_sdn_vnet_ip(
 
 
 @confirm_required
-def delete_sdn_vnet_ip(
+async def delete_sdn_vnet_ip(
     client: ProxmoxClient,
     vnet: str = "",
     confirm: bool = False,
@@ -992,7 +992,7 @@ def delete_sdn_vnet_ip(
     params: dict[str, Any] = {}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).ips.delete,
         elevated=True,
         **params,
@@ -1000,10 +1000,10 @@ def delete_sdn_vnet_ip(
     return f"SDN VNet IP deleted from {vnet!r}"
 
 
-def get_sdn_vnet_firewall_options(client: ProxmoxClient, vnet: str = "") -> str:
+async def get_sdn_vnet_firewall_options(client: ProxmoxClient, vnet: str = "") -> str:
     if not vnet:
         raise ValueError("vnet is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.vnets(vnet).firewall.options.get,
     )
     lines = [f"🌐 **SDN VNet Firewall Options: {vnet}**\n"]
@@ -1014,7 +1014,7 @@ def get_sdn_vnet_firewall_options(client: ProxmoxClient, vnet: str = "") -> str:
 
 
 @confirm_required
-def set_sdn_vnet_firewall_options(
+async def set_sdn_vnet_firewall_options(
     client: ProxmoxClient,
     vnet: str = "",
     confirm: bool = False,
@@ -1026,7 +1026,7 @@ def set_sdn_vnet_firewall_options(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to set")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).firewall.options.put,
         elevated=True,
         **kwargs,
@@ -1035,10 +1035,10 @@ def set_sdn_vnet_firewall_options(
     return f"SDN VNet {vnet!r} firewall options set: {opts}"
 
 
-def list_sdn_vnet_firewall_rules(client: ProxmoxClient, vnet: str = "") -> str:
+async def list_sdn_vnet_firewall_rules(client: ProxmoxClient, vnet: str = "") -> str:
     if not vnet:
         raise ValueError("vnet is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.vnets(vnet).firewall.rules.get,
     )
     if not isinstance(result, list):
@@ -1054,7 +1054,7 @@ def list_sdn_vnet_firewall_rules(client: ProxmoxClient, vnet: str = "") -> str:
 
 
 @confirm_required
-def create_sdn_vnet_firewall_rule(
+async def create_sdn_vnet_firewall_rule(
     client: ProxmoxClient,
     vnet: str = "",
     confirm: bool = False,
@@ -1066,7 +1066,7 @@ def create_sdn_vnet_firewall_rule(
     params: dict[str, Any] = {}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).firewall.rules.post,
         elevated=True,
         **params,
@@ -1075,7 +1075,7 @@ def create_sdn_vnet_firewall_rule(
 
 
 @confirm_required
-def delete_sdn_vnet_firewall_rule(
+async def delete_sdn_vnet_firewall_rule(
     client: ProxmoxClient,
     vnet: str = "",
     pos: int = 0,
@@ -1085,17 +1085,17 @@ def delete_sdn_vnet_firewall_rule(
     if not vnet:
         raise ValueError("vnet is required for SDN VNet firewall rule deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).firewall.rules(str(pos)).delete,
         elevated=True,
     )
     return f"SDN VNet firewall rule pos {pos} deleted from {vnet!r}"
 
 
-def get_sdn_vnet_firewall_rule(client: ProxmoxClient, vnet: str = "", pos: int = 0) -> str:
+async def get_sdn_vnet_firewall_rule(client: ProxmoxClient, vnet: str = "", pos: int = 0) -> str:
     if not vnet:
         raise ValueError("vnet is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn.vnets(vnet).firewall.rules(str(pos)).get,
     )
     lines = [f"🌐 **SDN VNet Firewall Rule: {vnet} pos {pos}**\n"]
@@ -1106,7 +1106,7 @@ def get_sdn_vnet_firewall_rule(client: ProxmoxClient, vnet: str = "", pos: int =
 
 
 @confirm_required
-def update_sdn_vnet_firewall_rule(
+async def update_sdn_vnet_firewall_rule(
     client: ProxmoxClient,
     vnet: str = "",
     pos: int = 0,
@@ -1119,7 +1119,7 @@ def update_sdn_vnet_firewall_rule(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn.vnets(vnet).firewall.rules(str(pos)).put,
         elevated=True,
         **kwargs,
@@ -1128,10 +1128,10 @@ def update_sdn_vnet_firewall_rule(
     return f"SDN VNet firewall rule pos {pos} in {vnet!r} updated: {opts}"
 
 
-def list_prefix_list_entries(client: ProxmoxClient, id: str = "") -> str:
+async def list_prefix_list_entries(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn("prefix-lists")(id).entries.get,
     )
     if not isinstance(result, list):
@@ -1146,7 +1146,7 @@ def list_prefix_list_entries(client: ProxmoxClient, id: str = "") -> str:
 
 
 @confirm_required
-def create_prefix_list_entry(
+async def create_prefix_list_entry(
     client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
@@ -1158,7 +1158,7 @@ def create_prefix_list_entry(
     params: dict[str, Any] = {}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("prefix-lists")(id).entries.post,
         elevated=True,
         **params,
@@ -1167,7 +1167,7 @@ def create_prefix_list_entry(
 
 
 @confirm_required
-def delete_prefix_list_entry(
+async def delete_prefix_list_entry(
     client: ProxmoxClient,
     id: str = "",
     url_seq: int = 0,
@@ -1177,17 +1177,17 @@ def delete_prefix_list_entry(
     if not id:
         raise ValueError("id is required for prefix list entry deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("prefix-lists")(id).entries(str(url_seq)).delete,
         elevated=True,
     )
     return f"SDN prefix list entry {url_seq} deleted from {id!r}"
 
 
-def get_prefix_list_entry(client: ProxmoxClient, id: str = "", url_seq: int = 0) -> str:
+async def get_prefix_list_entry(client: ProxmoxClient, id: str = "", url_seq: int = 0) -> str:
     if not id:
         raise ValueError("id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn("prefix-lists")(id).entries(str(url_seq)).get,
     )
     lines = [f"🌐 **SDN Prefix List Entry: {id} seq {url_seq}**\n"]
@@ -1198,7 +1198,7 @@ def get_prefix_list_entry(client: ProxmoxClient, id: str = "", url_seq: int = 0)
 
 
 @confirm_required
-def update_prefix_list_entry(
+async def update_prefix_list_entry(
     client: ProxmoxClient,
     id: str = "",
     url_seq: int = 0,
@@ -1211,7 +1211,7 @@ def update_prefix_list_entry(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("prefix-lists")(id).entries(str(url_seq)).put,
         elevated=True,
         **kwargs,
@@ -1220,8 +1220,8 @@ def update_prefix_list_entry(
     return f"SDN prefix list entry {url_seq} in {id!r} updated: {opts}"
 
 
-def list_route_map_entries(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def list_route_map_entries(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn("route-maps").entries.get,
     )
     if not isinstance(result, list):
@@ -1236,7 +1236,7 @@ def list_route_map_entries(client: ProxmoxClient) -> str:
 
 
 @confirm_required
-def create_route_map_entry(
+async def create_route_map_entry(
     client: ProxmoxClient,
     route_map_id: str = "",
     confirm: bool = False,
@@ -1248,7 +1248,7 @@ def create_route_map_entry(
     params: dict[str, Any] = {"id": route_map_id}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("route-maps").entries.post,
         elevated=True,
         **params,
@@ -1256,10 +1256,10 @@ def create_route_map_entry(
     return f"SDN route map entry {route_map_id!r} created"
 
 
-def get_route_map_entry(client: ProxmoxClient, route_map_id: str = "") -> str:
+async def get_route_map_entry(client: ProxmoxClient, route_map_id: str = "") -> str:
     if not route_map_id:
         raise ValueError("route_map_id is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).cluster.sdn("route-maps").entries(route_map_id).get,
     )
     if not isinstance(result, list):
@@ -1274,7 +1274,7 @@ def get_route_map_entry(client: ProxmoxClient, route_map_id: str = "") -> str:
 
 
 @confirm_required
-def delete_route_map_entry(
+async def delete_route_map_entry(
     client: ProxmoxClient,
     route_map_id: str = "",
     order: int = 0,
@@ -1284,7 +1284,7 @@ def delete_route_map_entry(
     if not route_map_id:
         raise ValueError("route_map_id is required for route map entry deletion")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("route-maps").entries(route_map_id)("entry")(str(order)).delete,
         elevated=True,
     )
@@ -1292,7 +1292,7 @@ def delete_route_map_entry(
 
 
 @confirm_required
-def update_route_map_entry(
+async def update_route_map_entry(
     client: ProxmoxClient,
     route_map_id: str = "",
     order: int = 0,
@@ -1305,7 +1305,7 @@ def update_route_map_entry(
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.cluster.sdn("route-maps").entries(route_map_id)("entry")(str(order)).put,
         elevated=True,
         **kwargs,
@@ -1314,8 +1314,8 @@ def update_route_map_entry(
     return f"SDN route map entry {route_map_id!r} order {order} updated: {opts}"
 
 
-def sdn_dry_run(client: ProxmoxClient) -> str:
-    result = client.safe_api_call(
+async def sdn_dry_run(client: ProxmoxClient) -> str:
+    result = await client.safe_api_call(
         _api(client).cluster.sdn("dry-run").get,
     )
     lines = ["🌐 **SDN Dry-Run**\n"]
@@ -1334,16 +1334,16 @@ def sdn_dry_run(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-def get_node_sdn_vnet(
+async def get_node_sdn_vnet(
     client: ProxmoxClient,
     node: Optional[str] = None,
     vnet: str = "",
 ) -> str:
     if not vnet:
         raise ValueError("vnet is required")
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).sdn.vnets(vnet).get,
     )
     lines = [f"🌐 **SDN VNet: {vnet} on {resolved_node}**\n"]
@@ -1358,16 +1358,16 @@ def get_node_sdn_vnet(
     return "\n".join(lines)
 
 
-def list_node_sdn_zone_bridges(
+async def list_node_sdn_zone_bridges(
     client: ProxmoxClient,
     node: Optional[str] = None,
     zone: str = "",
 ) -> str:
     if not zone:
         raise ValueError("zone is required")
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).sdn.zones(zone).bridges.get,
     )
     if not isinstance(result, list):
@@ -1381,16 +1381,16 @@ def list_node_sdn_zone_bridges(
     return "\n".join(lines)
 
 
-def get_node_sdn_zone_content(
+async def get_node_sdn_zone_content(
     client: ProxmoxClient,
     node: Optional[str] = None,
     zone: str = "",
 ) -> str:
     if not zone:
         raise ValueError("zone is required")
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).sdn.zones(zone).content.get,
     )
     lines = [f"🌐 **SDN Zone Content: {zone} on {resolved_node}**\n"]
@@ -1405,16 +1405,16 @@ def get_node_sdn_zone_content(
     return "\n".join(lines)
 
 
-def get_node_sdn_zone_ip_vrf(
+async def get_node_sdn_zone_ip_vrf(
     client: ProxmoxClient,
     node: Optional[str] = None,
     zone: str = "",
 ) -> str:
     if not zone:
         raise ValueError("zone is required")
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).sdn.zones(zone)("ip-vrf").get,
     )
     lines = [f"🌐 **SDN Zone IP-VRF: {zone} on {resolved_node}**\n"]

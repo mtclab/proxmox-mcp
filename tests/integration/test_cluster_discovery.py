@@ -38,7 +38,6 @@ from proxmox_mcp.disks import list_disks
 from proxmox_mcp.storage import list_isos
 from proxmox_mcp.templates import list_templates
 
-
 SECRETS_PATH = Path("/home/kasm-user/.config/opencode/secrets/proxmox.json")
 
 

@@ -9,13 +9,13 @@ def _api(client: Any) -> Any:
     return client.get_client(elevated=False)
 
 
-def node_config(
+async def node_config(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).config.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).config.get)
     lines = [f"⚙️ **Node Config: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -24,7 +24,7 @@ def node_config(
 
 
 @confirm_required
-def update_node_config(
+async def update_node_config(
     client: Any,
     node: Optional[str] = None,
     description: Optional[str] = None,
@@ -33,7 +33,7 @@ def update_node_config(
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if description is not None:
@@ -43,112 +43,112 @@ def update_node_config(
     if time_zone is not None:
         params["timezone"] = time_zone
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).config.put, elevated=True, **params)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).config.put, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} config updated. UPID: {upid}"
 
 
 @confirm_required
-def reboot_node(
+async def reboot_node(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="reboot")
+    result = await client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="reboot")
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} reboot initiated. UPID: {upid}"
 
 
 @confirm_required
-def shutdown_node(
+async def shutdown_node(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="shutdown")
+    result = await client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="shutdown")
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} shutdown initiated. UPID: {upid}"
 
 
 @confirm_required
-def start_all(
+async def start_all(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).startall.post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).startall.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Start all on node {resolved_node} initiated. UPID: {upid}"
 
 
 @confirm_required
-def stop_all(
+async def stop_all(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).stopall.post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).stopall.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Stop all on node {resolved_node} initiated. UPID: {upid}"
 
 
 @confirm_required
-def suspend_all(
+async def suspend_all(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).suspendall.post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).suspendall.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Suspend all on node {resolved_node} initiated. UPID: {upid}"
 
 
 @confirm_required
-def migrate_all(
+async def migrate_all(
     client: Any,
     node: Optional[str] = None,
     target: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if target is not None:
         params["target"] = target
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).migrateall.post, elevated=True, **params)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).migrateall.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Migrate all on node {resolved_node} initiated. UPID: {upid}"
 
 
-def get_node_detailed_status(
+async def get_node_detailed_status(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).status.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).status.get)
     lines = [f"📊 **Node Status: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -156,13 +156,13 @@ def get_node_detailed_status(
     return "\n".join(lines)
 
 
-def list_services(
+async def list_services(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).services.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).services.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"🔧 **Services on {resolved_node}**\n"]
@@ -178,16 +178,16 @@ def list_services(
     return "\n".join(lines)
 
 
-def service_state(
+async def service_state(
     client: Any,
     node: Optional[str] = None,
     service: str = "",
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
-    result = client.safe_api_call(_api(client).nodes(resolved_node).services(service).state.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).services(service).state.get)
     lines = [f"🔧 **Service: {service} on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -196,66 +196,66 @@ def service_state(
 
 
 @confirm_required
-def start_service(
+async def start_service(
     client: Any,
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).start.post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).start.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} start initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
-def stop_service(
+async def stop_service(
     client: Any,
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).stop.post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).stop.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} stop initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
-def restart_service(
+async def restart_service(
     client: Any,
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).restart.post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).restart.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} restart initiated on {resolved_node}. UPID: {upid}"
 
 
-def node_dns(
+async def node_dns(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).dns.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).dns.get)
     lines = [f"🌐 **DNS Settings: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -263,13 +263,13 @@ def node_dns(
     return "\n".join(lines)
 
 
-def node_hosts(
+async def node_hosts(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).hosts.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).hosts.get)
     lines = [f"📋 **Hosts File: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -282,13 +282,13 @@ def node_hosts(
     return "\n".join(lines)
 
 
-def node_report(
+async def node_report(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).report.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).report.get)
     lines = [f"📋 **Node Report: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -310,13 +310,13 @@ def node_report(
     return "\n".join(lines)
 
 
-def node_netstat(
+async def node_netstat(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(_api(client).nodes(resolved_node).netstat.get)
+    result = await client.safe_api_call(_api(client).nodes(resolved_node).netstat.get)
     lines = [f"🌐 **Netstat: {resolved_node}**\n"]
     if isinstance(result, list):
         for entry in result[:50]:
@@ -352,16 +352,16 @@ def node_netstat(
     return "\n".join(lines)
 
 
-def scan_nfs(
+async def scan_nfs(
     client: Any,
     node: Optional[str] = None,
     server: str = "",
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).scan.nfs.get,
         server=server,
     )
@@ -376,16 +376,16 @@ def scan_nfs(
     return "\n".join(lines)
 
 
-def scan_iscsi(
+async def scan_iscsi(
     client: Any,
     node: Optional[str] = None,
     server: str = "",
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).scan.iscsi.get,
         server=server,
     )
@@ -400,13 +400,13 @@ def scan_iscsi(
     return "\n".join(lines)
 
 
-def scan_lvm(
+async def scan_lvm(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).scan.lvm.get,
     )
     if not isinstance(result, list):
@@ -420,13 +420,13 @@ def scan_lvm(
     return "\n".join(lines)
 
 
-def scan_lvmthin(
+async def scan_lvmthin(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).scan.lvmthin.get,
     )
     if not isinstance(result, list):
@@ -440,16 +440,16 @@ def scan_lvmthin(
     return "\n".join(lines)
 
 
-def scan_cifs(
+async def scan_cifs(
     client: Any,
     node: Optional[str] = None,
     server: str = "",
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).scan.cifs.get,
         server=server,
     )
@@ -468,13 +468,13 @@ def scan_cifs(
     return "\n".join(lines)
 
 
-def scan_zfs(
+async def scan_zfs(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).scan.zfs.get,
     )
     if not isinstance(result, list):
@@ -488,14 +488,14 @@ def scan_zfs(
     return "\n".join(lines)
 
 
-def scan_pbs(
+async def scan_pbs(
     client: Any,
     node: Optional[str] = None,
     server: str = "",
     username: Optional[str] = None,
     password: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
@@ -504,7 +504,7 @@ def scan_pbs(
         params["username"] = username
     if password is not None:
         params["password"] = password
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).scan.pbs.get,
         **params,
     )
@@ -519,16 +519,16 @@ def scan_pbs(
     return "\n".join(lines)
 
 
-def query_url_metadata(
+async def query_url_metadata(
     client: Any,
     node: Optional[str] = None,
     url: str = "",
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not url:
         raise ValueError("url is required")
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).query_url_metadata.get,
         url=url,
     )
@@ -546,19 +546,19 @@ def query_url_metadata(
 
 
 @confirm_required
-def wake_on_lan(
+async def wake_on_lan(
     client: Any,
     node: Optional[str] = None,
     macaddr: str = "",
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not macaddr:
         raise ValueError("macaddr is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).wakeonlan.post,
         elevated=True,
         macaddr=macaddr,
@@ -567,13 +567,13 @@ def wake_on_lan(
     return f"Wake-on-LAN sent to {macaddr} via {resolved_node}. UPID: {upid}"
 
 
-def get_subscription(
+async def get_subscription(
     client: Any,
     node: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).subscription.get,
     )
     lines = [f"📋 **Subscription: {resolved_node}**\n"]
@@ -589,19 +589,19 @@ def get_subscription(
 
 
 @confirm_required
-def update_subscription(
+async def update_subscription(
     client: Any,
     node: Optional[str] = None,
     key: str = "",
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not key:
         raise ValueError("key is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).subscription.post,
         elevated=True,
         key=key,
@@ -611,16 +611,16 @@ def update_subscription(
 
 
 @confirm_required
-def delete_subscription(
+async def delete_subscription(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(resolved_node).subscription.delete,
         elevated=True,
     )
@@ -628,16 +628,16 @@ def delete_subscription(
 
 
 @confirm_required
-def check_subscription(
+async def check_subscription(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).subscription.post,
         elevated=True,
     )
@@ -646,32 +646,32 @@ def check_subscription(
 
 
 @confirm_required
-def reload_service(
+async def reload_service(
     client: Any,
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).reload.post, elevated=True)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).reload.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
     return f"Service {service!r} reload initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
-def node_execute(
+async def node_execute(
     client: Any,
     node: Optional[str] = None,
     commands: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not commands:
         raise ValueError("commands is required")
@@ -688,7 +688,7 @@ def node_execute(
             )
     elevated = client.get_client(elevated=True)
     params: dict[str, Any] = {"command": commands}
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         elevated.nodes(resolved_node).execute.post,
         elevated=True,
         **params,
@@ -706,17 +706,17 @@ def node_execute(
     return "\n".join(lines)
 
 
-def get_network_interface(
+async def get_network_interface(
     client: Any,
     node: Optional[str] = None,
     iface: str = "",
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not iface:
         raise ValueError("iface is required")
     validate_iface_name(iface)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).network(iface).get,
     )
     lines = [f"🌐 **Network Interface: {iface} on {resolved_node}**\n"]
@@ -727,7 +727,7 @@ def get_network_interface(
 
 
 @confirm_required
-def update_dns(
+async def update_dns(
     client: Any,
     node: Optional[str] = None,
     dns1: Optional[str] = None,
@@ -737,7 +737,7 @@ def update_dns(
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if dns1 is not None:
@@ -750,7 +750,7 @@ def update_dns(
     if not params:
         raise ValueError("At least one parameter must be provided to update DNS")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(resolved_node).dns.put,
         elevated=True,
         **params,
@@ -760,19 +760,19 @@ def update_dns(
 
 
 @confirm_required
-def update_hosts(
+async def update_hosts(
     client: Any,
     node: Optional[str] = None,
     data: str = "",
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not data:
         raise ValueError("data is required for hosts update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(resolved_node).hosts.post,
         elevated=True,
         data=data,
@@ -781,19 +781,19 @@ def update_hosts(
 
 
 @confirm_required
-def update_time(
+async def update_time(
     client: Any,
     node: Optional[str] = None,
     timezone: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     if not timezone:
         raise ValueError("timezone is required for time update")
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
+    await client.safe_api_call(
         elevated.nodes(resolved_node).time.put,
         elevated=True,
         timezone=timezone,
@@ -801,17 +801,17 @@ def update_time(
     return f"Timezone for {resolved_node} updated to {timezone!r}"
 
 
-def vzdump_defaults(
+async def vzdump_defaults(
     client: Any,
     node: Optional[str] = None,
     storage: Optional[str] = None,
 ) -> str:
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if storage is not None:
         params["storage"] = storage
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).vzdump.defaults.get,
         **params,
     )
@@ -828,16 +828,16 @@ def vzdump_defaults(
     return "\n".join(lines)
 
 
-def extract_backup_config(
+async def extract_backup_config(
     client: Any,
     node: Optional[str] = None,
     archive: str = "",
 ) -> str:
     if not archive:
         raise ValueError("archive is required")
-    resolved_node = client.resolve_node(node)
+    resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
+    result = await client.safe_api_call(
         _api(client).nodes(resolved_node).vzdump.extractconfig.get,
         archive=archive,
     )

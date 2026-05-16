@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -24,6 +24,7 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     client.admin_client = MagicMock()
@@ -32,80 +33,81 @@ def mock_client(mock_config):
 
 
 class TestTaskLog:
-    def test_task_log_basic(self, mock_client):
+    async def test_task_log_basic(self, mock_client):
         entries = [{"n": 0, "t": "task started"}, {"n": 1, "t": "task completed"}]
-        mock_client.safe_api_call = MagicMock(return_value=entries)
-        result = task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
+        mock_client.safe_api_call = AsyncMock(return_value=entries)
+        result = await task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
         assert "UPID:pve:000:abc" in result
         assert "task started" in result
 
-    def test_task_log_extracts_node_from_upid(self, mock_client):
+    async def test_task_log_extracts_node_from_upid(self, mock_client):
         entries = [{"t": "done"}]
-        mock_client.safe_api_call = MagicMock(return_value=entries)
-        result = task_log(mock_client, upid="UPID:pve:000:abc")
+        mock_client.safe_api_call = AsyncMock(return_value=entries)
+        result = await task_log(mock_client, upid="UPID:pve:000:abc")
         assert "UPID:pve:000:abc" in result
 
-    def test_task_log_with_limit(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        task_log(mock_client, upid="UPID:pve:000:abc", node="pve", limit=10)
+    async def test_task_log_with_limit(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        await task_log(mock_client, upid="UPID:pve:000:abc", node="pve", limit=10)
         call_args = mock_client.safe_api_call.call_args
         assert call_args[1].get("limit") == 10
 
-    def test_task_log_string_entries(self, mock_client):
+    async def test_task_log_string_entries(self, mock_client):
         entries = ["line 1", "line 2"]
-        mock_client.safe_api_call = MagicMock(return_value=entries)
-        result = task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
+        mock_client.safe_api_call = AsyncMock(return_value=entries)
+        result = await task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
         assert "line 1" in result
 
-    def test_task_log_invalid_node(self, mock_client):
+    async def test_task_log_invalid_node(self, mock_client):
         with pytest.raises(ValueError, match="Invalid node name"):
-            task_log(mock_client, upid="UPID:pve:000:abc", node="bad!node")
+            await task_log(mock_client, upid="UPID:pve:000:abc", node="bad!node")
 
-    def test_task_log_empty_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value=[])
-        result = task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
+    async def test_task_log_empty_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value=[])
+        result = await task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
         assert "0 entries" in result
 
-    def test_task_log_truncation(self, mock_client):
+    async def test_task_log_truncation(self, mock_client):
         entries = [{"n": i, "t": f"line {i}"} for i in range(100)]
-        mock_client.safe_api_call = MagicMock(return_value=entries)
-        result = task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
+        mock_client.safe_api_call = AsyncMock(return_value=entries)
+        result = await task_log(mock_client, upid="UPID:pve:000:abc", node="pve")
         assert "more entries" in result
 
 
 class TestStopTask:
-    def test_stop_task_requires_confirm(self, mock_client):
+    async def test_stop_task_requires_confirm(self, mock_client):
         with pytest.raises(ValueError, match="confirm=true"):
-            stop_task(mock_client, node="pve", upid="UPID:pve:000:abc")
+            await stop_task(mock_client, node="pve", upid="UPID:pve:000:abc")
 
-    def test_stop_task_requires_elevated(self, mock_config):
+    async def test_stop_task_requires_elevated(self, mock_config):
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
-            stop_task(client, node="pve", upid="UPID:pve:000:abc", confirm=True)
+            await stop_task(client, node="pve", upid="UPID:pve:000:abc", confirm=True)
 
-    def test_stop_task_requires_upid(self, mock_client):
+    async def test_stop_task_requires_upid(self, mock_client):
         with pytest.raises(ValueError, match="upid is required"):
-            stop_task(mock_client, node="pve", upid="", confirm=True)
+            await stop_task(mock_client, node="pve", upid="", confirm=True)
 
-    def test_stop_task_success(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value={"data": "OK"})
-        result = stop_task(mock_client, node="pve", upid="UPID:pve:000:abc", confirm=True)
+    async def test_stop_task_success(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value={"data": "OK"})
+        result = await stop_task(mock_client, node="pve", upid="UPID:pve:000:abc", confirm=True)
         assert "UPID:pve:000:abc" in result
         assert "stopped" in result
 
-    def test_stop_task_string_result(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="OK")
-        result = stop_task(mock_client, node="pve", upid="UPID:pve:000:abc", confirm=True)
+    async def test_stop_task_string_result(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="OK")
+        result = await stop_task(mock_client, node="pve", upid="UPID:pve:000:abc", confirm=True)
         assert "OK" in result
 
-    def test_stop_task_default_node(self, mock_client):
-        mock_client.safe_api_call = MagicMock(return_value="OK")
-        result = stop_task(mock_client, upid="UPID:pve:000:abc", confirm=True)
+    async def test_stop_task_default_node(self, mock_client):
+        mock_client.safe_api_call = AsyncMock(return_value="OK")
+        result = await stop_task(mock_client, upid="UPID:pve:000:abc", confirm=True)
         assert "pve" in result
 
-    def test_stop_task_invalid_node(self, mock_client):
+    async def test_stop_task_invalid_node(self, mock_client):
         with pytest.raises(ValueError, match="Invalid node name"):
-            stop_task(mock_client, node="bad!node", upid="UPID:pve:000:abc", confirm=True)
+            await stop_task(mock_client, node="bad!node", upid="UPID:pve:000:abc", confirm=True)
