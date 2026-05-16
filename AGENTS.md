@@ -1,5 +1,12 @@
 # Proxmox MCP Server — Agent Conventions
 
+## Agent Roles (12)
+
+See `~/.config/opencode/agents/roles.md` for full model assignments. Key roles for this repo:
+- **InfraOps** — PVE operations, VM/LXC management, storage, networking
+- **Integrator** — MCP tool wiring, Zabbix/PVE integration, cross-service connectivity
+- **SecurityAuditor** — PVE token audit, firewall rules, ACL review
+
 ## Session Start
 Read `~/.config/opencode/handoffs/session-state.md` FIRST. Check `git log` and `gh issue list`.
 
