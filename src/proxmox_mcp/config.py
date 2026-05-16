@@ -25,6 +25,7 @@ class Config:
         allowed_monitor_commands: Optional[list[str]] = None,
         allowed_node_commands: Optional[list[str]] = None,
         upload_dir: Optional[str] = None,
+        timeout: int = 30,
     ) -> None:
         self.url = url
         self.verify = verify
@@ -38,6 +39,7 @@ class Config:
         self.allowed_monitor_commands = allowed_monitor_commands
         self.allowed_node_commands = allowed_node_commands
         self.upload_dir = upload_dir
+        self.timeout = timeout
 
         self._validate()
 
@@ -98,6 +100,8 @@ class Config:
 
         upload_dir = os.environ.get("PROXMOX_UPLOAD_DIR") or None
 
+        timeout = int(os.environ.get("PROXMOX_TIMEOUT", "30"))
+
         verify_raw = os.environ.get("PROXMOX_VERIFY", "true").strip().lower()
         if verify_raw in ("false", "0", "no"):
             verify: str | bool = False
@@ -119,6 +123,7 @@ class Config:
             allowed_monitor_commands=allowed_monitor_commands,
             allowed_node_commands=allowed_node_commands,
             upload_dir=upload_dir,
+            timeout=timeout,
         )
 
     @property

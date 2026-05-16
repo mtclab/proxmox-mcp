@@ -38,10 +38,10 @@ def _make_config() -> Config:
 
 
 @pytest.fixture(scope="module")
-def client() -> ProxmoxClient:
+async def client() -> ProxmoxClient:
     cfg = _make_config()
     c = ProxmoxClient(cfg)
-    c.discover_nodes()
+    await c.discover_nodes()
     return c
 
 
@@ -49,14 +49,14 @@ def client() -> ProxmoxClient:
 class TestNodeNameDiscovery:
     """Gotcha #1: GET /nodes returns 'pve' (PVE node name), not the hostname."""
 
-    def test_list_nodes_returns_actual_pve_node_name(self, client: ProxmoxClient) -> None:
+    async def test_list_nodes_returns_actual_pve_node_name(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.discovery import list_nodes
 
-        result = list_nodes(client)
+        result = await list_nodes(client)
         assert "pve" in result, f"Expected node 'pve' in output, got: {result}"
 
-    def test_discover_nodes_cache_has_pve(self, client: ProxmoxClient) -> None:
-        nodes = client.discover_nodes()
+    async def test_discover_nodes_cache_has_pve(self, client: ProxmoxClient) -> None:
+        nodes = await client.discover_nodes()
         names = [n.get("node") for n in nodes]
         assert "pve" in names, f"Node 'pve' not in discovered nodes: {names}"
 
@@ -65,11 +65,11 @@ class TestNodeNameDiscovery:
 class TestWrongNodeName:
     """Gotcha #2: Wrong node name returns friendly error, not raw 595."""
 
-    def test_vm_config_wrong_node_raises_friendly(self, client: ProxmoxClient) -> None:
+    async def test_vm_config_wrong_node_raises_friendly(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.lifecycle import get_vm_config
 
         with pytest.raises(Exception) as exc_info:
-            get_vm_config(client, node=NONEXISTENT_NODE, vmid=100)
+            await get_vm_config(client, node=NONEXISTENT_NODE, vmid=100)
         msg = str(exc_info.value).lower()
         assert "595" not in msg, f"Raw 595 error leaked: {exc_info.value}"
         assert "node" in msg or "not found" in msg or "error" in msg, (
@@ -81,13 +81,13 @@ class TestWrongNodeName:
 class TestTemplateDownload:
     """Gotcha #3: download_template requires confirm and elevated, validate params."""
 
-    def test_download_template_requires_confirm(self, client: ProxmoxClient) -> None:
+    async def test_download_template_requires_confirm(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.templates import download_template
 
         with pytest.raises(ValueError, match="confirm=true"):
-            download_template(client, url="http://example.com/template.tar.gz")
+            await download_template(client, url="http://example.com/template.tar.gz")
 
-    def test_download_template_requires_elevated(self) -> None:
+    async def test_download_template_requires_elevated(self) -> None:
         cfg = _make_config()
         cfg._allow_elevated = False
         cfg.allow_elevated = False
@@ -98,23 +98,23 @@ class TestTemplateDownload:
         from proxmox_mcp.templates import download_template
 
         with pytest.raises(ValueError, match="Elevated"):
-            download_template(
+            await download_template(
                 c,
                 url="http://example.com/template.tar.gz",
                 storage="local",
                 confirm=True,
             )
 
-    def test_download_template_rejects_empty_url(self, client: ProxmoxClient) -> None:
+    async def test_download_template_rejects_empty_url(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.templates import download_template
 
         with pytest.raises(ValueError, match="url is required"):
-            download_template(client, url="", confirm=True)
+            await download_template(client, url="", confirm=True)
 
-    def test_list_templates_returns_data(self, client: ProxmoxClient) -> None:
+    async def test_list_templates_returns_data(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.templates import list_templates
 
-        result = list_templates(client, node=PVE_NODE)
+        result = await list_templates(client, node=PVE_NODE)
         assert "PVE Appliance Templates" in result or "No templates" in result
 
 
@@ -122,16 +122,16 @@ class TestTemplateDownload:
 class TestVM404Errors:
     """Gotcha #4: get_vm_config with non-existent VMID returns friendly message."""
 
-    def test_vm_config_nonexistent_vmid(self, client: ProxmoxClient) -> None:
+    async def test_vm_config_nonexistent_vmid(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.lifecycle import get_vm_config
 
-        result = get_vm_config(client, node=PVE_NODE, vmid=NONEXISTENT_VMID)
+        result = await get_vm_config(client, node=PVE_NODE, vmid=NONEXISTENT_VMID)
         assert "not found" in result.lower(), f"Expected 'not found' message for VMID {NONEXISTENT_VMID}, got: {result}"
 
-    def test_lxc_config_nonexistent_vmid(self, client: ProxmoxClient) -> None:
+    async def test_lxc_config_nonexistent_vmid(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.lifecycle import get_lxc_config
 
-        result = get_lxc_config(client, node=PVE_NODE, vmid=NONEXISTENT_VMID)
+        result = await get_lxc_config(client, node=PVE_NODE, vmid=NONEXISTENT_VMID)
         assert "not found" in result.lower(), f"Expected 'not found' message for VMID {NONEXISTENT_VMID}, got: {result}"
 
 
@@ -139,22 +139,22 @@ class TestVM404Errors:
 class TestACLOperations:
     """Gotcha #5: ACL create/list operations work with admin token."""
 
-    def test_list_acl_returns_data(self, client: ProxmoxClient) -> None:
+    async def test_list_acl_returns_data(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.permissions import list_acl
 
-        result = list_acl(client)
+        result = await list_acl(client)
         assert "ACL Rules" in result
 
-    def test_list_roles_returns_data(self, client: ProxmoxClient) -> None:
+    async def test_list_roles_returns_data(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.permissions import list_roles
 
-        result = list_roles(client)
+        result = await list_roles(client)
         assert "Roles" in result or "roles" in result.lower()
 
-    def test_list_users_returns_data(self, client: ProxmoxClient) -> None:
+    async def test_list_users_returns_data(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.permissions import list_users
 
-        result = list_users(client)
+        result = await list_users(client)
         assert "Users" in result or "users" in result.lower()
 
 
@@ -162,17 +162,17 @@ class TestACLOperations:
 class TestMachineTypes:
     """Gotcha #6: list_machine_types returns valid data for node 'pve'."""
 
-    def test_list_machine_types_returns_data(self, client: ProxmoxClient) -> None:
+    async def test_list_machine_types_returns_data(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.capabilities import list_machine_types
 
-        result = list_machine_types(client, node=PVE_NODE)
+        result = await list_machine_types(client, node=PVE_NODE)
         assert "Machine Types" in result
         assert "q35" in result or "pc" in result or "Machine" in result, f"Expected common machine types, got: {result}"
 
-    def test_list_cpu_models_returns_data(self, client: ProxmoxClient) -> None:
+    async def test_list_cpu_models_returns_data(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.capabilities import list_cpu_models
 
-        result = list_cpu_models(client, node=PVE_NODE)
+        result = await list_cpu_models(client, node=PVE_NODE)
         assert "CPU Models" in result or "cpu" in result.lower()
 
 
@@ -180,17 +180,17 @@ class TestMachineTypes:
 class TestStorageListing:
     """Gotcha #7: list_storage returns storage pools with expected fields."""
 
-    def test_list_storage_returns_pools(self, client: ProxmoxClient) -> None:
+    async def test_list_storage_returns_pools(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.discovery import list_storage
 
-        result = list_storage(client)
+        result = await list_storage(client)
         assert "Storage Pools" in result
         assert "local" in result, f"Expected 'local' storage pool, got: {result}"
 
-    def test_list_storage_has_expected_fields(self, client: ProxmoxClient) -> None:
+    async def test_list_storage_has_expected_fields(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.discovery import list_storage
 
-        result = list_storage(client)
+        result = await list_storage(client)
         assert "type" in result.lower() or "(" in result, f"Expected storage type info in output, got: {result}"
 
 
@@ -198,17 +198,17 @@ class TestStorageListing:
 class TestUSBListing:
     """Gotcha #8: list_usb uses elevated token (requires Sys.Modify)."""
 
-    def test_list_usb_returns_result(self, client: ProxmoxClient) -> None:
+    async def test_list_usb_returns_result(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.hardware import list_usb
 
-        result = list_usb(client, node=PVE_NODE)
+        result = await list_usb(client, node=PVE_NODE)
         assert "USB Devices" in result
         # On single-node cluster, may legitimately have no USB devices
 
-    def test_list_pci_returns_result(self, client: ProxmoxClient) -> None:
+    async def test_list_pci_returns_result(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.hardware import list_pci
 
-        result = list_pci(client, node=PVE_NODE)
+        result = await list_pci(client, node=PVE_NODE)
         assert "PCI Devices" in result
 
 
@@ -216,20 +216,20 @@ class TestUSBListing:
 class TestNetworkListing:
     """Gotcha #9: list_network returns interfaces for node 'pve'."""
 
-    def test_list_network_returns_interfaces(self, client: ProxmoxClient) -> None:
+    async def test_list_network_returns_interfaces(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.discovery import list_network
 
-        result = list_network(client, node=PVE_NODE)
+        result = await list_network(client, node=PVE_NODE)
         assert "Network Interfaces" in result
         # Should always have at least lo or vmbr0
         assert "lo" in result or "vmbr0" in result or "eno" in result or "eth" in result or "enp" in result, (
             f"Expected at least one network interface, got: {result}"
         )
 
-    def test_list_network_from_networking_module(self, client: ProxmoxClient) -> None:
+    async def test_list_network_from_networking_module(self, client: ProxmoxClient) -> None:
         from proxmox_mcp.networking import list_network
 
-        result = list_network(client, node=PVE_NODE)
+        result = await list_network(client, node=PVE_NODE)
         assert "Network Interfaces" in result
 
 

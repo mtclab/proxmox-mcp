@@ -98,8 +98,16 @@ async def create_network(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
-    msg = f"Network interface {iface!r} creation initiated on {resolved_node}. UPID: {upid}"
+    if result is None:
+        upid = "staged"
+    elif isinstance(result, str):
+        upid = result
+    elif isinstance(result, dict):
+        upid = result.get("data", result)
+    else:
+        upid = result
+    staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""
+    msg = f"Network interface {iface!r} creation initiated on {resolved_node}. UPID: {upid}{staged_suffix}"
     if apply:
         warnings: list[str] = []
         if await _is_management_interface(client, resolved_node, iface):
@@ -139,8 +147,16 @@ async def update_network(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
-    msg = f"Network interface {iface!r} update initiated on {resolved_node}. UPID: {upid}"
+    if result is None:
+        upid = "staged"
+    elif isinstance(result, str):
+        upid = result
+    elif isinstance(result, dict):
+        upid = result.get("data", result)
+    else:
+        upid = result
+    staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""
+    msg = f"Network interface {iface!r} update initiated on {resolved_node}. UPID: {upid}{staged_suffix}"
     if apply:
         warnings: list[str] = []
         if await _is_management_interface(client, resolved_node, iface):
@@ -169,8 +185,16 @@ async def delete_network(
         elevated.nodes(resolved_node).network(iface).delete,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
-    msg = f"Network interface {iface!r} deletion initiated on {resolved_node}. UPID: {upid}"
+    if result is None:
+        upid = "staged"
+    elif isinstance(result, str):
+        upid = result
+    elif isinstance(result, dict):
+        upid = result.get("data", result)
+    else:
+        upid = result
+    staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""
+    msg = f"Network interface {iface!r} deletion initiated on {resolved_node}. UPID: {upid}{staged_suffix}"
     if apply:
         warnings: list[str] = []
         if await _is_management_interface(client, resolved_node, iface):
@@ -194,5 +218,13 @@ async def revert_network(
         elevated.nodes(resolved_node).network.delete,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
-    return f"Network changes reverted on {resolved_node}. UPID: {upid}"
+    if result is None:
+        upid = "staged"
+    elif isinstance(result, str):
+        upid = result
+    elif isinstance(result, dict):
+        upid = result.get("data", result)
+    else:
+        upid = result
+    staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""
+    return f"Network changes reverted on {resolved_node}. UPID: {upid}{staged_suffix}"

@@ -116,6 +116,19 @@ def mock_client(
 
     client.monitor_client = mock_api
     client.admin_client = MagicMock()
-    client.safe_api_call = AsyncMock(return_value={})
+
+    async def _mock_safe_api_call(func, *args, **kwargs):
+        if callable(func):
+            return func()
+        return func
+
+    client.safe_api_call = AsyncMock(side_effect=_mock_safe_api_call)
+
+    async def _mock_resolve_node(node=None):
+        if node:
+            return node
+        return "pve"
+
+    client.resolve_node = _mock_resolve_node
 
     return client

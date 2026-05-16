@@ -20,14 +20,14 @@ from proxmox_mcp.cluster import (
     api_version,
     cluster_config,
     cluster_config_nodes,
-    cluster_log,
     cluster_options,
-    cluster_status,
-    get_next_vmid,
     list_backup_jobs,
 )
 from proxmox_mcp.discovery import (
+    cluster_log,
     cluster_resources,
+    cluster_status,
+    get_next_vmid,
     list_lxc,
     list_network,
     list_nodes,
@@ -86,8 +86,19 @@ def _make_client() -> ProxmoxClient:
 
 
 @pytest.fixture(scope="module")
-def pve_client() -> ProxmoxClient:
-    return _make_client()
+async def pve_client() -> ProxmoxClient:
+    secrets = _load_secrets()
+    monitor_secret = secrets.get("PVE_MONITOR_TOKEN_SECRET", secrets.get("PROXMOX_MONITOR_TOKEN_SECRET", ""))
+    admin_secret = secrets.get("PVE_ADMIN_TOKEN_SECRET", secrets.get("PROXMOX_ADMIN_TOKEN_SECRET", ""))
+    if not monitor_secret or not admin_secret:
+        pytest.skip(
+            "PVE token secrets not configured — "
+            "set PROXMOX_MONITOR_TOKEN_SECRET and PROXMOX_ADMIN_TOKEN_SECRET "
+            "env vars, or create proxmox.json"
+        )
+    client = _make_client()
+    await client.discover_nodes()
+    return client
 
 
 # ── Cluster module ──────────────────────────────────────────────────
@@ -95,64 +106,64 @@ def pve_client() -> ProxmoxClient:
 
 @pytest.mark.integration
 class TestClusterStatusLive:
-    def test_cluster_status_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_status(pve_client)
+    async def test_cluster_status_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_status(pve_client)
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_cluster_status_contains_cluster_info(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_status(pve_client)
+    async def test_cluster_status_contains_cluster_info(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_status(pve_client)
         assert "Cluster" in result or "cluster" in result.lower()
 
-    def test_cluster_status_shows_node(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_status(pve_client)
+    async def test_cluster_status_shows_node(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_status(pve_client)
         assert "pve" in result
 
 
 @pytest.mark.integration
 class TestClusterOptionsLive:
-    def test_cluster_options_returns_dict(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_options(pve_client)
+    async def test_cluster_options_returns_dict(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_options(pve_client)
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_cluster_options_has_content(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_options(pve_client)
+    async def test_cluster_options_has_content(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_options(pve_client)
         assert "keyboard" in result.lower() or "Cluster Options" in result or "option" in result.lower()
 
 
 @pytest.mark.integration
 class TestClusterConfigLive:
-    def test_cluster_config_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_config(pve_client)
+    async def test_cluster_config_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_config(pve_client)
         assert isinstance(result, str)
 
-    def test_cluster_config_nodes(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_config_nodes(pve_client)
+    async def test_cluster_config_nodes(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_config_nodes(pve_client)
         assert isinstance(result, str)
         assert "pve" in result
 
 
 @pytest.mark.integration
 class TestClusterLogLive:
-    def test_cluster_log_returns_entries(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_log(pve_client, limit=5)
+    async def test_cluster_log_returns_entries(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_log(pve_client, limit=5)
         assert isinstance(result, str)
         assert "Cluster Log" in result or "log" in result.lower()
 
 
 @pytest.mark.integration
 class TestApiVersionLive:
-    def test_api_version(self, pve_client: ProxmoxClient) -> None:
-        result = api_version(pve_client)
+    async def test_api_version(self, pve_client: ProxmoxClient) -> None:
+        result = await api_version(pve_client)
         assert isinstance(result, str)
         assert "version" in result.lower() or "Version" in result
 
 
 @pytest.mark.integration
 class TestGetNextVmidLive:
-    def test_get_next_vmid(self, pve_client: ProxmoxClient) -> None:
-        result = get_next_vmid(pve_client)
+    async def test_get_next_vmid(self, pve_client: ProxmoxClient) -> None:
+        result = await get_next_vmid(pve_client)
         assert isinstance(result, str)
         assert "Next VMID" in result or "vmid" in result.lower()
         lines = result.strip().split("\n")
@@ -164,8 +175,8 @@ class TestGetNextVmidLive:
 
 @pytest.mark.integration
 class TestListBackupJobsLive:
-    def test_list_backup_jobs(self, pve_client: ProxmoxClient) -> None:
-        result = list_backup_jobs(pve_client)
+    async def test_list_backup_jobs(self, pve_client: ProxmoxClient) -> None:
+        result = await list_backup_jobs(pve_client)
         assert isinstance(result, str)
         assert "Backup" in result or "backup" in result.lower()
 
@@ -175,86 +186,86 @@ class TestListBackupJobsLive:
 
 @pytest.mark.integration
 class TestListNodesLive:
-    def test_list_nodes_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_nodes(pve_client)
+    async def test_list_nodes_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_nodes(pve_client)
         assert isinstance(result, str)
 
-    def test_list_nodes_contains_pve(self, pve_client: ProxmoxClient) -> None:
-        result = list_nodes(pve_client)
+    async def test_list_nodes_contains_pve(self, pve_client: ProxmoxClient) -> None:
+        result = await list_nodes(pve_client)
         assert "pve" in result
 
-    def test_list_nodes_has_status(self, pve_client: ProxmoxClient) -> None:
-        result = list_nodes(pve_client)
+    async def test_list_nodes_has_status(self, pve_client: ProxmoxClient) -> None:
+        result = await list_nodes(pve_client)
         assert "online" in result.lower() or "offline" in result.lower()
 
 
 @pytest.mark.integration
 class TestClusterResourcesLive:
-    def test_cluster_resources_all(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_resources(pve_client)
+    async def test_cluster_resources_all(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_resources(pve_client)
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_cluster_resources_by_type_vm(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_resources(pve_client, type="vm")
+    async def test_cluster_resources_by_type_vm(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_resources(pve_client, type="vm")
         assert isinstance(result, str)
         assert "vm" in result.lower() or "Resources" in result
 
-    def test_cluster_resources_by_type_storage(self, pve_client: ProxmoxClient) -> None:
-        result = cluster_resources(pve_client, type="storage")
+    async def test_cluster_resources_by_type_storage(self, pve_client: ProxmoxClient) -> None:
+        result = await cluster_resources(pve_client, type="storage")
         assert isinstance(result, str)
         assert "storage" in result.lower() or "local" in result.lower()
 
-    def test_cluster_resources_invalid_type_raises(self, pve_client: ProxmoxClient) -> None:
+    async def test_cluster_resources_invalid_type_raises(self, pve_client: ProxmoxClient) -> None:
         with pytest.raises(ValueError, match="Invalid type"):
-            cluster_resources(pve_client, type="invalid")
+            await cluster_resources(pve_client, type="invalid")
 
 
 @pytest.mark.integration
 class TestListVmsLive:
-    def test_list_vms_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_vms(pve_client)
+    async def test_list_vms_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_vms(pve_client)
         assert isinstance(result, str)
 
-    def test_list_vms_has_vm_header(self, pve_client: ProxmoxClient) -> None:
-        result = list_vms(pve_client)
+    async def test_list_vms_has_vm_header(self, pve_client: ProxmoxClient) -> None:
+        result = await list_vms(pve_client)
         assert "Virtual Machines" in result or "VM" in result
 
 
 @pytest.mark.integration
 class TestListLxcLive:
-    def test_list_lxc_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_lxc(pve_client)
+    async def test_list_lxc_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_lxc(pve_client)
         assert isinstance(result, str)
 
-    def test_list_lxc_has_lxc_header(self, pve_client: ProxmoxClient) -> None:
-        result = list_lxc(pve_client)
+    async def test_list_lxc_has_lxc_header(self, pve_client: ProxmoxClient) -> None:
+        result = await list_lxc(pve_client)
         assert "LXC" in result
 
 
 @pytest.mark.integration
 class TestListStorageLive:
-    def test_list_storage_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_storage(pve_client)
+    async def test_list_storage_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_storage(pve_client)
         assert isinstance(result, str)
 
-    def test_list_storage_has_local(self, pve_client: ProxmoxClient) -> None:
-        result = list_storage(pve_client)
+    async def test_list_storage_has_local(self, pve_client: ProxmoxClient) -> None:
+        result = await list_storage(pve_client)
         assert "local" in result.lower()
 
-    def test_list_storage_has_storage_type(self, pve_client: ProxmoxClient) -> None:
-        result = list_storage(pve_client)
+    async def test_list_storage_has_storage_type(self, pve_client: ProxmoxClient) -> None:
+        result = await list_storage(pve_client)
         assert "Storage" in result
 
 
 @pytest.mark.integration
 class TestListNetworkLive:
-    def test_list_network_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_network(pve_client)
+    async def test_list_network_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_network(pve_client)
         assert isinstance(result, str)
 
-    def test_list_network_has_interfaces(self, pve_client: ProxmoxClient) -> None:
-        result = list_network(pve_client)
+    async def test_list_network_has_interfaces(self, pve_client: ProxmoxClient) -> None:
+        result = await list_network(pve_client)
         assert "Network" in result or "network" in result.lower()
         lines = [l for l in result.split("\n") if "•" in l]
         assert len(lines) >= 1  # at least one interface on pve node
@@ -262,32 +273,32 @@ class TestListNetworkLive:
 
 @pytest.mark.integration
 class TestListDisksLive:
-    def test_list_disks_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_disks(pve_client)
+    async def test_list_disks_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_disks(pve_client)
         assert isinstance(result, str)
 
-    def test_list_disks_has_disk_header(self, pve_client: ProxmoxClient) -> None:
-        result = list_disks(pve_client)
+    async def test_list_disks_has_disk_header(self, pve_client: ProxmoxClient) -> None:
+        result = await list_disks(pve_client)
         assert "Disks" in result or "disk" in result.lower()
 
 
 @pytest.mark.integration
 class TestListIsosLive:
-    def test_list_isos_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_isos(pve_client, storage="local")
+    async def test_list_isos_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_isos(pve_client, storage="local")
         assert isinstance(result, str)
 
-    def test_list_isos_has_iso_header(self, pve_client: ProxmoxClient) -> None:
-        result = list_isos(pve_client, storage="local")
+    async def test_list_isos_has_iso_header(self, pve_client: ProxmoxClient) -> None:
+        result = await list_isos(pve_client, storage="local")
         assert "ISO" in result
 
 
 @pytest.mark.integration
 class TestListTemplatesLive:
-    def test_list_templates_returns_string(self, pve_client: ProxmoxClient) -> None:
-        result = list_templates(pve_client)
+    async def test_list_templates_returns_string(self, pve_client: ProxmoxClient) -> None:
+        result = await list_templates(pve_client)
         assert isinstance(result, str)
 
-    def test_list_templates_has_template_header(self, pve_client: ProxmoxClient) -> None:
-        result = list_templates(pve_client)
+    async def test_list_templates_has_template_header(self, pve_client: ProxmoxClient) -> None:
+        result = await list_templates(pve_client)
         assert "Template" in result or "Appliance" in result

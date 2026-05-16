@@ -92,8 +92,8 @@ class TestListAcl:
     async def test_list_acl_returns_formatted(self, mock_client):
         mock_client.safe_api_call = AsyncMock(
             return_value=[
-                {"path": "/", "userid": "admin@pve", "roleid": "PVEAdmin", "propagate": 1},
-                {"path": "/vms", "userid": "user@pve", "roleid": "PVEVMUser", "propagate": 1},
+                {"path": "/", "ugid": "admin@pve", "type": "user", "roleid": "PVEAdmin", "propagate": 1},
+                {"path": "/vms", "ugid": "user@pve", "type": "user", "roleid": "PVEVMUser", "propagate": 1},
             ]
         )
         result = await list_acl(mock_client)

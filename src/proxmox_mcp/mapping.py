@@ -18,12 +18,17 @@ async def list_pci_mappings(client: ProxmoxClient) -> str:
         result = [result] if result else []
     lines = ["🖥️ **PCI Mappings**\n"]
     for mapping in result:
-        mid = mapping.get("id", "unknown")
-        mtype = mapping.get("type", "unknown")
-        lines.append(f"   • **{mid}** — type: {mtype}")
-        description = mapping.get("description", mapping.get("comment", ""))
-        if description:
-            lines.append(f"     {description}")
+        if isinstance(mapping, str):
+            lines.append(f"   • **{mapping}**")
+        elif isinstance(mapping, dict):
+            mid = mapping.get("id", "unknown")
+            mtype = mapping.get("type", "")
+            lines.append(f"   • **{mid}**")
+            if mtype:
+                lines.append(f"     Type: {mtype}")
+            description = mapping.get("description", mapping.get("comment", ""))
+            if description:
+                lines.append(f"     {description}")
     if not result:
         lines.append("   No PCI mappings found.")
     return "\n".join(lines)
@@ -118,12 +123,17 @@ async def list_usb_mappings(client: ProxmoxClient) -> str:
         result = [result] if result else []
     lines = ["🔌 **USB Mappings**\n"]
     for mapping in result:
-        mid = mapping.get("id", "unknown")
-        mtype = mapping.get("type", "unknown")
-        lines.append(f"   • **{mid}** — type: {mtype}")
-        description = mapping.get("description", mapping.get("comment", ""))
-        if description:
-            lines.append(f"     {description}")
+        if isinstance(mapping, str):
+            lines.append(f"   • **{mapping}**")
+        elif isinstance(mapping, dict):
+            mid = mapping.get("id", "unknown")
+            mtype = mapping.get("type", "")
+            lines.append(f"   • **{mid}**")
+            if mtype:
+                lines.append(f"     Type: {mtype}")
+            description = mapping.get("description", mapping.get("comment", ""))
+            if description:
+                lines.append(f"     {description}")
     if not result:
         lines.append("   No USB mappings found.")
     return "\n".join(lines)
@@ -250,11 +260,14 @@ async def list_dir_mappings(client: ProxmoxClient) -> str:
         result = [result] if result else []
     lines = ["\U0001f4c1 **Directory Mappings**\n"]
     for mapping in result:
-        mid = mapping.get("id", "unknown")
-        description = mapping.get("description", mapping.get("comment", ""))
-        lines.append(f"   • **{mid}**")
-        if description:
-            lines.append(f"     {description}")
+        if isinstance(mapping, str):
+            lines.append(f"   • **{mapping}**")
+        elif isinstance(mapping, dict):
+            mid = mapping.get("id", "unknown")
+            description = mapping.get("description", mapping.get("comment", ""))
+            lines.append(f"   • **{mid}**")
+            if description:
+                lines.append(f"     {description}")
     if not result:
         lines.append("   No directory mappings found.")
     return "\n".join(lines)

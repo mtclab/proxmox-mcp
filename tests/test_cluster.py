@@ -13,7 +13,6 @@ from proxmox_mcp.cluster import (
     cluster_config_join,
     cluster_config_nodes,
     cluster_options,
-    cluster_status,
     create_backup_job,
     delete_backup_job,
     get_backup_job,
@@ -22,6 +21,7 @@ from proxmox_mcp.cluster import (
     update_cluster_options,
 )
 from proxmox_mcp.config import Config
+from proxmox_mcp.discovery import cluster_status
 
 
 @pytest.fixture

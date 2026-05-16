@@ -38,7 +38,7 @@ class ProxmoxClient:
             token_value=config.monitor_token_secret,
             verify_ssl=config.verify,
             backend="https",
-            timeout=60,
+            timeout=config.timeout,
         )
 
         admin_user = config.admin_token_id.split("!")[0]
@@ -51,7 +51,7 @@ class ProxmoxClient:
             token_value=config.admin_token_secret,
             verify_ssl=config.verify,
             backend="https",
-            timeout=60,
+            timeout=config.timeout,
         )
 
     def get_client(self, elevated: bool = False) -> ProxmoxAPI:
@@ -216,7 +216,9 @@ class ProxmoxClient:
 
         for vmtype in ("qemu", "lxc"):
             try:
-                guests = self.monitor_client.nodes(resolved_node).__getattr__(vmtype).get()
+                guests = await self.safe_api_call(
+                    self.monitor_client.nodes(resolved_node).__getattr__(vmtype).get,
+                )
                 for guest in guests:
                     if str(guest.get("name", "")) == identifier:
                         return resolved_node, int(guest["vmid"])

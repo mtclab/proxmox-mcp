@@ -11,8 +11,8 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def _get_next_vmid(client: ProxmoxClient) -> int:
-    result = _api(client).cluster.nextid.get()
+async def _get_next_vmid(client: ProxmoxClient) -> int:
+    result = await client.safe_api_call(_api(client).cluster.nextid.get)
     return int(result)
 
 
@@ -52,7 +52,7 @@ async def create_lxc(
     validate_node_name(resolved_node)
 
     if not vmid:
-        vmid = _get_next_vmid(client)
+        vmid = await _get_next_vmid(client)
     validate_vmid(vmid)
 
     if ostemplate:
@@ -213,7 +213,7 @@ async def create_vm(
     validate_node_name(resolved_node)
 
     if not vmid:
-        vmid = _get_next_vmid(client)
+        vmid = await _get_next_vmid(client)
     validate_vmid(vmid)
 
     params: dict[str, Any] = {"vmid": vmid}
@@ -230,7 +230,10 @@ async def create_vm(
         if storage:
             params["scsi0"] = f"{storage}:{validated_size}"
         else:
-            params["scsi0"] = validated_size
+            raise ValueError(
+                "storage is required when disk_size is specified "
+                "(PVE requires 'storage:size' format for scsi0)"
+            )
     if storage and not disk_size:
         params["storage"] = storage
     if iso:
@@ -352,7 +355,7 @@ async def clone_vm(
     validate_vmid(vmid)
 
     if not newid:
-        newid = _get_next_vmid(client)
+        newid = await _get_next_vmid(client)
     validate_vmid(newid)
 
     params: dict[str, Any] = {"newid": newid}
@@ -460,7 +463,7 @@ async def clone_lxc(
     validate_vmid(vmid)
 
     if not newid:
-        newid = _get_next_vmid(client)
+        newid = await _get_next_vmid(client)
     validate_vmid(newid)
 
     params: dict[str, Any] = {"newid": newid}

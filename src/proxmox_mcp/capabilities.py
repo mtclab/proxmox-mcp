@@ -20,11 +20,14 @@ async def list_cpu_models(client: ProxmoxClient, node: Optional[str] = None) -> 
         result = [result] if result else []
     lines = [f"🖥️ **QEMU CPU Models on {resolved_node}**\n"]
     for model in result:
-        name = model.get("name", "unknown")
-        model_type = model.get("type", "")
-        lines.append(f"   • **{name}**")
-        if model_type:
-            lines.append(f"     Type: {model_type}")
+        if isinstance(model, str):
+            lines.append(f"   • **{model}**")
+        elif isinstance(model, dict):
+            name = model.get("name", "unknown")
+            model_type = model.get("type", "")
+            lines.append(f"   • **{name}**")
+            if model_type:
+                lines.append(f"     Type: {model_type}")
     if not result:
         lines.append("   No CPU models found.")
     return "\n".join(lines)
@@ -40,11 +43,14 @@ async def list_cpu_flags(client: ProxmoxClient, node: Optional[str] = None) -> s
         result = [result] if result else []
     lines = [f"🖥️ **QEMU CPU Flags on {resolved_node}**\n"]
     for flag in result:
-        name = flag.get("name", "unknown")
-        flag_type = flag.get("type", "")
-        lines.append(f"   • **{name}**")
-        if flag_type:
-            lines.append(f"     Type: {flag_type}")
+        if isinstance(flag, str):
+            lines.append(f"   • **{flag}**")
+        elif isinstance(flag, dict):
+            name = flag.get("name", "unknown")
+            flag_type = flag.get("type", "")
+            lines.append(f"   • **{name}**")
+            if flag_type:
+                lines.append(f"     Type: {flag_type}")
     if not result:
         lines.append("   No CPU flags found.")
     return "\n".join(lines)
@@ -104,8 +110,11 @@ async def list_capabilities_qemu(client: ProxmoxClient, node: Optional[str] = No
         result = [result] if result else []
     lines = [f"🖥️ **QEMU Capabilities on {resolved_node}**\n"]
     for entry in result:
-        name = entry.get("name", entry.get("id", "unknown"))
-        lines.append(f"   • {name}")
+        if isinstance(entry, str):
+            lines.append(f"   • {entry}")
+        elif isinstance(entry, dict):
+            name = entry.get("name", entry.get("id", "unknown"))
+            lines.append(f"   • {name}")
     if not result:
         lines.append("   No QEMU capabilities found.")
     return "\n".join(lines)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
@@ -153,11 +154,18 @@ async def wipe_disk(
     if not disk:
         raise ValueError("disk identifier is required")
     elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(
-        elevated.nodes(resolved_node).disks.wipedisk.put,
-        elevated=True,
-        disk=disk,
-    )
+    try:
+        result = await client.safe_api_call(
+            elevated.nodes(resolved_node).disks.wipedisk.put,
+            elevated=True,
+            disk=disk,
+        )
+    except ProxmoxPermissionError:
+        return (
+            f"⚠️ Disk wipe requires root@pam authentication. "
+            f"API tokens (even with Administrator role) lack permission for this operation. "
+            f"Use the PVE web UI or SSH with root@pam to wipe disk {disk!r} on {resolved_node}."
+        )
     upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
     return f"Disk {disk!r} wiped on {resolved_node}. UPID: {upid}"
 
@@ -185,7 +193,7 @@ async def zfs_create(
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
-    raidlevel: Optional[str] = None,
+    raidlevel: str = "single",
     ashift: Optional[int] = None,
     confirm: bool = False,
     **kwargs: Any,
@@ -195,12 +203,10 @@ async def zfs_create(
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
+    if not devices:
+        raise ValueError("'devices' is required for ZFS pool creation (comma-separated disk paths)")
     elevated = client.get_client(elevated=True)
-    params: dict[str, Any] = {"name": name}
-    if devices:
-        params["devices"] = devices
-    if raidlevel is not None:
-        params["raidlevel"] = raidlevel
+    params: dict[str, Any] = {"name": name, "devices": devices, "raidlevel": raidlevel}
     if ashift is not None:
         params["ashift"] = ashift
     params.update(kwargs)
@@ -323,6 +329,8 @@ async def lvmthin_create(
     if not name:
         raise ValueError("name is required")
     elevated = client.get_client(elevated=True)
+    # Note: PVE auto-generates thinpool and vgname from the name parameter.
+    # Pass thinpool/vgname via **kwargs only if custom names are needed.
     params: dict[str, Any] = {"name": name}
     if devices:
         params["devices"] = devices

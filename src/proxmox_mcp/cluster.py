@@ -10,32 +10,6 @@ def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-async def cluster_status(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(
-        _api(client).cluster.status.get,
-    )
-    if not isinstance(result, list):
-        result = [result] if result else []
-    lines = ["\U0001f310 **Cluster Status**\n"]
-    for entry in result:
-        etype = entry.get("type", "unknown")
-        name = entry.get("name", entry.get("id", "unknown"))
-        if etype == "cluster":
-            lines.append(f"   • Cluster: {name}")
-            lines.append(f"     Quorum: {'Yes' if entry.get('quorate') else 'No'}")
-            lines.append(f"     Nodes: {entry.get('nodes', 'N/A')}")
-            lines.append(f"     Version: {entry.get('version', 'N/A')}")
-        elif etype == "node":
-            online = entry.get("online", 0)
-            status = "\U0001f7e2 online" if online else "\U0001f534 offline"
-            lines.append(f"   • Node: {name} — {status}")
-            if entry.get("ip"):
-                lines.append(f"     IP: {entry['ip']}")
-    if not result:
-        lines.append("   No cluster status available.")
-    return "\n".join(lines)
-
-
 async def cluster_options(client: ProxmoxClient) -> str:
     result = await client.safe_api_call(
         _api(client).cluster.options.get,

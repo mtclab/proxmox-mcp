@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
-
-
 async def list_pci(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = await client.resolve_node(node)
     validate_node_name(resolved_node)
+    elevated = client.get_client(elevated=True)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).hardware.pci.get,
+        elevated.nodes(resolved_node).hardware.pci.get,
+        elevated=True,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -76,8 +74,10 @@ async def get_pci_device(client: ProxmoxClient, node: Optional[str] = None, pcii
     validate_node_name(resolved_node)
     if not pciid:
         raise ValueError("pciid is required")
+    elevated = client.get_client(elevated=True)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).hardware.pci(pciid).get,
+        elevated.nodes(resolved_node).hardware.pci(pciid).get,
+        elevated=True,
     )
     lines = [f"🔌 **PCI Device: {pciid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -93,8 +93,10 @@ async def list_pci_mdev(client: ProxmoxClient, node: Optional[str] = None, pciid
     validate_node_name(resolved_node)
     if not pciid:
         raise ValueError("pciid is required")
+    elevated = client.get_client(elevated=True)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).hardware.pci(pciid).mdev.get,
+        elevated.nodes(resolved_node).hardware.pci(pciid).mdev.get,
+        elevated=True,
     )
     if not isinstance(result, list):
         result = [result] if result else []

@@ -18,15 +18,13 @@ async def list_acl(client: ProxmoxClient) -> str:
     lines = ["\U0001f510 **ACL Rules**\n"]
     for rule in result:
         path = rule.get("path", "?")
-        users = rule.get("ugid", rule.get("userid", "unknown"))
-        roles_val = rule.get("roleid", rule.get("roles", "unknown"))
-        if isinstance(roles_val, list):
-            roles = ", ".join(str(r) for r in roles_val)
-        else:
-            roles = roles_val
-        propagate = rule.get("propagate", 1)
-        lines.append(f"   • Path: {path}")
-        lines.append(f"     Users: {users} | Roles: {roles} | Propagate: {propagate}")
+        ugid = rule.get("ugid", "?")
+        entry_type = rule.get("type", "?")
+        roleid = rule.get("roleid", "?")
+        if isinstance(roleid, list):
+            roleid = ", ".join(str(r) for r in roleid)
+        propagate = "Yes" if rule.get("propagate", 1) else "No"
+        lines.append(f"   • Path: {path} | {entry_type}: {ugid} | Role: {roleid} | Propagate: {propagate}")
     if not result:
         lines.append("   No ACL rules found.")
     return "\n".join(lines)
