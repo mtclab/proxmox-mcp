@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import warnings
 from typing import Any, Optional
+
+from proxmoxer.core import ResourceException
 
 from proxmox_mcp.utils import confirm_required
 
@@ -176,9 +179,30 @@ def relocate_ha_resource(
 
 
 def list_ha_groups(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.ha.groups.get,
+    """List HA groups.
+
+    .. deprecated::
+        PVE 9.x has migrated HA groups to HA rules. This endpoint may
+        return a 500 error on PVE 9.x clusters. Use :func:`list_ha_rules`
+        instead.
+    """
+    warnings.warn(
+        "list_ha_groups is deprecated: PVE 9.x migrated HA groups to rules; "
+        "use list_ha_rules instead.",
+        DeprecationWarning,
+        stacklevel=2,
     )
+    try:
+        result = client.safe_api_call(
+            _api(client).cluster.ha.groups.get,
+        )
+    except ResourceException as exc:
+        if exc.status_code == 500 and "migrated to rules" in str(exc):
+            return (
+                "⚠️ **HA groups have been migrated to rules in PVE 9.x.**\n"
+                "Use `list_ha_rules` instead."
+            )
+        raise
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["🔴 **HA Groups**\n"]

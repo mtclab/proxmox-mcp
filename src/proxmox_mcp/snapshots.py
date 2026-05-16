@@ -104,6 +104,14 @@ def delete_snapshot(
     vmtype: str = "qemu",
     confirm: bool = False,
 ) -> str:
+    """Delete a snapshot for a VM or LXC container (elevated, confirm required).
+
+    Note: For qemu VMs, PVE requires the VM.Snapshot permission even when
+    using an elevated/admin token. If you encounter "Permission denied
+    (/vms/<vmid>, VM.Snapshot)", grant VM.Snapshot to the elevated token's
+    user via PVE ACL: Datacenter → Permissions → Add: path=/vms/<vmid>,
+    role=Administrator (or a custom role with VM.Snapshot), user=<token_user>.
+    """
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     resolved_node = client.resolve_node(node)

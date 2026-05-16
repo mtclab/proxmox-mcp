@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from proxmox_mcp.exceptions import ProxmoxNotFoundError
 from proxmox_mcp.utils import confirm_required
 
 
@@ -85,11 +86,17 @@ def delete_acl(
     if not propagate:
         params["propagate"] = 0
     elevated = client.get_client(elevated=True)
-    client.safe_api_call(
-        elevated.access.acl.put,
-        elevated=True,
-        **params,
-    )
+    try:
+        client.safe_api_call(
+            elevated.access.acl.put,
+            elevated=True,
+            **params,
+        )
+    except ProxmoxNotFoundError:
+        return (
+            f"ACL entry not found (may have been auto-removed with role deletion): "
+            f"path={path!r} roles={roles!r} users={users!r}"
+        )
     return f"ACL deleted: users={users!r} roles={roles!r} path={path!r}"
 
 

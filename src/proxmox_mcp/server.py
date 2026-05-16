@@ -1570,7 +1570,7 @@ def proxmox_list_cluster_firewall_rules() -> str:
 @mcp.tool()
 def proxmox_create_cluster_firewall_rule(
     action: str = "ACCEPT",
-    dptype: str | None = None,
+    dptype: str = "in",
     dport: str | None = None,
     sport: str | None = None,
     proto: str | None = None,
@@ -1580,7 +1580,9 @@ def proxmox_create_cluster_firewall_rule(
     comment: str | None = None,
     confirm: bool = False,
 ) -> str:
-    """Create a cluster firewall rule (elevated, confirm required)."""
+    """Create a cluster firewall rule (elevated, confirm required).
+    dptype: traffic direction — 'in' (default), 'out', or 'forward'.
+    Maps to PVE's 'type' field."""
     return firewall.create_cluster_firewall_rule(
         client, action=action, dptype=dptype, dport=dport,
         sport=sport, proto=proto, source=source, dest=dest,
@@ -1687,7 +1689,7 @@ def proxmox_list_node_firewall_rules(node: str | None = None) -> str:
 def proxmox_create_node_firewall_rule(
     node: str | None = None,
     action: str = "ACCEPT",
-    dptype: str | None = None,
+    dptype: str = "in",
     dport: str | None = None,
     sport: str | None = None,
     proto: str | None = None,
@@ -1697,7 +1699,9 @@ def proxmox_create_node_firewall_rule(
     comment: str | None = None,
     confirm: bool = False,
 ) -> str:
-    """Create a node firewall rule (elevated, confirm required)."""
+    """Create a node firewall rule (elevated, confirm required).
+    dptype: traffic direction — 'in' (default), 'out', or 'forward'.
+    Maps to PVE's 'type' field."""
     return firewall.create_node_firewall_rule(
         client, node=node, action=action, dptype=dptype, dport=dport,
         sport=sport, proto=proto, source=source, dest=dest,
@@ -1737,7 +1741,7 @@ def proxmox_create_vm_firewall_rule(
     vmid: int | None = None,
     vmtype: str = "qemu",
     action: str = "ACCEPT",
-    dptype: str | None = None,
+    dptype: str = "in",
     dport: str | None = None,
     sport: str | None = None,
     proto: str | None = None,
@@ -1747,7 +1751,10 @@ def proxmox_create_vm_firewall_rule(
     comment: str | None = None,
     confirm: bool = False,
 ) -> str:
-    """Create a VM firewall rule (elevated, confirm required). vmtype: 'qemu' or 'lxc'."""
+    """Create a VM firewall rule (elevated, confirm required).
+    vmtype: 'qemu' or 'lxc'.
+    dptype: traffic direction — 'in' (default), 'out', or 'forward'.
+    Maps to PVE's 'type' field."""
     return firewall.create_vm_firewall_rule(
         client, node=node, vmid=vmid, vmtype=vmtype, action=action,
         dptype=dptype, dport=dport, sport=sport, proto=proto,

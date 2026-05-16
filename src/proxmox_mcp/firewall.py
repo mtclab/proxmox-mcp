@@ -65,7 +65,7 @@ def list_cluster_firewall_rules(client: Any) -> str:
 def create_cluster_firewall_rule(
     client: Any,
     action: str = "ACCEPT",
-    dptype: str | None = None,
+    dptype: str = "in",
     dport: str | None = None,
     sport: str | None = None,
     proto: str | None = None,
@@ -77,9 +77,7 @@ def create_cluster_firewall_rule(
     **kwargs: Any,
 ) -> str:
     client.raise_if_not_elevated()
-    params: dict[str, Any] = {"action": action}
-    if dptype is not None:
-        params["type"] = dptype
+    params: dict[str, Any] = {"action": action, "type": dptype}
     if dport is not None:
         params["dport"] = dport
     if sport is not None:
@@ -354,7 +352,7 @@ def create_node_firewall_rule(
     client: Any,
     node: Optional[str] = None,
     action: str = "ACCEPT",
-    dptype: str | None = None,
+    dptype: str = "in",
     dport: str | None = None,
     sport: str | None = None,
     proto: str | None = None,
@@ -368,9 +366,7 @@ def create_node_firewall_rule(
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    params: dict[str, Any] = {"action": action}
-    if dptype is not None:
-        params["type"] = dptype
+    params: dict[str, Any] = {"action": action, "type": dptype}
     if dport is not None:
         params["dport"] = dport
     if sport is not None:
@@ -483,7 +479,7 @@ def create_vm_firewall_rule(
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
     action: str = "ACCEPT",
-    dptype: str | None = None,
+    dptype: str = "in",
     dport: str | None = None,
     sport: str | None = None,
     proto: str | None = None,
@@ -499,9 +495,7 @@ def create_vm_firewall_rule(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    params: dict[str, Any] = {"action": action}
-    if dptype is not None:
-        params["type"] = dptype
+    params: dict[str, Any] = {"action": action, "type": dptype}
     if dport is not None:
         params["dport"] = dport
     if sport is not None:

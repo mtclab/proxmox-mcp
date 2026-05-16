@@ -587,6 +587,8 @@ def configure_vm(
     result = client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params
     )
+    if result is None:
+        return f"VM {vmid} configuration updated on {resolved_node} (no pending changes)"
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} configured on {resolved_node}. UPID: {upid}"
 
@@ -1187,6 +1189,25 @@ def get_vm_config(
     return "\n".join(lines)
 
 
+def _parse_kwargs(kwargs: Any) -> dict[str, Any]:
+    import json
+
+    if isinstance(kwargs, dict):
+        return kwargs
+    if isinstance(kwargs, str):
+        try:
+            parsed = json.loads(kwargs)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        try:
+            return {k: v for k, v in (pair.split("=", 1) for pair in kwargs.split() if "=" in pair)}
+        except ValueError:
+            return {}
+    return {}
+
+
 @confirm_required
 def update_vm_config(
     client: Any,
@@ -1199,12 +1220,15 @@ def update_vm_config(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    if not kwargs:
+    parsed = _parse_kwargs(kwargs)
+    if not parsed:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).config.post, elevated=True, **kwargs
+        elevated.nodes(resolved_node).qemu(vmid).config.post, elevated=True, **parsed
     )
+    if result is None:
+        return f"VM {vmid} config updated on {resolved_node} (no pending changes)"
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} config updated on {resolved_node}. UPID: {upid}"
 
