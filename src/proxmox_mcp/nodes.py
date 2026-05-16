@@ -15,9 +15,7 @@ def node_config(
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).config.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).config.get)
     lines = [f"⚙️ **Node Config: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -45,9 +43,7 @@ def update_node_config(
     if time_zone is not None:
         params["timezone"] = time_zone
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).config.put, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).config.put, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} config updated. UPID: {upid}"
 
@@ -62,9 +58,7 @@ def reboot_node(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).status.post, elevated=True, command="reboot"
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="reboot")
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} reboot initiated. UPID: {upid}"
 
@@ -79,9 +73,7 @@ def shutdown_node(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).status.post, elevated=True, command="shutdown"
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="shutdown")
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} shutdown initiated. UPID: {upid}"
 
@@ -96,9 +88,7 @@ def start_all(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).startall.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).startall.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Start all on node {resolved_node} initiated. UPID: {upid}"
 
@@ -113,9 +103,7 @@ def stop_all(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).stopall.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).stopall.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Stop all on node {resolved_node} initiated. UPID: {upid}"
 
@@ -130,9 +118,7 @@ def suspend_all(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).suspendall.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).suspendall.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Suspend all on node {resolved_node} initiated. UPID: {upid}"
 
@@ -151,9 +137,7 @@ def migrate_all(
     if target is not None:
         params["target"] = target
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).migrateall.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).migrateall.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Migrate all on node {resolved_node} initiated. UPID: {upid}"
 
@@ -164,9 +148,7 @@ def get_node_detailed_status(
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).status.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).status.get)
     lines = [f"📊 **Node Status: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -180,9 +162,7 @@ def list_services(
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).services.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).services.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"🔧 **Services on {resolved_node}**\n"]
@@ -207,9 +187,7 @@ def service_state(
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).services(service).state.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).services(service).state.get)
     lines = [f"🔧 **Service: {service} on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -230,9 +208,7 @@ def start_service(
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).services(service).start.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).start.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} start initiated on {resolved_node}. UPID: {upid}"
 
@@ -250,9 +226,7 @@ def stop_service(
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).services(service).stop.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).stop.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} stop initiated on {resolved_node}. UPID: {upid}"
 
@@ -270,9 +244,7 @@ def restart_service(
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).services(service).restart.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).restart.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} restart initiated on {resolved_node}. UPID: {upid}"
 
@@ -283,9 +255,7 @@ def node_dns(
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).dns.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).dns.get)
     lines = [f"🌐 **DNS Settings: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -299,9 +269,7 @@ def node_hosts(
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).hosts.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).hosts.get)
     lines = [f"📋 **Hosts File: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -320,9 +288,7 @@ def node_report(
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).report.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).report.get)
     lines = [f"📋 **Node Report: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -350,9 +316,7 @@ def node_netstat(
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).netstat.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).netstat.get)
     lines = [f"🌐 **Netstat: {resolved_node}**\n"]
     if isinstance(result, list):
         for entry in result[:50]:
@@ -694,9 +658,7 @@ def reload_service(
     if not service:
         raise ValueError("service is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).services(service).reload.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).services(service).reload.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
     return f"Service {service!r} reload initiated on {resolved_node}. UPID: {upid}"
 
@@ -713,6 +675,17 @@ def node_execute(
     validate_node_name(resolved_node)
     if not commands:
         raise ValueError("commands is required")
+    if client.config.allowed_node_commands is not None:
+        allowed = False
+        for prefix in client.config.allowed_node_commands:
+            if commands.strip().lower().startswith(prefix.lower()):
+                allowed = True
+                break
+        if not allowed:
+            raise ValueError(
+                f"Command {commands!r} is not in PROXMOX_ALLOWED_NODE_COMMANDS allowlist. "
+                f"Allowed prefixes: {client.config.allowed_node_commands}"
+            )
     elevated = client.get_client(elevated=True)
     params: dict[str, Any] = {"command": commands}
     result = client.safe_api_call(

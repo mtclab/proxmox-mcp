@@ -18,9 +18,7 @@ def _get_next_vmid(client: Any) -> int:
 def _validate_ostemplate(client: Any, node: str, ostemplate: str) -> None:
     storage_name = ostemplate.split(":")[0] if ":" in ostemplate else "local"
     try:
-        content = client.safe_api_call(
-            _api(client).nodes(node).storage(storage_name).content.get
-        )
+        content = client.safe_api_call(_api(client).nodes(node).storage(storage_name).content.get)
         if isinstance(content, list):
             volids = [item.get("volid", "") for item in content]
             if ostemplate not in volids:
@@ -77,9 +75,7 @@ def create_lxc(
         params["start"] = 1
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC container {vmid} created on {resolved_node}. UPID: {upid}"
 
@@ -96,9 +92,7 @@ def start_lxc(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).status.start.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.start.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} start initiated on {resolved_node}. UPID: {upid}"
 
@@ -115,9 +109,7 @@ def stop_lxc(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).status.stop.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.stop.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} stop initiated on {resolved_node}. UPID: {upid}"
 
@@ -134,9 +126,7 @@ def shutdown_lxc(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).status.shutdown.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.shutdown.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} shutdown initiated on {resolved_node}. UPID: {upid}"
 
@@ -153,9 +143,7 @@ def reboot_lxc(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).status.reboot.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.reboot.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} reboot initiated on {resolved_node}. UPID: {upid}"
 
@@ -172,9 +160,7 @@ def delete_lxc(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).delete, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).delete, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} deleted on {resolved_node}. UPID: {upid}"
 
@@ -200,9 +186,7 @@ def configure_lxc(
         params["memory"] = memory
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).config.put, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).config.put, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} configured on {resolved_node}. UPID: {upid}"
 
@@ -261,9 +245,7 @@ def create_vm(
         params["net0"] = net0
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} created on {resolved_node}. UPID: {upid}"
 
@@ -280,9 +262,7 @@ def start_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).status.start.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.start.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} start initiated on {resolved_node}. UPID: {upid}"
 
@@ -299,9 +279,7 @@ def stop_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).status.stop.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.stop.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} stop initiated on {resolved_node}. UPID: {upid}"
 
@@ -318,9 +296,7 @@ def shutdown_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).status.shutdown.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.shutdown.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} shutdown initiated on {resolved_node}. UPID: {upid}"
 
@@ -337,9 +313,7 @@ def reboot_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).status.reboot.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reboot.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} reboot initiated on {resolved_node}. UPID: {upid}"
 
@@ -356,9 +330,7 @@ def delete_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).delete, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).delete, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} deleted on {resolved_node}. UPID: {upid}"
 
@@ -388,9 +360,7 @@ def clone_vm(
     params["full"] = 1 if full else 0
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).clone.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).clone.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} clone initiated → {newid} on {resolved_node}. UPID: {upid}"
 
@@ -411,9 +381,7 @@ def migrate_vm(
     params: dict[str, Any] = {"target": target}
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).migrate.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).migrate.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} migration to {target} initiated. UPID: {upid}"
 
@@ -452,9 +420,7 @@ def suspend_lxc(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).status.suspend.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.suspend.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} suspend initiated on {resolved_node}. UPID: {upid}"
 
@@ -471,9 +437,7 @@ def resume_lxc(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).status.resume.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.resume.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} resume initiated on {resolved_node}. UPID: {upid}"
 
@@ -506,9 +470,7 @@ def clone_lxc(
         params["target"] = target
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).clone.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).clone.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} clone initiated → {newid} on {resolved_node}. UPID: {upid}"
 
@@ -529,9 +491,7 @@ def migrate_lxc(
     params: dict[str, Any] = {"target": target}
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).migrate.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).migrate.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} migration to {target} initiated. UPID: {upid}"
 
@@ -544,9 +504,7 @@ def lxc_interfaces(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(vmid).interfaces.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).interfaces.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"**Interfaces for LXC {vmid} on {resolved_node}**\n"]
@@ -585,9 +543,7 @@ def configure_vm(
         params["memory"] = memory
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)
     if result is None:
         return f"VM {vmid} configuration updated on {resolved_node} (no pending changes)"
     upid = result if isinstance(result, str) else result.get("data", result)
@@ -627,9 +583,7 @@ def reset_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).status.reset.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reset.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} reset initiated on {resolved_node}. UPID: {upid}"
 
@@ -646,9 +600,7 @@ def suspend_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).status.suspend.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.suspend.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} suspend initiated on {resolved_node}. UPID: {upid}"
 
@@ -665,9 +617,7 @@ def resume_vm(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).status.resume.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.resume.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} resume initiated on {resolved_node}. UPID: {upid}"
 
@@ -692,9 +642,7 @@ def move_vm_disk(
         params["format"] = format
 
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).move_disk.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).move_disk.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} disk {disk} move to {storage} initiated on {resolved_node}. UPID: {upid}"
 
@@ -711,9 +659,7 @@ def convert_to_template(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).template.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).template.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} convert to template initiated on {resolved_node}. UPID: {upid}"
 
@@ -730,9 +676,7 @@ def convert_lxc_to_template(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).template.post, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).template.post, elevated=True)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} convert to template initiated on {resolved_node}. UPID: {upid}"
 
@@ -745,9 +689,7 @@ def lxc_migrate_preconditions(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(vmid).migrate.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).migrate.get)
     lines = [f"**LXC {vmid} migrate preconditions on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -765,9 +707,7 @@ def vm_migrate_preconditions(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu(vmid).migrate.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).migrate.get)
     lines = [f"**VM {vmid} migrate preconditions on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -786,9 +726,7 @@ def lxc_feature_check(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(vmid).feature.get, feature=feature
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).feature.get, feature=feature)
     lines = [f"**LXC {vmid} feature check on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in result.items():
@@ -807,9 +745,7 @@ def vm_feature_check(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu(vmid).feature.get, feature=feature
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).feature.get, feature=feature)
     lines = [f"**VM {vmid} feature check on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in result.items():
@@ -827,9 +763,7 @@ def vm_pending_config(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu(vmid).pending.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).pending.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"**VM {vmid} pending config on {resolved_node}**\n"]
@@ -854,9 +788,7 @@ def lxc_pending_config(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(vmid).pending.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).pending.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"**LXC {vmid} pending config on {resolved_node}**\n"]
@@ -888,9 +820,7 @@ def send_vm_key(
     if not key:
         raise ValueError("key is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).sendkey.put, elevated=True, key=key
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).sendkey.put, elevated=True, key=key)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Key {key!r} sent to VM {vmid} on {resolved_node}. UPID: {upid}"
 
@@ -905,17 +835,30 @@ def vm_monitor_command(
 ) -> str:
     """WARNING: This sends a raw QEMU monitor command directly to the VM.
     Extremely powerful and dangerous — can crash or corrupt the guest.
-    Use with extreme caution."""
+    Use with extreme caution.
+
+    SECURITY: If PROXMOX_ALLOWED_MONITOR_COMMANDS is set, only commands
+    starting with entries in that allowlist are permitted. If not set,
+    all commands are allowed (require elevated token + confirm)."""
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     if not command:
         raise ValueError("command is required")
+    if client.config.allowed_monitor_commands is not None:
+        allowed = False
+        for prefix in client.config.allowed_monitor_commands:
+            if command.strip().lower().startswith(prefix.lower()):
+                allowed = True
+                break
+        if not allowed:
+            raise ValueError(
+                f"Monitor command {command!r} is not in PROXMOX_ALLOWED_MONITOR_COMMANDS allowlist. "
+                f"Allowed prefixes: {client.config.allowed_monitor_commands}"
+            )
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).monitor.post, elevated=True, command=command
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).monitor.post, elevated=True, command=command)
     lines = [f"**VM {vmid} monitor command on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -940,9 +883,7 @@ def unlink_vm_disk(
     if not idlist:
         raise ValueError("idlist is required (comma-separated disk IDs)")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).unlink.put, elevated=True, idlist=idlist
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).unlink.put, elevated=True, idlist=idlist)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} disks {idlist!r} unlinked on {resolved_node}. UPID: {upid}"
 
@@ -960,7 +901,8 @@ def vm_dbus_vmstate(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).dbus_vmstate.post, elevated=True,
+        elevated.nodes(resolved_node).qemu(vmid).dbus_vmstate.post,
+        elevated=True,
     )
     return f"DBus VMstate triggered for VM {vmid} on {resolved_node}"
 
@@ -1007,9 +949,7 @@ def get_lxc_config(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     try:
-        result = client.safe_api_call(
-            _api(client).nodes(resolved_node).lxc(vmid).config.get
-        )
+        result = client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).config.get)
     except ProxmoxNotFoundError:
         return f"LXC {vmid} not found on node {resolved_node}"
     lines = [f"**LXC {vmid} config on {resolved_node}**\n"]
@@ -1032,9 +972,7 @@ def get_lxc_status(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     try:
-        result = client.safe_api_call(
-            _api(client).nodes(resolved_node).lxc(vmid).status.current.get
-        )
+        result = client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).status.current.get)
     except ProxmoxNotFoundError:
         return f"LXC {vmid} not found on node {resolved_node}"
     lines = [f"**LXC {vmid} status on {resolved_node}**\n"]
@@ -1067,9 +1005,7 @@ def remote_migrate_lxc(
     params: dict[str, Any] = {"target": target, "target-endpoint": target_endpoint}
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).remote_migrate.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).remote_migrate.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} remote migration to {target} via {target_endpoint} initiated. UPID: {upid}"
 
@@ -1099,9 +1035,7 @@ def move_lxc_volume(
         params["target-volume"] = target_volume
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).move_volume.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).move_volume.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} volume {volume} move initiated on {resolved_node}. UPID: {upid}"
 
@@ -1185,9 +1119,7 @@ def get_vm_config(
     if current:
         params["current"] = 1
     try:
-        result = client.safe_api_call(
-            _api(client).nodes(resolved_node).qemu(vmid).config.get, **params
-        )
+        result = client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).config.get, **params)
     except ProxmoxNotFoundError:
         return f"VM {vmid} not found on node {resolved_node}"
     lines = [f"**VM {vmid} config on {resolved_node}**\n"]
@@ -1234,9 +1166,7 @@ def update_vm_config(
     if not parsed:
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).config.post, elevated=True, **parsed
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.post, elevated=True, **parsed)
     if result is None:
         return f"VM {vmid} config updated on {resolved_node} (no pending changes)"
     upid = result if isinstance(result, str) else result.get("data", result)
@@ -1254,9 +1184,7 @@ def vm_rrddata(
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"timeframe": timeframe, "cf": cf}
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu(vmid).rrddata.get, **params
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).rrddata.get, **params)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📈 **VM {vmid} RRD data on {resolved_node} (timeframe={timeframe}, cf={cf})**\n"]
@@ -1293,9 +1221,7 @@ def remote_migrate_vm(
     if target_storage:
         params["target-storage"] = target_storage
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).remote_migrate.post, elevated=True, **params
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).remote_migrate.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} remote migration to {target_address} initiated. UPID: {upid}"
 
@@ -1315,8 +1241,6 @@ def lxc_sendkey(
     if not key:
         raise ValueError("key is required")
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).sendkey.put, elevated=True, key=key
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).sendkey.put, elevated=True, key=key)
     upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
     return f"Key {key!r} sent to LXC {vmid} on {resolved_node}. UPID: {upid}"

@@ -22,6 +22,8 @@ class Config:
         allow_elevated: bool = False,
         default_node: Optional[str] = None,
         allowed_commands: Optional[list[str]] = None,
+        allowed_monitor_commands: Optional[list[str]] = None,
+        allowed_node_commands: Optional[list[str]] = None,
         upload_dir: Optional[str] = None,
     ) -> None:
         self.url = url
@@ -33,6 +35,8 @@ class Config:
         self.allow_elevated = allow_elevated
         self.default_node = default_node
         self.allowed_commands = allowed_commands
+        self.allowed_monitor_commands = allowed_monitor_commands
+        self.allowed_node_commands = allowed_node_commands
         self.upload_dir = upload_dir
 
         self._validate()
@@ -46,9 +50,7 @@ class Config:
             ("PROXMOX_ADMIN_TOKEN_ID", self.admin_token_id),
         ]:
             if not _TOKEN_RE.match(tid):
-                raise ValueError(
-                    f"{label} must match user@realm!tokenid format — got {tid!r}"
-                )
+                raise ValueError(f"{label} must match user@realm!tokenid format — got {tid!r}")
 
     @classmethod
     def from_env(cls, dotenv_path: Optional[str | Path] = None) -> Config:
@@ -88,6 +90,12 @@ class Config:
         allowed_commands_raw = os.environ.get("PROXMOX_ALLOWED_COMMANDS", "")
         allowed_commands = [c.strip() for c in allowed_commands_raw.split(",") if c.strip()] or None
 
+        allowed_monitor_commands_raw = os.environ.get("PROXMOX_ALLOWED_MONITOR_COMMANDS", "")
+        allowed_monitor_commands = [c.strip() for c in allowed_monitor_commands_raw.split(",") if c.strip()] or None
+
+        allowed_node_commands_raw = os.environ.get("PROXMOX_ALLOWED_NODE_COMMANDS", "")
+        allowed_node_commands = [c.strip() for c in allowed_node_commands_raw.split(",") if c.strip()] or None
+
         upload_dir = os.environ.get("PROXMOX_UPLOAD_DIR") or None
 
         verify_raw = os.environ.get("PROXMOX_VERIFY", "true").strip().lower()
@@ -108,6 +116,8 @@ class Config:
             allow_elevated=allow_elevated,
             default_node=default_node,
             allowed_commands=allowed_commands,
+            allowed_monitor_commands=allowed_monitor_commands,
+            allowed_node_commands=allowed_node_commands,
             upload_dir=upload_dir,
         )
 
