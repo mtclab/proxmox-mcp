@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+from typing import Any, Optional
+
+from proxmox_mcp.utils import confirm_required, validate_node_name
+
+
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=False)
+
+
+def list_updates(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).apt.update.get,
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"📦 **APT Updates on {resolved_node}**\n"]
+    for pkg in result:
+        package = pkg.get("Package", pkg.get("package", "unknown"))
+        version = pkg.get("Version", pkg.get("version", "N/A"))
+        oldver = pkg.get("OldVersion", pkg.get("oldversion", ""))
+        description = pkg.get("Description", pkg.get("description", ""))
+        lines.append(f"   • **{package}** → {version}")
+        if oldver:
+            lines.append(f"     From: {oldver}")
+        if description and len(description) <= 120:
+            lines.append(f"     {description}")
+    if not result:
+        lines.append("   No updates available.")
+    return "\n".join(lines)
+
+
+@confirm_required
+def refresh_updates(
+    client: Any,
+    node: Optional[str] = None,
+    confirm: bool = False,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).apt.update.post,
+        elevated=True,
+    )
+    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    return f"APT update refresh initiated on {resolved_node}. UPID: {upid}"
+
+
+def list_repositories(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).apt.repositories.get,
+    )
+    lines = [f"📦 **APT Repositories on {resolved_node}**\n"]
+    if isinstance(result, dict):
+        data = result.get("data", result)
+        if isinstance(data, list):
+            for repo in data:
+                path = repo.get("Path", repo.get("path", "N/A"))
+                suite = repo.get("Suite", repo.get("suite", "N/A"))
+                components = repo.get("Components", repo.get("components", ""))
+                enabled = repo.get("Enabled", repo.get("enabled", True))
+                comment = repo.get("Comment", repo.get("comment", ""))
+                lines.append(f"   • **{path} {suite}** {'(enabled)' if enabled else '(disabled)'}")
+                if components:
+                    lines.append(f"     Components: {components}")
+                if comment:
+                    lines.append(f"     {comment}")
+        elif isinstance(data, dict):
+            for key, value in sorted(data.items()):
+                lines.append(f"   • {key}: {value}")
+    elif isinstance(result, list):
+        for repo in result:
+            path = repo.get("Path", repo.get("path", "N/A"))
+            suite = repo.get("Suite", repo.get("suite", "N/A"))
+            enabled = repo.get("Enabled", repo.get("enabled", True))
+            lines.append(f"   • **{path} {suite}** {'(enabled)' if enabled else '(disabled)'}")
+    if len(lines) == 1:
+        lines.append("   No repository information available.")
+    return "\n".join(lines)
+
+
+def list_versions(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).apt.versions.get,
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"📦 **APT Versions on {resolved_node}**\n"]
+    for pkg in result:
+        package = pkg.get("Package", pkg.get("package", "unknown"))
+        version = pkg.get("Version", pkg.get("version", "N/A"))
+        oldver = pkg.get("OldVersion", pkg.get("oldversion", ""))
+        origin = pkg.get("Origin", pkg.get("origin", ""))
+        lines.append(f"   • **{package}** {version}")
+        if origin:
+            lines.append(f"     Origin: {origin}")
+        if oldver:
+            lines.append(f"     Old: {oldver}")
+    if not result:
+        lines.append("   No version information available.")
+    return "\n".join(lines)
+
+
+@confirm_required
+def add_apt_repo(
+    client: Any,
+    node: Optional[str] = None,
+    path: Optional[str] = None,
+    index: Optional[int] = None,
+    enabled: Optional[bool] = None,
+    confirm: bool = False,
+    **kwargs: Any,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    elevated = client.get_client(elevated=True)
+    params: dict[str, Any] = {}
+    if path is not None:
+        params["path"] = path
+    if index is not None:
+        params["index"] = index
+    if enabled is not None:
+        params["enabled"] = 1 if enabled else 0
+    params.update(kwargs)
+    client.safe_api_call(
+        elevated.nodes(resolved_node).apt.repositories.post,
+        elevated=True,
+        **params,
+    )
+    return f"APT repository added on {resolved_node}"
+
+
+@confirm_required
+def update_apt_repo(
+    client: Any,
+    node: Optional[str] = None,
+    path: Optional[str] = None,
+    index: Optional[int] = None,
+    enabled: Optional[bool] = None,
+    confirm: bool = False,
+    **kwargs: Any,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    elevated = client.get_client(elevated=True)
+    params: dict[str, Any] = {}
+    if path is not None:
+        params["path"] = path
+    if index is not None:
+        params["index"] = index
+    if enabled is not None:
+        params["enabled"] = 1 if enabled else 0
+    params.update(kwargs)
+    client.safe_api_call(
+        elevated.nodes(resolved_node).apt.repositories.put,
+        elevated=True,
+        **params,
+    )
+    return f"APT repository updated on {resolved_node}"
+
+
+def list_apt_changelog(
+    client: Any,
+    node: Optional[str] = None,
+    name: Optional[str] = None,
+    version: Optional[str] = None,
+    **kwargs: Any,
+) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    params: dict[str, Any] = {}
+    if name is not None:
+        params["name"] = name
+    if version is not None:
+        params["version"] = version
+    params.update(kwargs)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).apt.changelog.get,
+        **params,
+    )
+    lines = [f"📦 **APT Changelog on {resolved_node}**\n"]
+    if isinstance(result, dict):
+        data = result.get("data", result)
+        if isinstance(data, str):
+            for line in data.strip().splitlines()[:100]:
+                lines.append(f"   {line}")
+        elif isinstance(data, dict):
+            for key, value in sorted(data.items()):
+                lines.append(f"   • {key}: {value}")
+        else:
+            lines.append(str(data))
+    elif isinstance(result, str):
+        for line in result.strip().splitlines()[:100]:
+            lines.append(f"   {line}")
+    else:
+        lines.append(str(result))
+    return "\n".join(lines)

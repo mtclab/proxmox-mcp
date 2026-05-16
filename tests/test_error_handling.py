@@ -11,6 +11,7 @@ from proxmox_mcp.config import Config
 from proxmox_mcp.exceptions import (
     ProxmoxConnectionError,
     ProxmoxError,
+    ProxmoxNotFoundError,
     ProxmoxNodeError,
     ProxmoxPermissionError,
     ProxmoxTaskError,
@@ -46,6 +47,11 @@ def _make_595(msg: str = "connection refused") -> ResourceException:
 
 def _make_403(endpoint: str = "GET /nodes/pve/qemu") -> ResourceException:
     return ResourceException(403, "Forbidden", endpoint)
+
+
+def _make_500_not_exists(vmid: int = 999, node: str = "pve", vmtype: str = "qemu") -> ResourceException:
+    content = f"Configuration file 'nodes/{node}/{vmtype}-server/{vmid}.conf' does not exist"
+    return ResourceException(500, "Internal Server Error", content)
 
 
 class TestRetryWithBackoff595:
@@ -188,6 +194,7 @@ class TestCustomExceptions:
         assert issubclass(ProxmoxPermissionError, ProxmoxError)
         assert issubclass(ProxmoxTaskError, ProxmoxError)
         assert issubclass(ProxmoxNodeError, ProxmoxError)
+        assert issubclass(ProxmoxNotFoundError, ProxmoxError)
 
     def test_proxmox_task_error_attributes(self) -> None:
         err = ProxmoxTaskError("command failed: exit 1", "output details")
@@ -212,7 +219,48 @@ class TestCustomExceptions:
         err = ProxmoxPermissionError("Permission denied on /nodes/pve")
         assert "Permission denied" in str(err)
 
+    def test_proxmox_not_found_with_node(self) -> None:
+        err = ProxmoxNotFoundError("Guest 999", "pve")
+        assert err.resource == "Guest 999"
+        assert err.node == "pve"
+        assert "Guest 999 not found on node pve" in str(err)
+
+    def test_proxmox_not_found_without_node(self) -> None:
+        err = ProxmoxNotFoundError("Resource xyz")
+        assert err.node is None
+        assert "Resource xyz not found" in str(err)
+
 
 class TestUploadFieldConstant:
     def test_upload_field_is_filename(self) -> None:
         assert PVE_UPLOAD_FILE_FIELD == "filename"
+
+
+class TestNotFound500:
+    def test_500_not_exist_raises_not_found_error(self, client: ProxmoxClient) -> None:
+        def raise_500_not_exist():
+            raise _make_500_not_exists(vmid=999, node="pve")
+
+        with pytest.raises(ProxmoxNotFoundError, match="Guest 999 not found on node pve"):
+            client.retry_with_backoff(raise_500_not_exist)
+
+    def test_500_not_exist_lxc(self, client: ProxmoxClient) -> None:
+        def raise_500_lxc_not_exist():
+            raise _make_500_not_exists(vmid=200, node="mynode", vmtype="lxc")
+
+        with pytest.raises(ProxmoxNotFoundError, match="Guest 200 not found on node mynode"):
+            client.retry_with_backoff(raise_500_lxc_not_exist)
+
+    def test_500_other_error_reraises(self, client: ProxmoxClient) -> None:
+        def raise_500_other():
+            raise ResourceException(500, "Internal Server Error", "some other 500 error")
+
+        with pytest.raises(ResourceException):
+            client.retry_with_backoff(raise_500_other)
+
+    def test_safe_api_call_propagates_not_found(self, client: ProxmoxClient) -> None:
+        def raise_500_not_exist():
+            raise _make_500_not_exists(vmid=42, node="pve")
+
+        with pytest.raises(ProxmoxNotFoundError, match="Guest 42 not found on node pve"):
+            client.safe_api_call(raise_500_not_exist)

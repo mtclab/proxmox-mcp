@@ -30,3 +30,14 @@ class ProxmoxNodeError(ProxmoxError):
         if reason:
             msg += f": {reason}"
         super().__init__(msg)
+
+
+class ProxmoxNotFoundError(ProxmoxError):
+    def __init__(self, resource: str, node: str | None = None) -> None:
+        self.resource = resource
+        self.node = node
+        if node:
+            msg = f"{resource} not found on node {node}"
+        else:
+            msg = f"{resource} not found"
+        super().__init__(msg)

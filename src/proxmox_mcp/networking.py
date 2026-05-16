@@ -1,12 +1,42 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 
-from proxmox_mcp.utils import confirm_required
+from proxmox_mcp.utils import confirm_required, validate_iface_name
+
+logger = logging.getLogger(__name__)
 
 
 def _api(client: Any) -> Any:
-    return client.get_client(elevated=client.config.allow_elevated)
+    return client.get_client(elevated=False)
+
+
+def _is_management_interface(client: Any, node: str, iface: str) -> bool:
+    if iface == "vmbr0":
+        return True
+    try:
+        host = client.config.host
+        result = client.safe_api_call(
+            client.get_client(elevated=False).nodes(node).network.get
+        )
+        if isinstance(result, list):
+            for ent in result:
+                if ent.get("iface") == iface:
+                    addr = ent.get("address", "")
+                    if addr and host in addr:
+                        return True
+    except Exception:
+        logger.warning("Could not check if %s is management interface", iface)
+    return False
+
+
+def _apply_network(client: Any, node: str, iface: str = "") -> None:
+    elevated = client.get_client(elevated=True)
+    client.safe_api_call(
+        elevated.nodes(node).network.put,
+        elevated=True,
+    )
 
 
 def list_network(
@@ -49,11 +79,13 @@ def create_network(
     gateway: Optional[str] = None,
     bridge_ports: Optional[str] = None,
     confirm: bool = False,
+    apply: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
     if not iface:
         raise ValueError("iface is required for network interface creation")
+    validate_iface_name(iface)
     params: dict[str, Any] = {"iface": iface, "type": type}
     if address:
         params["address"] = address
@@ -70,7 +102,15 @@ def create_network(
         **params,
     )
     upid = result if isinstance(result, str) else result.get("data", result)
-    return f"Network interface {iface!r} creation initiated on {resolved_node}. UPID: {upid}"
+    msg = f"Network interface {iface!r} creation initiated on {resolved_node}. UPID: {upid}"
+    if apply:
+        warnings: list[str] = []
+        if _is_management_interface(client, resolved_node, iface):
+            warnings.append(" WARNING: Applying changes to management interface may disconnect the agent.")
+        _apply_network(client, resolved_node, iface)
+        msg += " Network changes applied."
+        msg += "".join(warnings)
+    return msg
 
 
 @confirm_required
@@ -82,11 +122,13 @@ def update_network(
     netmask: Optional[str] = None,
     gateway: Optional[str] = None,
     confirm: bool = False,
+    apply: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
     if not iface:
         raise ValueError("iface is required for network interface update")
+    validate_iface_name(iface)
     params: dict[str, Any] = {}
     if address:
         params["address"] = address
@@ -101,7 +143,15 @@ def update_network(
         **params,
     )
     upid = result if isinstance(result, str) else result.get("data", result)
-    return f"Network interface {iface!r} update initiated on {resolved_node}. UPID: {upid}"
+    msg = f"Network interface {iface!r} update initiated on {resolved_node}. UPID: {upid}"
+    if apply:
+        warnings: list[str] = []
+        if _is_management_interface(client, resolved_node, iface):
+            warnings.append(" WARNING: Applying changes to management interface may disconnect the agent.")
+        _apply_network(client, resolved_node, iface)
+        msg += " Network changes applied."
+        msg += "".join(warnings)
+    return msg
 
 
 @confirm_required
@@ -110,15 +160,42 @@ def delete_network(
     node: Optional[str] = None,
     iface: str = "",
     confirm: bool = False,
+    apply: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
     if not iface:
         raise ValueError("iface is required for network interface deletion")
+    validate_iface_name(iface)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
         elevated.nodes(resolved_node).network(iface).delete,
         elevated=True,
     )
     upid = result if isinstance(result, str) else result.get("data", result)
-    return f"Network interface {iface!r} deletion initiated on {resolved_node}. UPID: {upid}"
+    msg = f"Network interface {iface!r} deletion initiated on {resolved_node}. UPID: {upid}"
+    if apply:
+        warnings: list[str] = []
+        if _is_management_interface(client, resolved_node, iface):
+            warnings.append(" WARNING: Applying changes to management interface may disconnect the agent.")
+        _apply_network(client, resolved_node, iface)
+        msg += " Network changes applied."
+        msg += "".join(warnings)
+    return msg
+
+
+@confirm_required
+def revert_network(
+    client: Any,
+    node: Optional[str] = None,
+    confirm: bool = False,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).network.delete,
+        elevated=True,
+    )
+    upid = result if isinstance(result, str) else result.get("data", result)
+    return f"Network changes reverted on {resolved_node}. UPID: {upid}"

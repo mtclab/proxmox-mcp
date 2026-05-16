@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import ssl
 import time
 from typing import Any, Optional
@@ -11,6 +12,7 @@ from proxmoxer.core import ResourceException
 from proxmox_mcp.config import Config
 from proxmox_mcp.exceptions import (
     ProxmoxConnectionError,
+    ProxmoxNotFoundError,
     ProxmoxNodeError,
     ProxmoxPermissionError,
     ProxmoxTaskError,
@@ -36,6 +38,7 @@ class ProxmoxClient:
             token_value=config.monitor_token_secret,
             verify_ssl=config.verify,
             backend="https",
+            timeout=30,
         )
 
         admin_user = config.admin_token_id.split("!")[0]
@@ -48,6 +51,7 @@ class ProxmoxClient:
             token_value=config.admin_token_secret,
             verify_ssl=config.verify,
             backend="https",
+            timeout=30,
         )
 
     def get_client(self, elevated: bool = False) -> ProxmoxAPI:
@@ -63,7 +67,13 @@ class ProxmoxClient:
                 "Set PROXMOX_ALLOW_ELEVATED=true to enable admin-level operations."
             )
 
-    def retry_with_backoff(self, func, *args, max_retries: int = 3, initial_delay: float = 1.0, **kwargs) -> Any:
+    def retry_with_backoff(
+        self, func, *args,
+        max_retries: int = 3,
+        initial_delay: float = 1.0,
+        elevated: bool = False,
+        **kwargs,
+    ) -> Any:
         delay = initial_delay
         last_exc: Exception | None = None
         for attempt in range(max_retries + 1):
@@ -86,10 +96,31 @@ class ProxmoxClient:
                     ) from exc
                 if exc.status_code == 403:
                     endpoint = getattr(exc, "content", "") or ""
+                    if elevated:
+                        raise ProxmoxPermissionError(
+                            f"Permission denied on {endpoint} — "
+                            "the admin token lacks the required PVE privilege for this operation."
+                        ) from exc
                     raise ProxmoxPermissionError(
-                        f"Permission denied on {endpoint} — this operation requires elevated mode. "
-                        "Set PROXMOX_ALLOW_ELEVATED=true and use an admin token with appropriate PVE permissions."
+                        f"Permission denied on {endpoint} — "
+                        "this operation requires elevated mode. "
+                        "Set PROXMOX_ALLOW_ELEVATED=true and use an admin token "
+                        "with appropriate PVE permissions."
                     ) from exc
+                if exc.status_code == 500:
+                    content = str(getattr(exc, "content", "") or "")
+                    if "does not exist" in content:
+                        vmid = None
+                        node = None
+                        path_match = re.search(r"'(nodes/[^']+)'", content)
+                        if path_match:
+                            segments = path_match.group(1).split("/")
+                            if len(segments) >= 2:
+                                node = segments[1]
+                            fname = segments[-1] if segments else ""
+                            vmid = fname.replace(".conf", "")
+                        resource = f"Guest {vmid}" if vmid else "Resource"
+                        raise ProxmoxNotFoundError(resource, node) from exc
                 raise
             except ssl.SSLCertVerificationError as exc:
                 raise ProxmoxConnectionError(
@@ -100,8 +131,10 @@ class ProxmoxClient:
 
     def safe_api_call(self, func, *args, elevated: bool = False, **kwargs) -> Any:
         try:
-            return self.retry_with_backoff(func, *args, **kwargs)
+            return self.retry_with_backoff(func, *args, elevated=elevated, **kwargs)
         except ProxmoxNodeError:
+            raise
+        except ProxmoxNotFoundError:
             raise
         except ProxmoxConnectionError as exc:
             original = exc.__cause__
@@ -185,7 +218,12 @@ class ProxmoxClient:
                 for guest in guests:
                     if str(guest.get("name", "")) == identifier:
                         return resolved_node, int(guest["vmid"])
+            except (ProxmoxConnectionError, ProxmoxPermissionError):
+                continue
+            except ResourceException:
+                continue
             except Exception:
+                logger.warning("Unexpected error searching for guest %r as %s", identifier, vmtype, exc_info=True)
                 continue
 
         raise ValueError(f"Guest {identifier!r} not found on node {resolved_node!r}")

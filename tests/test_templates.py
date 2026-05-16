@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 
 from proxmox_mcp.config import Config
+from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.templates import (
     download_template,
     list_storage_templates,
@@ -119,7 +120,7 @@ class TestConfirmRequired:
         with pytest.raises(ValueError, match="confirm=true"):
             download_template(
                 mock_client, node="pve", storage="local",
-                url="http://example.com/template.tar.xz",
+                url="https://example.com/template.tar.xz",
             )
 
     def test_upload_requires_confirm(self, mock_client):
@@ -140,7 +141,7 @@ class TestElevatedCheck:
         with pytest.raises(ValueError, match="Elevated"):
             download_template(
                 client, node="pve", storage="local",
-                url="http://example.com/template.tar.xz", confirm=True,
+                url="https://example.com/template.tar.xz", confirm=True,
             )
 
     def test_upload_requires_elevated(self, mock_config):
@@ -163,13 +164,13 @@ class TestDownloadTemplate:
         )
         result = download_template(
             mock_client, node="pve", storage="local",
-            url="http://repo/ubuntu-24.04-standard_24.04-2_amd64.tar.xz",
+            url="https://releases.ubuntu.com/ubuntu-24.04-standard_24.04-2_amd64.tar.xz",
             confirm=True,
         )
         assert "UPID" in result
         assert "download" in result.lower()
         call_args = mock_client.safe_api_call.call_args
-        url = "http://repo/ubuntu-24.04-standard_24.04-2_amd64.tar.xz"
+        url = "https://releases.ubuntu.com/ubuntu-24.04-standard_24.04-2_amd64.tar.xz"
         assert call_args[1]["url"] == url
         assert call_args[1]["content"] == "vztmpl"
 
@@ -179,7 +180,7 @@ class TestDownloadTemplate:
         )
         result = download_template(
             mock_client, node="pve", storage="local",
-            url="http://repo/template.tar.xz",
+            url="https://releases.ubuntu.com/template.tar.xz",
             filename="ubuntu-24.04-standard_24.04-2_amd64.tar.xz",
             confirm=True,
         )
@@ -202,7 +203,7 @@ class TestDownloadTemplate:
         )
         result = download_template(
             mock_client, storage="local",
-            url="http://repo/template.tar.xz", confirm=True,
+            url="https://releases.ubuntu.com/template.tar.xz", confirm=True,
         )
         assert "pve" in result
 
@@ -251,3 +252,49 @@ class TestUploadTemplate:
                 filepath="/tmp/template.tar.xz", confirm=True,
             )
         assert "pve" in result
+
+
+class TestUploadPathValidation:
+    def test_upload_template_blocks_traversal(self, mock_client):
+        mock_client.config.upload_dir = "/tmp/proxmox-mcp-uploads"
+        with pytest.raises(ProxmoxPermissionError, match="outside allowed upload directory"):
+            upload_template(
+                mock_client, node="pve", storage="local",
+                filepath="/etc/passwd", confirm=True,
+            )
+
+    def test_upload_template_allows_file_in_upload_dir(self, mock_client):
+        mock_client.config.upload_dir = "/tmp/proxmox-mcp-uploads"
+        mock_client.upload = MagicMock(return_value="UPID:pve:0063:abc")
+        with patch("builtins.open", mock_open(read_data=b"fake")):
+            result = upload_template(
+                mock_client, node="pve", storage="local",
+                filepath="/tmp/proxmox-mcp-uploads/template.tar.xz", confirm=True,
+            )
+        assert "UPID" in result
+
+    def test_upload_template_no_upload_dir_warns_but_allows(self, mock_client):
+        mock_client.config.upload_dir = None
+        mock_client.upload = MagicMock(return_value="UPID:pve:0064:abc")
+        with patch("builtins.open", mock_open(read_data=b"fake")):
+            result = upload_template(
+                mock_client, node="pve", storage="local",
+                filepath="/tmp/template.tar.xz", confirm=True,
+            )
+        assert "UPID" in result
+
+
+class TestDownloadUrlValidation:
+    def test_download_template_rejects_http(self, mock_client):
+        with pytest.raises(ProxmoxPermissionError, match="https scheme"):
+            download_template(
+                mock_client, node="pve", storage="local",
+                url="http://evil.com/template.tar.xz", confirm=True,
+            )
+
+    def test_download_template_rejects_private_ip(self, mock_client):
+        with pytest.raises(ProxmoxPermissionError, match="private/internal"):
+            download_template(
+                mock_client, node="pve", storage="local",
+                url="https://192.168.1.1/template.tar.xz", confirm=True,
+            )

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.utils import confirm_required, format_bytes
+from proxmox_mcp.utils import confirm_required, format_bytes, validate_storage_name, validate_vmid
 
 
 def _api(client: Any) -> Any:
-    return client.get_client(elevated=client.config.allow_elevated)
+    return client.get_client(elevated=False)
 
 
 def list_backups(
@@ -15,6 +15,7 @@ def list_backups(
     storage: str = "local",
 ) -> str:
     resolved_node = client.resolve_node(node)
+    validate_storage_name(storage)
     result = client.safe_api_call(
         _api(client).nodes(resolved_node).storage(storage).content.get,
         content="backup",
@@ -45,11 +46,14 @@ def create_backup(
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+    validate_storage_name(storage)
     params: dict[str, Any] = {
         "vmid": vmid,
         "storage": storage,
         "mode": mode,
         "compress": compress,
+        "type": vmtype,
     }
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
@@ -79,18 +83,33 @@ def restore_backup(
         )
     if not vmid:
         raise ValueError("vmid is required for backup restore")
+    validate_vmid(vmid)
+    validate_storage_name(storage)
     resolved_node = client.resolve_node(node)
-    params: dict[str, Any] = {
-        "vmid": vmid,
-        "archive": archive,
-        "storage": storage,
-    }
     elevated = client.get_client(elevated=True)
-    vmtype_path = getattr(elevated.nodes(resolved_node), vmtype)
-    result = client.safe_api_call(
-        vmtype_path.post,
-        elevated=True,
-        **params,
-    )
+    if vmtype == "lxc":
+        params: dict[str, Any] = {
+            "vmid": vmid,
+            "ostemplate": archive,
+            "storage": storage,
+            "restore": 1,
+        }
+        result = client.safe_api_call(
+            elevated.nodes(resolved_node).lxc.post,
+            elevated=True,
+            **params,
+        )
+    else:
+        params: dict[str, Any] = {
+            "vmid": vmid,
+            "archive": archive,
+            "storage": storage,
+            "restore": 1,
+        }
+        result = client.safe_api_call(
+            elevated.nodes(resolved_node).qemu.post,
+            elevated=True,
+            **params,
+        )
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Backup restore initiated for {vmtype} {vmid} from {archive!r} on {resolved_node}. UPID: {upid}"

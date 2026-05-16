@@ -4,6 +4,7 @@ import pytest
 
 from proxmox_mcp.config import Config
 from proxmox_mcp.networking import (
+    _apply_network,
     create_network,
     delete_network,
     list_network,
@@ -105,7 +106,7 @@ class TestListNetwork:
 
 
 class TestCreateNetwork:
-    def test_create_network(self, mock_client):
+    def test_create_network_default_no_apply(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0300:abc")
         result = create_network(
             mock_client, node="pve", iface="vmbr1",
@@ -113,6 +114,26 @@ class TestCreateNetwork:
         )
         assert "vmbr1" in result
         assert "UPID" in result
+        assert "Network changes applied" not in result
+
+    def test_create_network_apply_true(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0300:abc")
+        result = create_network(
+            mock_client, node="pve", iface="vmbr2",
+            type="bridge", confirm=True, apply=True,
+        )
+        assert "vmbr2" in result
+        assert "UPID" in result
+        assert "Network changes applied" in result
+
+    def test_create_network_apply_false(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0300:abc")
+        result = create_network(
+            mock_client, node="pve", iface="vmbr1",
+            type="bridge", confirm=True, apply=False,
+        )
+        assert "vmbr1" in result
+        assert "Network changes applied" not in result
 
     def test_create_network_with_params(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0301:abc")
@@ -122,19 +143,23 @@ class TestCreateNetwork:
             netmask="24", gateway="10.0.1.254",
             bridge_ports="eno1", confirm=True,
         )
-        call_args = mock_client.safe_api_call.call_args
-        assert call_args[1]["address"] == "10.0.1.1"
-        assert call_args[1]["netmask"] == "24"
-        assert call_args[1]["gateway"] == "10.0.1.254"
-        assert call_args[1]["bridge_ports"] == "eno1"
+        first_call = mock_client.safe_api_call.call_args_list[0]
+        assert first_call[1]["address"] == "10.0.1.1"
+        assert first_call[1]["netmask"] == "24"
+        assert first_call[1]["gateway"] == "10.0.1.254"
+        assert first_call[1]["bridge_ports"] == "eno1"
 
     def test_create_network_no_iface_raises(self, mock_client):
         with pytest.raises(ValueError, match="iface is required"):
             create_network(mock_client, node="pve", iface="", confirm=True)
 
+    def test_create_network_invalid_iface_raises(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid interface name"):
+            create_network(mock_client, node="pve", iface="bad iface!", confirm=True)
+
 
 class TestUpdateNetwork:
-    def test_update_network(self, mock_client):
+    def test_update_network_default_no_apply(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0302:abc")
         result = update_network(
             mock_client, node="pve", iface="vmbr0",
@@ -142,21 +167,110 @@ class TestUpdateNetwork:
         )
         assert "vmbr0" in result
         assert "UPID" in result
+        assert "Network changes applied" not in result
+
+    def test_update_network_apply_true(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0302:abc")
+        result = update_network(
+            mock_client, node="pve", iface="vmbr0",
+            address="10.0.0.2", confirm=True, apply=True,
+        )
+        assert "vmbr0" in result
+        assert "UPID" in result
+        assert "Network changes applied" in result
+
+    def test_update_network_apply_false(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0302:abc")
+        result = update_network(
+            mock_client, node="pve", iface="vmbr0",
+            address="10.0.0.2", confirm=True, apply=False,
+        )
+        assert "vmbr0" in result
+        assert "Network changes applied" not in result
 
     def test_update_network_no_iface_raises(self, mock_client):
         with pytest.raises(ValueError, match="iface is required"):
             update_network(mock_client, node="pve", iface="", confirm=True)
 
+    def test_update_network_invalid_iface_raises(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid interface name"):
+            update_network(mock_client, node="pve", iface="bad!name", confirm=True)
+
 
 class TestDeleteNetwork:
-    def test_delete_network(self, mock_client):
+    def test_delete_network_default_no_apply(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0303:abc")
         result = delete_network(
             mock_client, node="pve", iface="vmbr1", confirm=True,
         )
         assert "vmbr1" in result
         assert "UPID" in result
+        assert "Network changes applied" not in result
+
+    def test_delete_network_apply_true(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0303:abc")
+        result = delete_network(
+            mock_client, node="pve", iface="vmbr1", confirm=True, apply=True,
+        )
+        assert "vmbr1" in result
+        assert "UPID" in result
+        assert "Network changes applied" in result
+
+    def test_delete_network_apply_false(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0303:abc")
+        result = delete_network(
+            mock_client, node="pve", iface="vmbr1", confirm=True, apply=False,
+        )
+        assert "vmbr1" in result
+        assert "Network changes applied" not in result
 
     def test_delete_network_no_iface_raises(self, mock_client):
         with pytest.raises(ValueError, match="iface is required"):
             delete_network(mock_client, node="pve", iface="", confirm=True)
+
+    def test_delete_network_invalid_iface_raises(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid interface name"):
+            delete_network(mock_client, node="pve", iface="bad!name", confirm=True)
+
+
+class TestApplyNetwork:
+    def test_apply_network_calls_put(self, mock_client):
+        mock_client.safe_api_call = MagicMock()
+        _apply_network(mock_client, "pve", "vmbr1")
+        mock_client.safe_api_call.assert_called_once()
+        call_args = mock_client.safe_api_call.call_args
+        assert call_args[1]["elevated"] is True
+
+
+class TestManagementInterfaceWarning:
+    def test_create_vmbr0_warns(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0304:abc")
+        result = create_network(
+            mock_client, node="pve", iface="vmbr0",
+            type="bridge", confirm=True, apply=True,
+        )
+        assert "WARNING" in result
+        assert "management interface" in result
+
+    def test_create_non_mgmt_no_warning(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0305:abc")
+        result = create_network(
+            mock_client, node="pve", iface="vmbr99",
+            type="bridge", confirm=True, apply=True,
+        )
+        assert "WARNING" not in result
+
+    def test_update_vmbr0_warns(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0306:abc")
+        result = update_network(
+            mock_client, node="pve", iface="vmbr0",
+            address="10.0.0.2", confirm=True, apply=True,
+        )
+        assert "WARNING" in result
+
+    def test_delete_vmbr0_warns(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0307:abc")
+        result = delete_network(
+            mock_client, node="pve", iface="vmbr0", confirm=True, apply=True,
+        )
+        assert "WARNING" in result

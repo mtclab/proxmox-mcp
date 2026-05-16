@@ -21,6 +21,8 @@ class Config:
         admin_token_secret: str,
         allow_elevated: bool = False,
         default_node: Optional[str] = None,
+        allowed_commands: Optional[list[str]] = None,
+        upload_dir: Optional[str] = None,
     ) -> None:
         self.url = url
         self.verify = verify
@@ -30,6 +32,8 @@ class Config:
         self.admin_token_secret = admin_token_secret
         self.allow_elevated = allow_elevated
         self.default_node = default_node
+        self.allowed_commands = allowed_commands
+        self.upload_dir = upload_dir
 
         self._validate()
 
@@ -81,6 +85,11 @@ class Config:
 
         default_node = os.environ.get("PROXMOX_DEFAULT_NODE") or None
 
+        allowed_commands_raw = os.environ.get("PROXMOX_ALLOWED_COMMANDS", "")
+        allowed_commands = [c.strip() for c in allowed_commands_raw.split(",") if c.strip()] or None
+
+        upload_dir = os.environ.get("PROXMOX_UPLOAD_DIR") or None
+
         verify_raw = os.environ.get("PROXMOX_VERIFY", "true").strip().lower()
         if verify_raw in ("false", "0", "no"):
             verify: str | bool = False
@@ -98,6 +107,8 @@ class Config:
             admin_token_secret=admin_token_secret,
             allow_elevated=allow_elevated,
             default_node=default_node,
+            allowed_commands=allowed_commands,
+            upload_dir=upload_dir,
         )
 
     @property

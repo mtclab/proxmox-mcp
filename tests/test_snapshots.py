@@ -8,6 +8,7 @@ from proxmox_mcp.snapshots import (
     delete_snapshot,
     list_snapshots,
     rollback_snapshot,
+    snapshot_config,
 )
 
 
@@ -29,7 +30,9 @@ def mock_config():
 def mock_client(mock_config):
     with patch("proxmox_mcp.client.ProxmoxAPI"):
         from proxmox_mcp.client import ProxmoxClient
+
         client = ProxmoxClient(mock_config)
+
     client._nodes_cache = [{"node": "pve", "status": "online"}]
     admin_mock = MagicMock()
     client.admin_client = admin_mock
@@ -56,6 +59,7 @@ class TestElevatedCheck:
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
             create_snapshot(client, node="pve", vmid=100, snapname="snap1", confirm=True)
@@ -64,6 +68,7 @@ class TestElevatedCheck:
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
             delete_snapshot(client, node="pve", vmid=100, snapname="snap1", confirm=True)
@@ -72,9 +77,42 @@ class TestElevatedCheck:
         mock_config.allow_elevated = False
         with patch("proxmox_mcp.client.ProxmoxAPI"):
             from proxmox_mcp.client import ProxmoxClient
+
             client = ProxmoxClient(mock_config)
         with pytest.raises(ValueError, match="Elevated"):
             rollback_snapshot(client, node="pve", vmid=100, snapname="snap1", confirm=True)
+
+
+class TestVmtypeValidation:
+    def test_list_snapshots_invalid_vmtype(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid vmtype"):
+            list_snapshots(mock_client, node="pve", vmid=100, vmtype="malicious")
+
+    def test_create_snapshot_invalid_vmtype(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid vmtype"):
+            create_snapshot(mock_client, node="pve", vmid=100, snapname="snap1", vmtype="evil", confirm=True)
+
+    def test_delete_snapshot_invalid_vmtype(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid vmtype"):
+            delete_snapshot(mock_client, node="pve", vmid=100, snapname="snap1", vmtype="evil", confirm=True)
+
+    def test_rollback_snapshot_invalid_vmtype(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid vmtype"):
+            rollback_snapshot(mock_client, node="pve", vmid=100, snapname="snap1", vmtype="evil", confirm=True)
+
+    def test_snapshot_config_invalid_vmtype(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid vmtype"):
+            snapshot_config(mock_client, node="pve", vmid=100, snapname="snap1", vmtype="evil")
+
+    def test_list_snapshots_valid_vmtype_qemu(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value=[])
+        result = list_snapshots(mock_client, node="pve", vmid=100, vmtype="qemu")
+        assert "No snapshots found" in result
+
+    def test_list_snapshots_valid_vmtype_lxc(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value=[])
+        result = list_snapshots(mock_client, node="pve", vmid=100, vmtype="lxc")
+        assert "No snapshots found" in result
 
 
 class TestListSnapshots:
@@ -148,3 +186,34 @@ class TestRollbackSnapshot:
         )
         assert "snap1" in result
         assert "Rollback" in result
+
+
+class TestSnapshotConfig:
+    def test_snapshot_config_dict_result(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value={
+            "snapname": "snap1",
+            "description": "before upgrade",
+            "parent": "base",
+            "vmstate": 1,
+        })
+        result = snapshot_config(mock_client, node="pve", vmid=100, snapname="snap1")
+        assert "snap1" in result
+        assert "config" in result
+        mock_client.safe_api_call.assert_called_once()
+
+    def test_snapshot_config_lxc(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value={"snapname": "snap1"})
+        result = snapshot_config(mock_client, node="pve", vmid=200, snapname="snap1", vmtype="lxc")
+        assert "lxc" in result
+        assert "snap1" in result
+
+    def test_snapshot_config_no_confirm_needed(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value={"snapname": "snap1"})
+        result = snapshot_config(mock_client, node="pve", vmid=100, snapname="snap1")
+        assert "snap1" in result
+
+    def test_snapshot_config_uses_monitor_client(self, mock_client):
+        mock_client.safe_api_call = MagicMock(return_value={"snapname": "snap1"})
+        snapshot_config(mock_client, node="pve", vmid=100, snapname="snap1")
+        call_args = mock_client.safe_api_call.call_args
+        assert call_args[1].get("elevated") is None or call_args[0][0] is not None

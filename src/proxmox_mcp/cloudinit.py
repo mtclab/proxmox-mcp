@@ -2,7 +2,31 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.utils import confirm_required
+from proxmox_mcp.exceptions import ProxmoxPermissionError
+from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
+
+
+def _api(client: Any) -> Any:
+    return client.get_client(elevated=False)
+
+
+def cloudinit_dump(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    type: Optional[str] = None,
+) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    validate_vmid(vmid)
+    params: dict[str, Any] = {}
+    if type:
+        params["type"] = type
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).qemu(vmid).cloudinit.dump.get, **params
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    return str(data)
 
 
 @confirm_required
@@ -18,6 +42,7 @@ def set_cloudinit(
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
 
     params: dict[str, Any] = {}
     if ciuser:
@@ -38,18 +63,47 @@ def set_cloudinit(
 
 
 @confirm_required
+def regenerate_cloudinit(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = False,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).cloudinit.put, elevated=True
+    )
+    upid = result if isinstance(result, str) else result.get("data", result)
+    return f"Cloud-init drive regenerated for VM {vmid} on {resolved_node}. UPID: {upid}"
+
+
+@confirm_required
 def exec_vm(
     client: Any,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     command: Optional[str] = None,
     confirm: bool = False,
+    allowed_commands: Optional[list[str]] = None,
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
 
     if not command:
         raise ValueError("command is required for guest execution")
+
+    allowed = allowed_commands if allowed_commands is not None else client.config.allowed_commands
+    if allowed is not None:
+        if not any(command.strip().startswith(prefix) for prefix in allowed):
+            raise ProxmoxPermissionError(
+                f"Command {command!r} not in allowed list. Allowed prefixes: {allowed}"
+            )
 
     params: dict[str, Any] = {"command": command}
 
@@ -61,25 +115,571 @@ def exec_vm(
     return f"Command executed in VM {vmid} on {resolved_node}. PID: {pid}"
 
 
-@confirm_required
-def exec_lxc(
+def agent_ping(
     client: Any,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-    command: Optional[str] = None,
-    confirm: bool = False,
+    confirm: bool = True,
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
-
-    if not command:
-        raise ValueError("command is required for guest execution")
-
-    params: dict[str, Any] = {"command": command}
+    validate_vmid(vmid)
 
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).exec.post, elevated=True, **params
+        elevated.nodes(resolved_node).qemu(vmid).agent("ping").post, elevated=True
     )
-    pid = result if isinstance(result, str) else result.get("data", result)
-    return f"Command executed in LXC {vmid} on {resolved_node}. PID: {pid}"
+    data = result if isinstance(result, str) else result.get("data", result)
+    return f"Agent ping for VM {vmid} on {resolved_node}: {data}"
+
+
+def agent_info(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("info").get, elevated=True
+    )
+    data = result if isinstance(result, dict) else result.get("data", result) if isinstance(result, dict) else result
+    lines = []
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return f"Agent info for VM {vmid} on {resolved_node}:\n" + "\n".join(lines)
+
+
+def agent_network_interfaces(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("network-get-interfaces").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    if not isinstance(data, list):
+        return f"Network interfaces for VM {vmid} on {resolved_node}: {data}"
+
+    lines = [f"Network interfaces for VM {vmid} on {resolved_node}:"]
+    for iface in data:
+        name = iface.get("name", "unknown")
+        hwaddr = iface.get("hardware-address", "N/A")
+        lines.append(f"  {name} (MAC: {hwaddr})")
+        for addr in iface.get("ip-addresses", []):
+            ip = addr.get("ip-address", "?")
+            prefix = addr.get("prefix", "?")
+            iptype = addr.get("ip-address-type", "?")
+            lines.append(f"    {ip}/{prefix} ({iptype})")
+    return "\n".join(lines)
+
+
+def agent_osinfo(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-osinfo").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"OS info for VM {vmid} on {resolved_node}:"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+def agent_fsinfo(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-fsinfo").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    if not isinstance(data, list):
+        return f"Filesystem info for VM {vmid} on {resolved_node}: {data}"
+
+    lines = [f"Filesystem info for VM {vmid} on {resolved_node}:"]
+    for fs in data:
+        name = fs.get("name", "unknown")
+        fstype = fs.get("type", "unknown")
+        mount = fs.get("mountpoint", "unknown")
+        total = fs.get("total-bytes", 0)
+        used = fs.get("used-bytes", 0)
+        free = fs.get("free-bytes", 0)
+        lines.append(f"  {mount} ({fstype}) on {name}: {used}/{total} used, {free} free")
+    return "\n".join(lines)
+
+
+def agent_exec_status(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    pid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    if pid is None:
+        raise ValueError("pid is required for agent exec-status")
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("exec-status").get,
+        elevated=True,
+        pid=pid,
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"Exec status for PID {pid} in VM {vmid} on {resolved_node}:"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+@confirm_required
+def agent_fsfreeze(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-freeze").post, elevated=True
+    )
+    data = result if isinstance(result, str) else result.get("data", result)
+    return f"Filesystem frozen for VM {vmid} on {resolved_node}: {data}"
+
+
+@confirm_required
+def agent_fsthaw(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-thaw").post, elevated=True
+    )
+    data = result if isinstance(result, str) else result.get("data", result)
+    return f"Filesystem thawed for VM {vmid} on {resolved_node}: {data}"
+
+
+@confirm_required
+def agent_fstrim(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("fstrim").post, elevated=True
+    )
+    data = result if isinstance(result, str) else result.get("data", result)
+    return f"Fstrim executed for VM {vmid} on {resolved_node}: {data}"
+
+
+def agent_fsfreeze_status(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-status").post, elevated=True
+    )
+    data = result if isinstance(result, str) else result.get("data", result)
+    lines = [f"**Fsfreeze status for VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+def agent_get_host_name(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-host-name").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"**Host name for VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+def agent_get_memory_block_info(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-memory-block-info").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"**Memory block info for VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+def agent_get_memory_blocks(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-memory-blocks").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"**Memory blocks for VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+def agent_get_time(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-time").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"**Time for VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+def agent_get_timezone(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-timezone").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"**Timezone for VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+def agent_get_users(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-users").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    if not isinstance(data, list):
+        data = [data] if data else []
+    lines = [f"**Users for VM {vmid} on {resolved_node}:**"]
+    for user in data:
+        if isinstance(user, dict):
+            name = user.get("name", user.get("username", "unknown"))
+            lines.append(f"  • {name}")
+        else:
+            lines.append(f"  • {user}")
+    if not data:
+        lines.append("  No users found.")
+    return "\n".join(lines)
+
+
+def agent_get_vcpus(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("get-vcpus").get, elevated=True
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"**VCPUs for VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, list):
+        for vcpu in data:
+            if isinstance(vcpu, dict):
+                cpu_id = vcpu.get("id", vcpu.get("cpu-id", "?"))
+                online = vcpu.get("online", "?")
+                lines.append(f"  • CPU {cpu_id}: online={online}")
+            else:
+                lines.append(f"  • {vcpu}")
+    elif isinstance(data, dict):
+        for k, v in data.items():
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+@confirm_required
+def agent_set_user_password(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    username: str = "",
+    password: str = "",
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+    if not username:
+        raise ValueError("username is required")
+    if not password:
+        raise ValueError("password is required")
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("set-user-password").post,
+        elevated=True,
+        username=username,
+        password=password,
+    )
+    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    return f"Password set for user {username!r} on VM {vmid} on {resolved_node}: {data}"
+
+
+def agent_file_read(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    filepath: str = "",
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+    if not filepath:
+        raise ValueError("filepath is required")
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("file-read").get,
+        elevated=True,
+        file=filepath,
+    )
+    data = result.get("data", result) if isinstance(result, dict) else result
+    lines = [f"**File read from VM {vmid} on {resolved_node}:**"]
+    if isinstance(data, dict):
+        lines.append(f"  Path: {filepath}")
+        content = data.get("content", data.get("data", ""))
+        if content:
+            lines.append(f"  Content: {content[:2000]}")
+    else:
+        lines.append(str(data))
+    return "\n".join(lines)
+
+
+@confirm_required
+def agent_file_write(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    filepath: str = "",
+    content: str = "",
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+    if not filepath:
+        raise ValueError("filepath is required")
+
+    elevated = client.get_client(elevated=True)
+    params: dict[str, Any] = {"path": filepath}
+    if content:
+        params["content"] = content
+    client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("file-write").post,
+        elevated=True,
+        **params,
+    )
+    return f"File written to {filepath!r} on VM {vmid} on {resolved_node}"
+
+
+@confirm_required
+def agent_shutdown(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("shutdown").post, elevated=True
+    )
+    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    return f"Agent shutdown initiated for VM {vmid} on {resolved_node}: {data}"
+
+
+@confirm_required
+def agent_suspend_disk(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("suspend-disk").post, elevated=True
+    )
+    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    return f"Agent suspend-to-disk initiated for VM {vmid} on {resolved_node}: {data}"
+
+
+@confirm_required
+def agent_suspend_ram(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("suspend-ram").post, elevated=True
+    )
+    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    return f"Agent suspend-to-RAM initiated for VM {vmid} on {resolved_node}: {data}"
+
+
+@confirm_required
+def agent_suspend_hybrid(
+    client: Any,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    confirm: bool = True,
+) -> str:
+    client.raise_if_not_elevated()
+    resolved_node = client.resolve_node(node)
+    validate_vmid(vmid)
+
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).qemu(vmid).agent("suspend-hybrid").post, elevated=True
+    )
+    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    return f"Agent hybrid suspend initiated for VM {vmid} on {resolved_node}: {data}"
+
+
+

@@ -91,6 +91,8 @@ class TestCreateBackup:
         )
         assert "UPID" in result
         assert "qemu 100" in result
+        call_args = mock_client.safe_api_call.call_args
+        assert call_args[1]["type"] == "qemu"
 
     def test_create_backup_lxc(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0201:abc")
@@ -98,6 +100,8 @@ class TestCreateBackup:
             mock_client, node="pve", vmid=200, vmtype="lxc", confirm=True
         )
         assert "lxc 200" in result
+        call_args = mock_client.safe_api_call.call_args
+        assert call_args[1]["type"] == "lxc"
 
     def test_create_backup_with_params(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0202:abc")
@@ -109,10 +113,11 @@ class TestCreateBackup:
         assert call_args[1]["storage"] == "local"
         assert call_args[1]["mode"] == "stop"
         assert call_args[1]["compress"] == "gzip"
+        assert call_args[1]["type"] == "qemu"
 
 
 class TestRestoreBackup:
-    def test_restore_backup(self, mock_client):
+    def test_restore_backup_qemu(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0203:abc")
         result = restore_backup(
             mock_client, node="pve", vmid=100,
@@ -121,6 +126,9 @@ class TestRestoreBackup:
         )
         assert "UPID" in result
         assert "100" in result
+        call_args = mock_client.safe_api_call.call_args
+        assert call_args[1]["archive"] == "local:backup/vzdump-qemu-100.vma.zst"
+        assert call_args[1]["restore"] == 1
 
     def test_restore_backup_lxc(self, mock_client):
         mock_client.safe_api_call = MagicMock(return_value="UPID:pve:0204:abc")
@@ -131,6 +139,10 @@ class TestRestoreBackup:
         )
         assert "UPID" in result
         assert "200" in result
+        call_args = mock_client.safe_api_call.call_args
+        assert call_args[1]["ostemplate"] == "local:backup/vzdump-lxc-200.tar.zst"
+        assert call_args[1]["restore"] == 1
+        assert "archive" not in call_args[1]
 
     def test_restore_backup_no_archive_raises(self, mock_client):
         with pytest.raises(ValueError, match="archive is required"):

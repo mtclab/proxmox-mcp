@@ -2,11 +2,94 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.utils import format_bytes, format_uptime
+from proxmox_mcp.exceptions import ProxmoxPermissionError
+from proxmox_mcp.utils import format_bytes, format_uptime, validate_node_name
 
 
 def _api(client: Any) -> Any:
-    return client.get_client(elevated=client.config.allow_elevated)
+    return client.get_client(elevated=False)
+
+
+def list_node_lxc(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).lxc.get
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"📦 **LXC Containers on {resolved_node}**\n"]
+    for ct in result:
+        vmid = ct.get("vmid", "?")
+        name = ct.get("name", "?")
+        status = ct.get("status", "unknown")
+        status_icon = "🟢" if status == "running" else "🔴"
+        lines.append(f"{status_icon} **{name}** (ID: {vmid}) — {status}")
+        if ct.get("cpu"):
+            lines.append(f"   • CPU: {ct['cpu'] * 100:.1f}%")
+        if ct.get("mem"):
+            lines.append(f"   • Memory: {format_bytes(ct['mem'])}")
+    if not result:
+        lines.append("   No LXC containers found.")
+    return "\n".join(lines)
+
+
+def list_node_vms(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).qemu.get
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"💻 **VMs on {resolved_node}**\n"]
+    for vm in result:
+        vmid = vm.get("vmid", "?")
+        name = vm.get("name", "?")
+        status = vm.get("status", "unknown")
+        status_icon = "🟢" if status == "running" else "🔴"
+        lines.append(f"{status_icon} **{name}** (ID: {vmid}) — {status}")
+        if vm.get("cpu"):
+            lines.append(f"   • CPU: {vm['cpu'] * 100:.1f}%")
+        if vm.get("mem"):
+            lines.append(f"   • Memory: {format_bytes(vm['mem'])}")
+    if not result:
+        lines.append("   No VMs found.")
+    return "\n".join(lines)
+
+
+def list_node_tasks(client: Any, node: Optional[str] = None, limit: int = 50) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    params: dict[str, Any] = {"limit": limit}
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).tasks.get, **params
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    result = result[:limit]
+    lines = [f"📋 **Tasks on {resolved_node}** (showing {len(result)})\n"]
+    for t in result:
+        upid = t.get("upid", "?")
+        status = t.get("status", "?")
+        status_icon = "✅" if status == "OK" else "❌" if status else "⏳"
+        lines.append(f"{status_icon} {upid}")
+    return "\n".join(lines)
+
+
+def node_index(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).get
+    )
+    lines = [f"📊 **Node: {resolved_node}**\n"]
+    if isinstance(result, dict):
+        for key, value in sorted(result.items()):
+            lines.append(f"   • {key}: {value}")
+    else:
+        lines.append(str(result))
+    return "\n".join(lines)
 
 
 def list_nodes(client: Any) -> str:
@@ -17,14 +100,13 @@ def list_nodes(client: Any) -> str:
     for n in nodes:
         status = "🟢" if n.get("status") in ("online",) or n.get("state") == "online" else "🔴"
         name = n.get("node", "unknown")
-        cpu = n.get("cpu", 0) * 100
-        mem = n.get("mem", 0)
-        maxmem = n.get("maxmem", 0)
-        uptime = n.get("uptime", 0)
         lines.append(f"{status} **{name}**")
-        lines.append(f"   • CPU: {cpu:.1f}%")
-        lines.append(f"   • Memory: {format_bytes(mem)} / {format_bytes(maxmem)}")
-        lines.append(f"   • Uptime: {format_uptime(uptime)}")
+        if "cpu" in n:
+            lines.append(f"   • CPU: {n['cpu'] * 100:.1f}%")
+        if "mem" in n:
+            lines.append(f"   • Memory: {format_bytes(n['mem'])} / {format_bytes(n.get('maxmem', 0))}")
+        if "uptime" in n:
+            lines.append(f"   • Uptime: {format_uptime(n['uptime'])}")
         lines.append("")
     return "\n".join(lines)
 
@@ -246,6 +328,38 @@ def lxc_metrics(
     return "\n".join(lines)
 
 
+VALID_RESOURCE_TYPES = ("vm", "storage", "node", "sdn")
+
+
+def cluster_resources(client: Any, type: Optional[str] = None) -> str:
+    if type is not None and type not in VALID_RESOURCE_TYPES:
+        raise ValueError(f"Invalid type {type!r} — must be one of: {', '.join(VALID_RESOURCE_TYPES)}")
+    params: dict[str, Any] = {}
+    if type is not None:
+        params["type"] = type
+    result = client.safe_api_call(_api(client).cluster.resources.get, **params)
+    if not isinstance(result, list):
+        result = [result] if result else []
+    type_label = type or "all"
+    lines = [f"📊 **Cluster Resources ({type_label})**\n"]
+    for r in result:
+        rtype = r.get("type", "?")
+        name = r.get("name", r.get("id", "unknown"))
+        vmid = r.get("vmid", "")
+        node = r.get("node", "")
+        status = r.get("status", "")
+        status_icon = "🟢" if status == "running" else "🔴" if status else "⚪"
+        label = f"{name}"
+        if vmid:
+            label += f" (ID: {vmid})"
+        if node:
+            label += f" @ {node}"
+        lines.append(f"{status_icon} [{rtype}] {label}")
+    if not result:
+        lines.append("   No resources found.")
+    return "\n".join(lines)
+
+
 def list_bridges(client: Any, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(_api(client).nodes(node).network.get)
@@ -271,4 +385,251 @@ def list_network(client: Any, node: Optional[str] = None) -> str:
         itype = iface.get("type", "unknown")
         addr = iface.get("address", "")
         lines.append(f"   • {name} ({itype}) — {addr}")
+    return "\n".join(lines)
+
+
+def node_version(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).version.get
+    )
+    lines = [f"📦 **Node Version: {resolved_node}**\n"]
+    if isinstance(result, dict):
+        data = result.get("data", result)
+        if isinstance(data, dict):
+            for k, v in sorted(data.items()):
+                lines.append(f"   • {k}: {v}")
+        else:
+            lines.append(str(data))
+    else:
+        lines.append(str(result))
+    return "\n".join(lines)
+
+
+def node_dns(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).dns.get
+    )
+    lines = [f"🌐 **Node DNS: {resolved_node}**\n"]
+    if isinstance(result, dict):
+        data = result.get("data", result)
+        if isinstance(data, dict):
+            for k, v in sorted(data.items()):
+                lines.append(f"   • {k}: {v}")
+        else:
+            lines.append(str(data))
+    else:
+        lines.append(str(result))
+    return "\n".join(lines)
+
+
+def node_hosts(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).hosts.get
+    )
+    lines = [f"📋 **Node Hosts: {resolved_node}**\n"]
+    if isinstance(result, dict):
+        data = result.get("data", result)
+        if isinstance(data, str):
+            for line in data.strip().splitlines():
+                lines.append(f"   {line}")
+        elif isinstance(data, dict):
+            for k, v in sorted(data.items()):
+                lines.append(f"   • {k}: {v}")
+        else:
+            lines.append(str(data))
+    else:
+        lines.append(str(result))
+    return "\n".join(lines)
+
+
+def node_time(client: Any, node: Optional[str] = None) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).time.get
+    )
+    lines = [f"🕐 **Node Time: {resolved_node}**\n"]
+    if isinstance(result, dict):
+        data = result.get("data", result)
+        if isinstance(data, dict):
+            for k, v in sorted(data.items()):
+                lines.append(f"   • {k}: {v}")
+        else:
+            lines.append(str(data))
+    else:
+        lines.append(str(result))
+    return "\n".join(lines)
+
+
+def node_syslog(
+    client: Any,
+    node: Optional[str] = None,
+    limit: Optional[int] = None,
+    start: Optional[int] = None,
+    since: Optional[str] = None,
+    until: Optional[str] = None,
+) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if start is not None:
+        params["start"] = start
+    if since is not None:
+        params["since"] = since
+    if until is not None:
+        params["until"] = until
+    try:
+        result = client.safe_api_call(
+            _api(client).nodes(resolved_node).syslog.get, **params
+        )
+    except ProxmoxPermissionError:
+        return (
+            "⚠️ **Syslog access requires Sys.Syslog permission.**\n"
+            "The monitor token (PVEAuditor role) does not have Sys.Syslog, "
+            "which is required by PVE's /nodes/{node}/syslog endpoint.\n"
+            "Use an elevated session or grant Sys.Syslog to the monitor token's role."
+        )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"📋 **Syslog: {resolved_node}** ({len(result)} entries)\n"]
+    for entry in result[:50]:
+        if isinstance(entry, dict):
+            ts = entry.get("timestamp", entry.get("time", "?"))
+            msg = entry.get("msg", entry.get("text", str(entry)))
+            lines.append(f"   [{ts}] {msg}")
+        else:
+            lines.append(f"   {entry}")
+    if len(result) > 50:
+        lines.append(f"   ... {len(result) - 50} more entries")
+    return "\n".join(lines)
+
+
+def node_journal(
+    client: Any,
+    node: Optional[str] = None,
+    limit: Optional[int] = None,
+    since: Optional[str] = None,
+    until: Optional[str] = None,
+    service: Optional[str] = None,
+) -> str:
+    resolved_node = client.resolve_node(node)
+    validate_node_name(resolved_node)
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["lastentries"] = limit
+    if since is not None:
+        params["since"] = since
+    if until is not None:
+        params["until"] = until
+    if service is not None:
+        params["service"] = service
+    result = client.safe_api_call(
+        _api(client).nodes(resolved_node).journal.get, **params
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"📋 **Journal: {resolved_node}** ({len(result)} entries)\n"]
+    for entry in result[:50]:
+        if isinstance(entry, dict):
+            ts = entry.get("timestamp", entry.get("time", "?"))
+            msg = entry.get("msg", entry.get("text", str(entry)))
+            lines.append(f"   [{ts}] {msg}")
+        else:
+            lines.append(f"   {entry}")
+    if len(result) > 50:
+        lines.append(f"   ... {len(result) - 50} more entries")
+    return "\n".join(lines)
+
+
+def cluster_log(client: Any, limit: Optional[int] = None) -> str:
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["max"] = limit
+    result = client.safe_api_call(
+        _api(client).cluster.log.get, **params
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"📋 **Cluster Log** ({len(result)} entries)\n"]
+    for entry in result[:50]:
+        if isinstance(entry, dict):
+            ts = entry.get("timestamp", entry.get("time", "?"))
+            msg = entry.get("msg", entry.get("text", str(entry)))
+            lines.append(f"   [{ts}] {msg}")
+        else:
+            lines.append(f"   {entry}")
+    if len(result) > 50:
+        lines.append(f"   ... {len(result) - 50} more entries")
+    return "\n".join(lines)
+
+
+def task_log(
+    client: Any,
+    upid: str,
+    node: Optional[str] = None,
+    limit: int = 50,
+) -> str:
+    if not node:
+        parts = upid.split(":")
+        if len(parts) > 1:
+            node = parts[1]
+    if not node:
+        node = client.resolve_node()
+    result = client.safe_api_call(
+        _api(client).nodes(node).tasks(upid).log.get, limit=limit
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = [f"**Task Log: {upid}** (last {len(result)} lines)\n"]
+    for entry in result:
+        if isinstance(entry, dict):
+            t = entry.get("t", entry.get("line", str(entry)))
+            n = entry.get("n", "")
+            lines.append(f"  {n}: {t}" if n else f"  {t}")
+        else:
+            lines.append(f"  {entry}")
+    if not result:
+        lines.append("  No log output.")
+    return "\n".join(lines)
+
+
+def cluster_status(client: Any) -> str:
+    result = client.safe_api_call(
+        _api(client).cluster.status.get,
+    )
+    if not isinstance(result, list):
+        result = [result] if result else []
+    lines = ["**Cluster Status**\n"]
+    for entry in result:
+        etype = entry.get("type", "unknown")
+        name = entry.get("name", entry.get("id", "unknown"))
+        if etype == "cluster":
+            lines.append(f"  • Cluster: {name}")
+            lines.append(f"    Quorum: {'Yes' if entry.get('quorate') else 'No'}")
+            lines.append(f"    Nodes: {entry.get('nodes', 'N/A')}")
+            lines.append(f"    Version: {entry.get('version', 'N/A')}")
+        elif etype == "node":
+            online = entry.get("online", 0)
+            status = "online" if online else "offline"
+            lines.append(f"  • Node: {name} — {status}")
+            if entry.get("ip"):
+                lines.append(f"    IP: {entry['ip']}")
+    if not result:
+        lines.append("  No cluster status available.")
+    return "\n".join(lines)
+
+
+def get_next_vmid(client: Any) -> str:
+    result = client.safe_api_call(_api(client).cluster.nextid.get)
+    vmid = int(result) if result else 0
+    lines = ["**Next VMID**\n"]
+    lines.append(f"  • {vmid}")
     return "\n".join(lines)

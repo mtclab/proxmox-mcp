@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, Optional
 
-from proxmox_mcp.utils import confirm_required, format_bytes
+from proxmox_mcp.exceptions import ProxmoxPermissionError
+from proxmox_mcp.utils import confirm_required, format_bytes, validate_storage_name, validate_url
 
 
 def _api(client: Any) -> Any:
-    return client.get_client(elevated=client.config.allow_elevated)
+    return client.get_client(elevated=False)
 
 
 def list_templates(client: Any, node: Optional[str] = None) -> str:
@@ -36,6 +38,7 @@ def list_templates(client: Any, node: Optional[str] = None) -> str:
 
 def list_storage_templates(client: Any, node: Optional[str] = None, storage: str = "local") -> str:
     node = client.resolve_node(node)
+    validate_storage_name(storage)
     result = client.safe_api_call(
         _api(client).nodes(node).storage(storage).content.get,
         content="vztmpl",
@@ -63,11 +66,13 @@ def download_template(
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
+    validate_storage_name(storage)
     if not url:
         raise ValueError(
             "url is required for template download. "
             "Use list_templates to find available template URLs."
         )
+    validate_url(url)
     params: dict[str, Any] = {
         "content": "vztmpl",
         "url": url,
@@ -94,8 +99,20 @@ def upload_template(
 ) -> str:
     client.raise_if_not_elevated()
     resolved_node = client.resolve_node(node)
+    validate_storage_name(storage)
     if not filepath:
         raise ValueError("filepath is required for template upload")
+    allowed_dir = client.config.upload_dir
+    if allowed_dir is None:
+        logging.warning("PROXMOX_UPLOAD_DIR not set; file path validation is disabled")
+    else:
+        os.makedirs(allowed_dir, exist_ok=True)
+        real_path = os.path.realpath(filepath)
+        real_dir = os.path.realpath(allowed_dir)
+        if not real_path.startswith(real_dir + os.sep) and real_path != real_dir:
+            raise ProxmoxPermissionError(
+                f"filepath {filepath!r} is outside allowed upload directory {allowed_dir!r}"
+            )
     filename = os.path.basename(filepath)
     with open(filepath, "rb") as f:
         result = client.upload(

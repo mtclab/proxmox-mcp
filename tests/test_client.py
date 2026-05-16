@@ -163,3 +163,24 @@ class TestResolveGuest:
         node, vmid = mock_client.resolve_guest("100", node="explicit-node")
         assert node == "explicit-node"
         assert vmid == 100
+
+    def test_resolve_guest_continues_on_resource_exception(self, mock_client: ProxmoxClient) -> None:
+        from proxmoxer.core import ResourceException
+        mock_client.monitor_client.nodes.return_value.qemu.get = MagicMock(
+            side_effect=ResourceException("500", None, "error")
+        )
+        mock_client.monitor_client.nodes.return_value.lxc.get = MagicMock(
+            side_effect=ResourceException("500", None, "error")
+        )
+        with pytest.raises(ValueError, match="not found"):
+            mock_client.resolve_guest("nonexistent")
+
+    def test_resolve_guest_logs_unexpected_exception(self, mock_client: ProxmoxClient) -> None:
+        mock_client.monitor_client.nodes.return_value.qemu.get = MagicMock(
+            side_effect=RuntimeError("unexpected")
+        )
+        mock_client.monitor_client.nodes.return_value.lxc.get = MagicMock(
+            return_value=[]
+        )
+        with pytest.raises(ValueError, match="not found"):
+            mock_client.resolve_guest("test-vm")

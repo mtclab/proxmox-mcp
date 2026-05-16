@@ -127,3 +127,33 @@ class TestConfigFromEnv:
             admin_token_secret="s2",
         )
         assert config.port == 8006
+
+    def test_allowed_commands_from_env(self, env_vars: dict[str, str]) -> None:
+        env = {**env_vars, "PROXMOX_ALLOWED_COMMANDS": "ls,cat,ping,hostname"}
+        with patch.dict(os.environ, env, clear=True):
+            config = Config.from_env()
+            assert config.allowed_commands == ["ls", "cat", "ping", "hostname"]
+
+    def test_allowed_commands_empty_means_none(self, env_vars: dict[str, str]) -> None:
+        env = {**env_vars, "PROXMOX_ALLOWED_COMMANDS": ""}
+        with patch.dict(os.environ, env, clear=True):
+            config = Config.from_env()
+            assert config.allowed_commands is None
+
+    def test_allowed_commands_unset_means_none(self, env_vars: dict[str, str]) -> None:
+        env = {k: v for k, v in env_vars.items() if k != "PROXMOX_ALLOWED_COMMANDS"}
+        with patch.dict(os.environ, env, clear=True):
+            config = Config.from_env()
+            assert config.allowed_commands is None
+
+    def test_upload_dir_from_env(self, env_vars: dict[str, str]) -> None:
+        env = {**env_vars, "PROXMOX_UPLOAD_DIR": "/tmp/uploads"}
+        with patch.dict(os.environ, env, clear=True):
+            config = Config.from_env()
+            assert config.upload_dir == "/tmp/uploads"
+
+    def test_upload_dir_unset_means_none(self, env_vars: dict[str, str]) -> None:
+        env = {k: v for k, v in env_vars.items() if k != "PROXMOX_UPLOAD_DIR"}
+        with patch.dict(os.environ, env, clear=True):
+            config = Config.from_env()
+            assert config.upload_dir is None
