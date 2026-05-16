@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_metric_servers(client: Any) -> str:
+def list_metric_servers(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.metrics.server.get,
     )
@@ -26,7 +27,7 @@ def list_metric_servers(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_metric_server(client: Any, id: str = "") -> str:
+def get_metric_server(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -41,7 +42,7 @@ def get_metric_server(client: Any, id: str = "") -> str:
 
 @confirm_required
 def create_metric_server(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     type: str = "graphite",
     server: Optional[str] = None,
@@ -75,7 +76,7 @@ def create_metric_server(
 
 @confirm_required
 def update_metric_server(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     server: Optional[str] = None,
     port: Optional[int] = None,
@@ -108,7 +109,7 @@ def update_metric_server(
 
 @confirm_required
 def delete_metric_server(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
 ) -> str:
@@ -123,7 +124,7 @@ def delete_metric_server(
     return f"Metric server {id!r} deleted"
 
 
-def metrics_index(client: Any) -> str:
+def metrics_index(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.metrics.get,
     )
@@ -136,7 +137,7 @@ def metrics_index(client: Any) -> str:
     return "\n".join(lines)
 
 
-def export_metrics(client: Any) -> str:
+def export_metrics(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.metrics.export.get,
     )

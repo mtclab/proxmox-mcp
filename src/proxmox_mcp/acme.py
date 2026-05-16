@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_acme_accounts(client: Any) -> str:
+def list_acme_accounts(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.acme.account.get,
     )
@@ -30,7 +31,7 @@ def list_acme_accounts(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_acme_account(client: Any, name: str = "") -> str:
+def get_acme_account(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
     result = client.safe_api_call(
@@ -45,7 +46,7 @@ def get_acme_account(client: Any, name: str = "") -> str:
 
 @confirm_required
 def create_acme_account(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     contact: str = "",
     directory: Optional[str] = None,
@@ -72,7 +73,7 @@ def create_acme_account(
 
 @confirm_required
 def update_acme_plugin(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
     **kwargs: Any,
@@ -92,7 +93,7 @@ def update_acme_plugin(
     return f"ACME plugin {id!r} updated: {opts}"
 
 
-def get_acme_plugin(client: Any, id: str = "") -> str:
+def get_acme_plugin(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -105,7 +106,7 @@ def get_acme_plugin(client: Any, id: str = "") -> str:
     return "\n".join(lines)
 
 
-def acme_meta(client: Any) -> str:
+def acme_meta(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.acme.meta.get,
     )
@@ -124,7 +125,7 @@ def acme_meta(client: Any) -> str:
 
 @confirm_required
 def delete_acme_account(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -141,7 +142,7 @@ def delete_acme_account(
 
 @confirm_required
 def update_acme_account(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     contact: Optional[str] = None,
     confirm: bool = False,
@@ -166,7 +167,7 @@ def update_acme_account(
     return f"ACME account {name!r} updated: {opts}"
 
 
-def list_acme_directories(client: Any) -> str:
+def list_acme_directories(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.acme.directories.get,
     )
@@ -184,7 +185,7 @@ def list_acme_directories(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_acme_plugins(client: Any) -> str:
+def list_acme_plugins(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.acme.plugins.get,
     )
@@ -202,7 +203,7 @@ def list_acme_plugins(client: Any) -> str:
 
 @confirm_required
 def create_acme_plugin(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     type: str = "",
     confirm: bool = False,
@@ -226,7 +227,7 @@ def create_acme_plugin(
 
 @confirm_required
 def delete_acme_plugin(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
 ) -> str:
@@ -241,7 +242,7 @@ def delete_acme_plugin(
     return f"ACME plugin {id!r} deleted"
 
 
-def get_acme_challenge_schema(client: Any) -> str:
+def get_acme_challenge_schema(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.acme("challenge-schema").get,
     )
@@ -258,7 +259,7 @@ def get_acme_challenge_schema(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_acme_tos(client: Any) -> str:
+def list_acme_tos(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.acme.tos.get,
     )

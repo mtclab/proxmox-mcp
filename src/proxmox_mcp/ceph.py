@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def ceph_status(client: Any) -> str:
+def ceph_status(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.ceph.status.get,
     )
@@ -46,7 +47,7 @@ def ceph_status(client: Any) -> str:
     return "\n".join(lines)
 
 
-def ceph_metadata(client: Any) -> str:
+def ceph_metadata(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.ceph.metadata.get,
     )
@@ -69,7 +70,7 @@ def ceph_metadata(client: Any) -> str:
     return "\n".join(lines)
 
 
-def node_ceph_status(client: Any, node: Optional[str] = None) -> str:
+def node_ceph_status(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -99,7 +100,7 @@ def node_ceph_status(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def node_ceph_fs(client: Any, node: Optional[str] = None) -> str:
+def node_ceph_fs(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -124,7 +125,7 @@ def node_ceph_fs(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def create_ceph_fs(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -149,7 +150,7 @@ def create_ceph_fs(
     return f"Ceph filesystem {name!r} created on {resolved_node}. UPID: {upid}"
 
 
-def list_ceph_osd(client: Any, node: Optional[str] = None) -> str:
+def list_ceph_osd(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -175,7 +176,7 @@ def list_ceph_osd(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_ceph_mon(client: Any, node: Optional[str] = None) -> str:
+def list_ceph_mon(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -197,7 +198,7 @@ def list_ceph_mon(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_ceph_mgr(client: Any, node: Optional[str] = None) -> str:
+def list_ceph_mgr(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -218,7 +219,7 @@ def list_ceph_mgr(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def ceph_config(client: Any, node: Optional[str] = None) -> str:
+def ceph_config(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -241,7 +242,7 @@ def ceph_config(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def ceph_flags(client: Any) -> str:
+def ceph_flags(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.ceph.flags.get,
     )
@@ -266,7 +267,7 @@ def ceph_flags(client: Any) -> str:
 
 @confirm_required
 def set_ceph_flags(
-    client: Any,
+    client: ProxmoxClient,
     flags: str = "",
     confirm: bool = False,
     **kwargs: Any,
@@ -287,7 +288,7 @@ def set_ceph_flags(
     return f"Ceph flags set to {flags!r}."
 
 
-def get_ceph_flag(client: Any, flag: str) -> str:
+def get_ceph_flag(client: ProxmoxClient, flag: str) -> str:
     if not flag:
         raise ValueError("Flag name is required")
     result = client.safe_api_call(
@@ -312,7 +313,7 @@ def get_ceph_flag(client: Any, flag: str) -> str:
 
 @confirm_required
 def set_ceph_flag(
-    client: Any,
+    client: ProxmoxClient,
     flag: str = "",
     value: str = "",
     confirm: bool = False,
@@ -336,7 +337,7 @@ def set_ceph_flag(
     return f"Ceph flag {flag!r} set to {value!r}."
 
 
-def list_ceph_osd_detail(client: Any, node: Optional[str] = None, osdid: int = 0) -> str:
+def list_ceph_osd_detail(client: ProxmoxClient, node: Optional[str] = None, osdid: int = 0) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -369,7 +370,7 @@ def list_ceph_osd_detail(client: Any, node: Optional[str] = None, osdid: int = 0
 
 @confirm_required
 def create_ceph_osd(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     dev: str = "",
     confirm: bool = False,
@@ -396,7 +397,7 @@ def create_ceph_osd(
 
 @confirm_required
 def destroy_ceph_osd(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
@@ -421,7 +422,7 @@ def destroy_ceph_osd(
 
 @confirm_required
 def ceph_osd_in(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
@@ -440,7 +441,7 @@ def ceph_osd_in(
 
 @confirm_required
 def ceph_osd_out(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
@@ -459,7 +460,7 @@ def ceph_osd_out(
 
 @confirm_required
 def ceph_osd_scrub(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
@@ -476,7 +477,7 @@ def ceph_osd_scrub(
     return f"Ceph OSD {osdid} scrub started on {resolved_node}. UPID: {upid}"
 
 
-def ceph_osd_metadata(client: Any, node: Optional[str] = None, osdid: int = 0) -> str:
+def ceph_osd_metadata(client: ProxmoxClient, node: Optional[str] = None, osdid: int = 0) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -501,7 +502,7 @@ def ceph_osd_metadata(client: Any, node: Optional[str] = None, osdid: int = 0) -
     return "\n".join(lines)
 
 
-def list_ceph_pools(client: Any, node: Optional[str] = None) -> str:
+def list_ceph_pools(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -524,7 +525,7 @@ def list_ceph_pools(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def create_ceph_pool(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -549,7 +550,7 @@ def create_ceph_pool(
     return f"Ceph pool {name!r} created on {resolved_node}. UPID: {upid}"
 
 
-def get_ceph_pool(client: Any, node: Optional[str] = None, name: str = "") -> str:
+def get_ceph_pool(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not name:
@@ -572,7 +573,7 @@ def get_ceph_pool(client: Any, node: Optional[str] = None, name: str = "") -> st
 
 @confirm_required
 def update_ceph_pool(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -598,7 +599,7 @@ def update_ceph_pool(
 
 @confirm_required
 def destroy_ceph_pool(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -623,7 +624,7 @@ def destroy_ceph_pool(
     return f"Ceph pool {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
-def ceph_pool_status(client: Any, node: Optional[str] = None, name: str = "") -> str:
+def ceph_pool_status(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not name:
@@ -644,7 +645,7 @@ def ceph_pool_status(client: Any, node: Optional[str] = None, name: str = "") ->
     return "\n".join(lines)
 
 
-def list_ceph_mds_detail(client: Any, node: Optional[str] = None) -> str:
+def list_ceph_mds_detail(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -669,7 +670,7 @@ def list_ceph_mds_detail(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def create_ceph_mds(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -696,7 +697,7 @@ def create_ceph_mds(
 
 @confirm_required
 def destroy_ceph_mds(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -723,7 +724,7 @@ def destroy_ceph_mds(
 
 @confirm_required
 def create_ceph_mgr(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     id: str = "",
     confirm: bool = False,
@@ -750,7 +751,7 @@ def create_ceph_mgr(
 
 @confirm_required
 def destroy_ceph_mgr(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     id: str = "",
     confirm: bool = False,
@@ -777,7 +778,7 @@ def destroy_ceph_mgr(
 
 @confirm_required
 def create_ceph_mon(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     monid: str = "",
     confirm: bool = False,
@@ -804,7 +805,7 @@ def create_ceph_mon(
 
 @confirm_required
 def destroy_ceph_mon(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     monid: str = "",
     confirm: bool = False,
@@ -831,7 +832,7 @@ def destroy_ceph_mon(
 
 @confirm_required
 def start_ceph(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
@@ -849,7 +850,7 @@ def start_ceph(
 
 @confirm_required
 def stop_ceph(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
@@ -867,7 +868,7 @@ def stop_ceph(
 
 @confirm_required
 def restart_ceph(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
@@ -883,7 +884,7 @@ def restart_ceph(
     return f"Ceph services restarted on {resolved_node}. UPID: {upid}"
 
 
-def ceph_cfg_db(client: Any, node: Optional[str] = None) -> str:
+def ceph_cfg_db(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -918,7 +919,7 @@ def ceph_cfg_db(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def ceph_cfg_value(client: Any, node: Optional[str] = None, **kwargs: Any) -> str:
+def ceph_cfg_value(client: ProxmoxClient, node: Optional[str] = None, **kwargs: Any) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     params = {}
@@ -942,7 +943,7 @@ def ceph_cfg_value(client: Any, node: Optional[str] = None, **kwargs: Any) -> st
     return "\n".join(lines)
 
 
-def ceph_crush(client: Any, node: Optional[str] = None) -> str:
+def ceph_crush(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -975,7 +976,7 @@ def ceph_crush(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def ceph_log(client: Any, node: Optional[str] = None) -> str:
+def ceph_log(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -1013,7 +1014,7 @@ def ceph_log(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def init_ceph(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,

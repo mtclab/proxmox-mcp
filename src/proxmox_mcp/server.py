@@ -38,78 +38,90 @@ from proxmox_mcp.config import Config
 
 mcp = FastMCP("proxmox-mcp")
 
-client: ProxmoxClient | None = None
+client: ProxmoxClient = None  # type: ignore[assignment]
+
+
+def _parse(kwargs: str | None) -> dict:
+    """Parse kwargs JSON string into a dict for PVE API calls."""
+    if not kwargs:
+        return {}
+    import json
+
+    try:
+        result = json.loads(kwargs)
+        if isinstance(result, dict):
+            return result
+    except json.JSONDecodeError:
+        pass
+    try:
+        return {k: v for k, v in (pair.split("=", 1) for pair in kwargs.split() if "=" in pair)}
+    except ValueError:
+        return {}
 
 
 @mcp.tool()
 def proxmox_list_nodes() -> str:
-    """List all nodes in the Proxmox cluster."""
+    """(read-only). list all nodes in the Proxmox cluster."""
     return discovery.list_nodes(client)
 
 
 @mcp.tool()
 def proxmox_node_status(node: str | None = None) -> str:
-    """Get detailed status of a specific node."""
+    """(read-only). get detailed status of a specific node."""
     return discovery.node_status(client, node)
 
 
 @mcp.tool()
 def proxmox_list_vms(node: str | None = None) -> str:
-    """List all virtual machines in the cluster."""
+    """(read-only). list all virtual machines in the cluster."""
     return discovery.list_vms(client, node)
 
 
 @mcp.tool()
-def proxmox_vm_info(
-    node: str | None = None, vmid: int | None = None, name: str | None = None
-) -> str:
-    """Get detailed information about a specific VM."""
+def proxmox_vm_info(node: str | None = None, vmid: int | None = None, name: str | None = None) -> str:
+    """(read-only). get detailed information about a specific VM."""
     return discovery.vm_info(client, node, vmid, name)
 
 
 @mcp.tool()
 def proxmox_list_lxc(node: str | None = None) -> str:
-    """List all LXC containers in the cluster."""
+    """(read-only). list all LXC containers in the cluster."""
     return discovery.list_lxc(client, node)
 
 
 @mcp.tool()
-def proxmox_lxc_info(
-    node: str | None = None, vmid: int | None = None, name: str | None = None
-) -> str:
-    """Get detailed information about a specific LXC container."""
+def proxmox_lxc_info(node: str | None = None, vmid: int | None = None, name: str | None = None) -> str:
+    """(read-only). get detailed information about a specific LXC container."""
     return discovery.lxc_info(client, node, vmid, name)
 
 
 @mcp.tool()
 def proxmox_list_storage(node: str | None = None) -> str:
-    """List all storage pools in the cluster."""
+    """(read-only). list all storage pools in the cluster."""
     return discovery.list_storage(client, node)
 
 
 @mcp.tool()
 def proxmox_storage_content(node: str | None = None, storage: str = "local") -> str:
-    """List content in a storage pool."""
+    """(read-only). list content in a storage pool."""
     return discovery.storage_content(client, node, storage)
 
 
 @mcp.tool()
 def proxmox_list_tasks(node: str | None = None, limit: int = 50) -> str:
-    """List recent cluster tasks."""
+    """(read-only). list recent cluster tasks."""
     return discovery.list_tasks(client, node, limit)
 
 
 @mcp.tool()
 def proxmox_task_status(upid: str) -> str:
-    """Get the status of a specific task."""
+    """(read-only). get the status of a specific task."""
     return discovery.task_status(client, upid)
 
 
 @mcp.tool()
-def proxmox_node_metrics(
-    node: str | None = None, timeframe: str = "hour", cf: str = "AVERAGE"
-) -> str:
-    """Get RRD metrics for a node."""
+def proxmox_node_metrics(node: str | None = None, timeframe: str = "hour", cf: str = "AVERAGE") -> str:
+    """(read-only). get RRD metrics for a node."""
     return discovery.node_metrics(client, node, timeframe, cf)
 
 
@@ -120,7 +132,7 @@ def proxmox_vm_metrics(
     name: str | None = None,
     timeframe: str = "hour",
 ) -> str:
-    """Get RRD metrics for a VM."""
+    """(read-only). get RRD metrics for a VM."""
     return discovery.vm_metrics(client, node, vmid, name, timeframe)
 
 
@@ -131,13 +143,13 @@ def proxmox_lxc_metrics(
     name: str | None = None,
     timeframe: str = "hour",
 ) -> str:
-    """Get RRD metrics for an LXC container."""
+    """(read-only). get RRD metrics for an LXC container."""
     return discovery.lxc_metrics(client, node, vmid, name, timeframe)
 
 
 @mcp.tool()
 def proxmox_list_bridges(node: str | None = None) -> str:
-    """List network bridges on a node."""
+    """(read-only). list network bridges on a node."""
     return discovery.list_bridges(client, node)
 
 
@@ -156,48 +168,46 @@ def proxmox_create_lxc(
 ) -> str:
     """Create an LXC container (elevated, confirm required)."""
     return lifecycle.create_lxc(
-        client, node=node, vmid=vmid, ostemplate=ostemplate,
-        hostname=hostname, memory=memory, cores=cores,
-        rootfs=rootfs, password=password, start=start, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        ostemplate=ostemplate,
+        hostname=hostname,
+        memory=memory,
+        cores=cores,
+        rootfs=rootfs,
+        password=password,
+        start=start,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
-def proxmox_start_lxc(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_start_lxc(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Start an LXC container (elevated, confirm required)."""
     return lifecycle.start_lxc(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_stop_lxc(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_stop_lxc(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Stop an LXC container (elevated, confirm required)."""
     return lifecycle.stop_lxc(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_shutdown_lxc(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_shutdown_lxc(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Shutdown an LXC container (elevated, confirm required)."""
     return lifecycle.shutdown_lxc(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_reboot_lxc(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_reboot_lxc(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Reboot an LXC container (elevated, confirm required)."""
     return lifecycle.reboot_lxc(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_delete_lxc(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_delete_lxc(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Delete an LXC container (elevated, confirm required)."""
     return lifecycle.delete_lxc(client, node=node, vmid=vmid, confirm=confirm)
 
@@ -212,7 +222,12 @@ def proxmox_configure_lxc(
 ) -> str:
     """Configure an LXC container (elevated, confirm required)."""
     return lifecycle.configure_lxc(
-        client, node=node, vmid=vmid, cores=cores, memory=memory, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        cores=cores,
+        memory=memory,
+        confirm=confirm,
     )
 
 
@@ -226,22 +241,23 @@ def proxmox_resize_lxc(
 ) -> str:
     """Resize an LXC container disk (elevated, confirm required)."""
     return lifecycle.resize_lxc(
-        client, node=node, vmid=vmid, disk=disk, size=size, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        disk=disk,
+        size=size,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
-def proxmox_suspend_lxc(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_suspend_lxc(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Suspend an LXC container (elevated, confirm required)."""
     return lifecycle.suspend_lxc(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_resume_lxc(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_resume_lxc(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Resume a suspended LXC container (elevated, confirm required)."""
     return lifecycle.resume_lxc(client, node=node, vmid=vmid, confirm=confirm)
 
@@ -258,8 +274,14 @@ def proxmox_clone_lxc(
 ) -> str:
     """Clone an LXC container (elevated, confirm required)."""
     return lifecycle.clone_lxc(
-        client, node=node, vmid=vmid, newid=newid,
-        hostname=hostname, full=full, target=target, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        newid=newid,
+        hostname=hostname,
+        full=full,
+        target=target,
+        confirm=confirm,
     )
 
 
@@ -272,15 +294,17 @@ def proxmox_migrate_lxc(
 ) -> str:
     """Migrate an LXC container to another node (elevated, confirm required)."""
     return lifecycle.migrate_lxc(
-        client, node=node, vmid=vmid, target=target, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        target=target,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
-def proxmox_lxc_interfaces(
-    node: str | None = None, vmid: int | None = None
-) -> str:
-    """Get network interfaces and IP addresses for an LXC container."""
+def proxmox_lxc_interfaces(node: str | None = None, vmid: int | None = None) -> str:
+    """(read-only). get network interfaces and IP addresses for an LXC container."""
     return lifecycle.lxc_interfaces(client, node=node, vmid=vmid)
 
 
@@ -301,48 +325,48 @@ def proxmox_create_vm(
 ) -> str:
     """Create a VM (elevated, confirm required). disk_size uses scsi0 format."""
     return lifecycle.create_vm(
-        client, node=node, vmid=vmid, name=name, memory=memory, cores=cores,
-        sockets=sockets, disk_size=disk_size, storage=storage, iso=iso,
-        ostype=ostype, net0=net0, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        memory=memory,
+        cores=cores,
+        sockets=sockets,
+        disk_size=disk_size,
+        storage=storage,
+        iso=iso,
+        ostype=ostype,
+        net0=net0,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
-def proxmox_start_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_start_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Start a VM (elevated, confirm required)."""
     return lifecycle.start_vm(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_stop_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_stop_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Stop a VM (elevated, confirm required)."""
     return lifecycle.stop_vm(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_shutdown_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_shutdown_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Shutdown a VM (elevated, confirm required)."""
     return lifecycle.shutdown_vm(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_reboot_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_reboot_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Reboot a VM (elevated, confirm required)."""
     return lifecycle.reboot_vm(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_delete_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_delete_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Delete a VM (elevated, confirm required)."""
     return lifecycle.delete_vm(client, node=node, vmid=vmid, confirm=confirm)
 
@@ -358,7 +382,13 @@ def proxmox_clone_vm(
 ) -> str:
     """Clone a VM (elevated, confirm required)."""
     return lifecycle.clone_vm(
-        client, node=node, vmid=vmid, newid=newid, name=name, full=full, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        newid=newid,
+        name=name,
+        full=full,
+        confirm=confirm,
     )
 
 
@@ -371,7 +401,11 @@ def proxmox_migrate_vm(
 ) -> str:
     """Migrate a VM to another node (elevated, confirm required)."""
     return lifecycle.migrate_vm(
-        client, node=node, vmid=vmid, target=target, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        target=target,
+        confirm=confirm,
     )
 
 
@@ -385,7 +419,12 @@ def proxmox_configure_vm(
 ) -> str:
     """Configure a VM (elevated, confirm required)."""
     return lifecycle.configure_vm(
-        client, node=node, vmid=vmid, cores=cores, memory=memory, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        cores=cores,
+        memory=memory,
+        confirm=confirm,
     )
 
 
@@ -399,30 +438,29 @@ def proxmox_resize_vm(
 ) -> str:
     """Resize a VM disk (elevated, confirm required)."""
     return lifecycle.resize_vm(
-        client, node=node, vmid=vmid, disk=disk, size=size, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        disk=disk,
+        size=size,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
-def proxmox_reset_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
-    """Reset a VM (hardware reset, elevated, confirm required)."""
+def proxmox_reset_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
+    """(elevated, confirm required) Reset a VM (hardware reset)."""
     return lifecycle.reset_vm(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_suspend_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_suspend_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Suspend a VM (elevated, confirm required)."""
     return lifecycle.suspend_vm(client, node=node, vmid=vmid, confirm=confirm)
 
 
 @mcp.tool()
-def proxmox_resume_vm(
-    node: str | None = None, vmid: int | None = None, confirm: bool = False
-) -> str:
+def proxmox_resume_vm(node: str | None = None, vmid: int | None = None, confirm: bool = False) -> str:
     """Resume a suspended VM (elevated, confirm required)."""
     return lifecycle.resume_vm(client, node=node, vmid=vmid, confirm=confirm)
 
@@ -436,19 +474,23 @@ def proxmox_snapshot_config(
 ) -> str:
     """Get snapshot configuration (read-only)."""
     return snapshots.snapshot_config(
-        client, node=node, vmid=vmid, snapname=snapname, vmtype=vmtype,
+        client,
+        node=node,
+        vmid=vmid,
+        snapname=snapname,
+        vmtype=vmtype,
     )
 
 
 @mcp.tool()
 def proxmox_list_templates(node: str | None = None) -> str:
-    """List PVE appliance catalog (available templates to download)."""
+    """(read-only). list PVE appliance catalog (available templates to download)."""
     return templates.list_templates(client, node=node)
 
 
 @mcp.tool()
 def proxmox_list_storage_templates(node: str | None = None, storage: str = "local") -> str:
-    """List already-downloaded templates in storage."""
+    """(read-only). list already-downloaded templates in storage."""
     return templates.list_storage_templates(client, node=node, storage=storage)
 
 
@@ -462,7 +504,12 @@ def proxmox_download_template(
 ) -> str:
     """Download template from PVE repo URL (elevated, confirm required)."""
     return templates.download_template(
-        client, node=node, storage=storage, url=url, filename=filename, confirm=confirm,
+        client,
+        node=node,
+        storage=storage,
+        url=url,
+        filename=filename,
+        confirm=confirm,
     )
 
 
@@ -475,15 +522,17 @@ def proxmox_upload_template(
 ) -> str:
     """Upload local file as vztmpl to storage (elevated, confirm required)."""
     return templates.upload_template(
-        client, node=node, storage=storage, filepath=filepath, confirm=confirm,
+        client,
+        node=node,
+        storage=storage,
+        filepath=filepath,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
-def proxmox_list_snapshots(
-    node: str | None = None, vmid: int | None = None, vmtype: str = "qemu"
-) -> str:
-    """List snapshots for a VM or LXC container."""
+def proxmox_list_snapshots(node: str | None = None, vmid: int | None = None, vmtype: str = "qemu") -> str:
+    """(read-only). list snapshots for a VM or LXC container."""
     return snapshots.list_snapshots(client, node=node, vmid=vmid, vmtype=vmtype)
 
 
@@ -498,8 +547,13 @@ def proxmox_create_snapshot(
 ) -> str:
     """Create a snapshot for a VM or LXC container (elevated, confirm required)."""
     return snapshots.create_snapshot(
-        client, node=node, vmid=vmid, snapname=snapname,
-        vmtype=vmtype, description=description, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        snapname=snapname,
+        vmtype=vmtype,
+        description=description,
+        confirm=confirm,
     )
 
 
@@ -513,8 +567,12 @@ def proxmox_delete_snapshot(
 ) -> str:
     """Delete a snapshot for a VM or LXC container (elevated, confirm required)."""
     return snapshots.delete_snapshot(
-        client, node=node, vmid=vmid, snapname=snapname,
-        vmtype=vmtype, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        snapname=snapname,
+        vmtype=vmtype,
+        confirm=confirm,
     )
 
 
@@ -528,14 +586,18 @@ def proxmox_rollback_snapshot(
 ) -> str:
     """Rollback a snapshot for a VM or LXC container (elevated, confirm required)."""
     return snapshots.rollback_snapshot(
-        client, node=node, vmid=vmid, snapname=snapname,
-        vmtype=vmtype, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        snapname=snapname,
+        vmtype=vmtype,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
 def proxmox_list_backups(node: str | None = None, storage: str = "local") -> str:
-    """List backups in a storage pool."""
+    """(read-only). list backups in a storage pool."""
     return backups.list_backups(client, node=node, storage=storage)
 
 
@@ -551,8 +613,14 @@ def proxmox_create_backup(
 ) -> str:
     """Create a backup (elevated, confirm required). vmtype: 'qemu' or 'lxc'."""
     return backups.create_backup(
-        client, node=node, vmid=vmid, vmtype=vmtype,
-        storage=storage, mode=mode, compress=compress, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        vmtype=vmtype,
+        storage=storage,
+        mode=mode,
+        compress=compress,
+        confirm=confirm,
     )
 
 
@@ -567,14 +635,19 @@ def proxmox_restore_backup(
 ) -> str:
     """Restore a backup (elevated, confirm required)."""
     return backups.restore_backup(
-        client, node=node, vmid=vmid, archive=archive,
-        storage=storage, vmtype=vmtype, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        archive=archive,
+        storage=storage,
+        vmtype=vmtype,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
 def proxmox_list_network(node: str | None = None) -> str:
-    """List all network interfaces on a node."""
+    """(read-only). list all network interfaces on a node."""
     return networking.list_network(client, node=node)
 
 
@@ -592,9 +665,16 @@ def proxmox_create_network(
 ) -> str:
     """Create a network interface on a node (elevated, confirm required)."""
     return networking.create_network(
-        client, node=node, iface=iface, type=type,
-        address=address, netmask=netmask, gateway=gateway,
-        bridge_ports=bridge_ports, confirm=confirm, apply=apply,
+        client,
+        node=node,
+        iface=iface,
+        type=type,
+        address=address,
+        netmask=netmask,
+        gateway=gateway,
+        bridge_ports=bridge_ports,
+        confirm=confirm,
+        apply=apply,
     )
 
 
@@ -610,8 +690,13 @@ def proxmox_update_network(
 ) -> str:
     """Update a network interface on a node (elevated, confirm required)."""
     return networking.update_network(
-        client, node=node, iface=iface,
-        address=address, netmask=netmask, gateway=gateway, confirm=confirm,
+        client,
+        node=node,
+        iface=iface,
+        address=address,
+        netmask=netmask,
+        gateway=gateway,
+        confirm=confirm,
         apply=apply,
     )
 
@@ -625,13 +710,17 @@ def proxmox_delete_network(
 ) -> str:
     """Delete a network interface on a node (elevated, confirm required)."""
     return networking.delete_network(
-        client, node=node, iface=iface, confirm=confirm, apply=apply,
+        client,
+        node=node,
+        iface=iface,
+        confirm=confirm,
+        apply=apply,
     )
 
 
 @mcp.tool()
 def proxmox_list_acl() -> str:
-    """List ACL rules in the cluster."""
+    """(read-only). list ACL rules in the cluster."""
     return permissions.list_acl(client)
 
 
@@ -645,8 +734,12 @@ def proxmox_set_acl(
 ) -> str:
     """Set ACL rules (elevated, confirm required)."""
     return permissions.set_acl(
-        client, users=users, roles=roles, path=path,
-        propagate=propagate, confirm=confirm,
+        client,
+        users=users,
+        roles=roles,
+        path=path,
+        propagate=propagate,
+        confirm=confirm,
     )
 
 
@@ -660,26 +753,30 @@ def proxmox_delete_acl(
 ) -> str:
     """Delete ACL rules (elevated, confirm required)."""
     return permissions.delete_acl(
-        client, users=users, roles=roles, path=path,
-        propagate=propagate, confirm=confirm,
+        client,
+        users=users,
+        roles=roles,
+        path=path,
+        propagate=propagate,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
 def proxmox_list_roles() -> str:
-    """List roles in the cluster."""
+    """(read-only). list roles in the cluster."""
     return permissions.list_roles(client)
 
 
 @mcp.tool()
 def proxmox_list_users() -> str:
-    """List users in the cluster."""
+    """(read-only). list users in the cluster."""
     return permissions.list_users(client)
 
 
 @mcp.tool()
 def proxmox_list_tokens(userid: str = "") -> str:
-    """List API tokens for a user."""
+    """(read-only). list API tokens for a user."""
     return permissions.list_tokens(client, userid=userid)
 
 
@@ -698,9 +795,17 @@ def proxmox_create_user(
 ) -> str:
     """Create a new PVE user (elevated, confirm required)."""
     return permissions.create_user(
-        client, userid=userid, password=password, comment=comment,
-        email=email, firstname=firstname, lastname=lastname,
-        enable=enable, expire=expire, groups=groups, confirm=confirm,
+        client,
+        userid=userid,
+        password=password,
+        comment=comment,
+        email=email,
+        firstname=firstname,
+        lastname=lastname,
+        enable=enable,
+        expire=expire,
+        groups=groups,
+        confirm=confirm,
     )
 
 
@@ -724,9 +829,16 @@ def proxmox_update_user(
 ) -> str:
     """Update a PVE user (elevated, confirm required)."""
     return permissions.update_user(
-        client, userid=userid, comment=comment, email=email,
-        firstname=firstname, lastname=lastname, enable=enable,
-        expire=expire, groups=groups, confirm=confirm,
+        client,
+        userid=userid,
+        comment=comment,
+        email=email,
+        firstname=firstname,
+        lastname=lastname,
+        enable=enable,
+        expire=expire,
+        groups=groups,
+        confirm=confirm,
     )
 
 
@@ -785,8 +897,13 @@ def proxmox_create_token(
 ) -> str:
     """Create an API token for a PVE user (elevated, confirm required)."""
     return permissions.create_token(
-        client, userid=userid, tokenid=tokenid, comment=comment,
-        privsep=privsep, expire=expire, confirm=confirm,
+        client,
+        userid=userid,
+        tokenid=tokenid,
+        comment=comment,
+        privsep=privsep,
+        expire=expire,
+        confirm=confirm,
     )
 
 
@@ -807,8 +924,13 @@ def proxmox_update_token(
 ) -> str:
     """Update an API token (elevated, confirm required)."""
     return permissions.update_token(
-        client, userid=userid, tokenid=tokenid, comment=comment,
-        privsep=privsep, expire=expire, confirm=confirm,
+        client,
+        userid=userid,
+        tokenid=tokenid,
+        comment=comment,
+        privsep=privsep,
+        expire=expire,
+        confirm=confirm,
     )
 
 
@@ -881,13 +1003,17 @@ def proxmox_upload_iso(
 ) -> str:
     """Upload an ISO file to storage (elevated, confirm required)."""
     return storage_mod.upload_iso(
-        client, node=node, storage=storage, filepath=filepath, confirm=confirm,
+        client,
+        node=node,
+        storage=storage,
+        filepath=filepath,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
 def proxmox_list_isos(node: str | None = None, storage: str = "local") -> str:
-    """List ISOs in a storage pool."""
+    """(read-only). list ISOs in a storage pool."""
     return storage_mod.list_isos(client, node=node, storage=storage)
 
 
@@ -903,13 +1029,17 @@ def proxmox_set_cloudinit(
 ) -> str:
     """Set cloud-init parameters on a VM (elevated, confirm required)."""
     return cloudinit.set_cloudinit(
-        client, node=node, vmid=vmid, ciuser=ciuser,
-        cipassword=cipassword, ipconfig0=ipconfig0,
-        sshkeys=sshkeys, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        ciuser=ciuser,
+        cipassword=cipassword,
+        ipconfig0=ipconfig0,
+        sshkeys=sshkeys,
+        confirm=confirm,
     )
 
 
-@mcp.tool()
 @mcp.tool()
 def proxmox_node_config(node: str | None = None) -> str:
     """Get node configuration (read-only)."""
@@ -926,8 +1056,12 @@ def proxmox_update_node_config(
 ) -> str:
     """Update node configuration (elevated, confirm required)."""
     return nodes.update_node_config(
-        client, node=node, description=description,
-        keyboard=keyboard, time_zone=time_zone, confirm=confirm,
+        client,
+        node=node,
+        description=description,
+        keyboard=keyboard,
+        time_zone=time_zone,
+        confirm=confirm,
     )
 
 
@@ -994,7 +1128,7 @@ def proxmox_get_node_detailed_status(node: str | None = None) -> str:
 
 @mcp.tool()
 def proxmox_list_services(node: str | None = None) -> str:
-    """List services on a node."""
+    """(read-only). list services on a node."""
     return nodes.list_services(client, node=node)
 
 
@@ -1003,7 +1137,7 @@ def proxmox_service_state(
     node: str | None = None,
     service: str = "",
 ) -> str:
-    """Get service state on a node."""
+    """(read-only). get service state on a node."""
     return nodes.service_state(client, node=node, service=service)
 
 
@@ -1039,13 +1173,13 @@ def proxmox_restart_service(
 
 @mcp.tool()
 def proxmox_node_dns(node: str | None = None) -> str:
-    """Get DNS settings for a node."""
+    """(read-only). get DNS settings for a node."""
     return nodes.node_dns(client, node=node)
 
 
 @mcp.tool()
 def proxmox_node_hosts(node: str | None = None) -> str:
-    """Get hosts file content for a node."""
+    """(read-only). get hosts file content for a node."""
     return nodes.node_hosts(client, node=node)
 
 
@@ -1136,6 +1270,7 @@ def proxmox_agent_fsthaw(
     """Thaw filesystems on a VM via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_fsthaw(client, node=node, vmid=vmid, confirm=confirm)
 
+
 @mcp.tool()
 def proxmox_agent_fstrim(
     node: str | None = None,
@@ -1145,6 +1280,7 @@ def proxmox_agent_fstrim(
     """Run fstrim on VM filesystem via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_fstrim(client, node=node, vmid=vmid, confirm=confirm)
 
+
 @mcp.tool()
 def proxmox_agent_fsfreeze_status(
     node: str | None = None,
@@ -1152,6 +1288,7 @@ def proxmox_agent_fsfreeze_status(
 ) -> str:
     """Check filesystem freeze status via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_fsfreeze_status(client, node=node, vmid=vmid)
+
 
 @mcp.tool()
 def proxmox_agent_get_host_name(
@@ -1161,6 +1298,7 @@ def proxmox_agent_get_host_name(
     """Get VM hostname via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_get_host_name(client, node=node, vmid=vmid)
 
+
 @mcp.tool()
 def proxmox_agent_get_memory_block_info(
     node: str | None = None,
@@ -1168,6 +1306,7 @@ def proxmox_agent_get_memory_block_info(
 ) -> str:
     """Get VM memory block info via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_get_memory_block_info(client, node=node, vmid=vmid)
+
 
 @mcp.tool()
 def proxmox_agent_get_memory_blocks(
@@ -1177,6 +1316,7 @@ def proxmox_agent_get_memory_blocks(
     """Get VM memory blocks via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_get_memory_blocks(client, node=node, vmid=vmid)
 
+
 @mcp.tool()
 def proxmox_agent_get_time(
     node: str | None = None,
@@ -1184,6 +1324,7 @@ def proxmox_agent_get_time(
 ) -> str:
     """Get VM time via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_get_time(client, node=node, vmid=vmid)
+
 
 @mcp.tool()
 def proxmox_agent_get_timezone(
@@ -1193,6 +1334,7 @@ def proxmox_agent_get_timezone(
     """Get VM timezone via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_get_timezone(client, node=node, vmid=vmid)
 
+
 @mcp.tool()
 def proxmox_agent_get_users(
     node: str | None = None,
@@ -1201,6 +1343,7 @@ def proxmox_agent_get_users(
     """Get VM users via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_get_users(client, node=node, vmid=vmid)
 
+
 @mcp.tool()
 def proxmox_agent_get_vcpus(
     node: str | None = None,
@@ -1208,6 +1351,7 @@ def proxmox_agent_get_vcpus(
 ) -> str:
     """Get VM VCPU info via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_get_vcpus(client, node=node, vmid=vmid)
+
 
 @mcp.tool()
 def proxmox_agent_set_user_password(
@@ -1219,8 +1363,14 @@ def proxmox_agent_set_user_password(
 ) -> str:
     """Set user password in VM via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_set_user_password(
-        client, node=node, vmid=vmid, username=username, password=password, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        username=username,
+        password=password,
+        confirm=confirm,
     )
+
 
 @mcp.tool()
 def proxmox_agent_file_read(
@@ -1230,6 +1380,7 @@ def proxmox_agent_file_read(
 ) -> str:
     """Read a file from VM via QEMU Guest Agent (elevated)."""
     return cloudinit.agent_file_read(client, node=node, vmid=vmid, filepath=filepath)
+
 
 @mcp.tool()
 def proxmox_agent_file_write(
@@ -1242,6 +1393,7 @@ def proxmox_agent_file_write(
     """Write a file to VM via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_file_write(client, node=node, vmid=vmid, filepath=filepath, content=content, confirm=confirm)
 
+
 @mcp.tool()
 def proxmox_agent_shutdown(
     node: str | None = None,
@@ -1250,6 +1402,7 @@ def proxmox_agent_shutdown(
 ) -> str:
     """Shutdown VM via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_shutdown(client, node=node, vmid=vmid, confirm=confirm)
+
 
 @mcp.tool()
 def proxmox_agent_suspend_disk(
@@ -1260,6 +1413,7 @@ def proxmox_agent_suspend_disk(
     """Suspend VM to disk via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_suspend_disk(client, node=node, vmid=vmid, confirm=confirm)
 
+
 @mcp.tool()
 def proxmox_agent_suspend_ram(
     node: str | None = None,
@@ -1269,6 +1423,7 @@ def proxmox_agent_suspend_ram(
     """Suspend VM to RAM via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_suspend_ram(client, node=node, vmid=vmid, confirm=confirm)
 
+
 @mcp.tool()
 def proxmox_agent_suspend_hybrid(
     node: str | None = None,
@@ -1277,6 +1432,7 @@ def proxmox_agent_suspend_hybrid(
 ) -> str:
     """Hybrid suspend VM via QEMU Guest Agent (elevated, confirm required)."""
     return cloudinit.agent_suspend_hybrid(client, node=node, vmid=vmid, confirm=confirm)
+
 
 @mcp.tool()
 def proxmox_get_storage(storage: str, node: str | None = None) -> str:
@@ -1295,8 +1451,13 @@ def proxmox_create_storage(
 ) -> str:
     """Create a storage pool (elevated, confirm required)."""
     return storage_mod.create_storage(
-        client, storage=storage, type=type, path=path,
-        content=content, nodes=nodes, confirm=confirm,
+        client,
+        storage=storage,
+        type=type,
+        path=path,
+        content=content,
+        nodes=nodes,
+        confirm=confirm,
     )
 
 
@@ -1310,8 +1471,12 @@ def proxmox_update_storage(
 ) -> str:
     """Update a storage pool configuration (elevated, confirm required)."""
     return storage_mod.update_storage(
-        client, storage=storage, content=content,
-        nodes=nodes, delete=delete, confirm=confirm,
+        client,
+        storage=storage,
+        content=content,
+        nodes=nodes,
+        delete=delete,
+        confirm=confirm,
     )
 
 
@@ -1333,7 +1498,11 @@ def proxmox_delete_volume(
 ) -> str:
     """Delete a volume from storage (elevated, confirm required)."""
     return storage_mod.delete_volume(
-        client, node=node, storage=storage, volume=volume, confirm=confirm,
+        client,
+        node=node,
+        storage=storage,
+        volume=volume,
+        confirm=confirm,
     )
 
 
@@ -1346,7 +1515,11 @@ def proxmox_prune_backups(
 ) -> str:
     """Prune backups on storage (elevated, confirm required)."""
     return storage_mod.prune_backups(
-        client, node=node, storage=storage, prune_type=prune_type, confirm=confirm,
+        client,
+        node=node,
+        storage=storage,
+        prune_type=prune_type,
+        confirm=confirm,
     )
 
 
@@ -1366,9 +1539,9 @@ def proxmox_cluster_options() -> str:
 
 
 @mcp.tool()
-def proxmox_update_cluster_options(confirm: bool = False, **kwargs: str) -> str:
+def proxmox_update_cluster_options(confirm: bool = False, kwargs: str | None = None) -> str:
     """Update datacenter options (elevated, confirm required)."""
-    return cluster.update_cluster_options(client, confirm=confirm, **kwargs)
+    return cluster.update_cluster_options(client, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -1389,8 +1562,14 @@ def proxmox_create_backup_job(
 ) -> str:
     """Create a backup job (elevated, confirm required)."""
     return cluster.create_backup_job(
-        client, id=id, schedule=schedule, vmid=vmid,
-        storage=storage, mode=mode, compress=compress, confirm=confirm,
+        client,
+        id=id,
+        schedule=schedule,
+        vmid=vmid,
+        storage=storage,
+        mode=mode,
+        compress=compress,
+        confirm=confirm,
     )
 
 
@@ -1414,7 +1593,13 @@ def proxmox_move_vm_disk(
 ) -> str:
     """Move a VM disk to different storage (elevated, confirm required)."""
     return lifecycle.move_vm_disk(
-        client, node=node, vmid=vmid, disk=disk, storage=storage, format=format, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        disk=disk,
+        storage=storage,
+        format=format,
+        confirm=confirm,
     )
 
 
@@ -1508,7 +1693,12 @@ def proxmox_update_pool(
 ) -> str:
     """Update a pool (elevated, confirm required)."""
     return pools.update_pool(
-        client, poolid=poolid, comment=comment, delete=delete, members=members, confirm=confirm,
+        client,
+        poolid=poolid,
+        comment=comment,
+        delete=delete,
+        members=members,
+        confirm=confirm,
     )
 
 
@@ -1557,13 +1747,13 @@ def proxmox_node_ceph_status(node: str | None = None) -> str:
 
 @mcp.tool()
 def proxmox_cluster_resources(type: str | None = None) -> str:
-    """List all cluster resources, optionally filtered by type (vm, storage, node, sdn)."""
+    """(read-only). list all cluster resources, optionally filtered by type (vm, storage, node, sdn)."""
     return discovery.cluster_resources(client, type=type)
 
 
 @mcp.tool()
 def proxmox_list_cluster_firewall_rules() -> str:
-    """List cluster-level firewall rules."""
+    """(read-only). list cluster-level firewall rules."""
     return firewall.list_cluster_firewall_rules(client)
 
 
@@ -1584,15 +1774,23 @@ def proxmox_create_cluster_firewall_rule(
     dptype: traffic direction — 'in' (default), 'out', or 'forward'.
     Maps to PVE's 'type' field."""
     return firewall.create_cluster_firewall_rule(
-        client, action=action, dptype=dptype, dport=dport,
-        sport=sport, proto=proto, source=source, dest=dest,
-        iface=iface, comment=comment, confirm=confirm,
+        client,
+        action=action,
+        dptype=dptype,
+        dport=dport,
+        sport=sport,
+        proto=proto,
+        source=source,
+        dest=dest,
+        iface=iface,
+        comment=comment,
+        confirm=confirm,
     )
 
 
 @mcp.tool()
 def proxmox_get_cluster_firewall_rule(pos: int = 0) -> str:
-    """Get a specific cluster firewall rule by position."""
+    """(read-only). get a specific cluster firewall rule by position."""
     return firewall.get_cluster_firewall_rule(client, pos=pos)
 
 
@@ -1612,9 +1810,18 @@ def proxmox_update_cluster_firewall_rule(
 ) -> str:
     """Update a cluster firewall rule (elevated, confirm required)."""
     return firewall.update_cluster_firewall_rule(
-        client, pos=pos, action=action, dptype=dptype, dport=dport,
-        sport=sport, proto=proto, source=source, dest=dest,
-        iface=iface, comment=comment, confirm=confirm,
+        client,
+        pos=pos,
+        action=action,
+        dptype=dptype,
+        dport=dport,
+        sport=sport,
+        proto=proto,
+        source=source,
+        dest=dest,
+        iface=iface,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -1634,14 +1841,14 @@ def proxmox_get_cluster_firewall_options() -> str:
 
 
 @mcp.tool()
-def proxmox_set_cluster_firewall_options(confirm: bool = False, **kwargs: str) -> str:
+def proxmox_set_cluster_firewall_options(confirm: bool = False, kwargs: str | None = None) -> str:
     """Set cluster firewall options (elevated, confirm required)."""
-    return firewall.set_cluster_firewall_options(client, confirm=confirm, **kwargs)
+    return firewall.set_cluster_firewall_options(client, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
 def proxmox_list_cluster_firewall_aliases() -> str:
-    """List cluster firewall aliases."""
+    """(read-only). list cluster firewall aliases."""
     return firewall.list_cluster_firewall_aliases(client)
 
 
@@ -1654,7 +1861,11 @@ def proxmox_create_cluster_firewall_alias(
 ) -> str:
     """Create a cluster firewall alias (elevated, confirm required)."""
     return firewall.create_cluster_firewall_alias(
-        client, name=name, cidr=cidr, comment=comment, confirm=confirm,
+        client,
+        name=name,
+        cidr=cidr,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -1669,19 +1880,19 @@ def proxmox_delete_cluster_firewall_alias(
 
 @mcp.tool()
 def proxmox_list_cluster_firewall_ipsets() -> str:
-    """List cluster firewall IPSets."""
+    """(read-only). list cluster firewall IPSets."""
     return firewall.list_cluster_firewall_ipsets(client)
 
 
 @mcp.tool()
 def proxmox_list_cluster_firewall_refs() -> str:
-    """List cluster firewall references (IPSet/Alias)."""
+    """(read-only). list cluster firewall references (IPSet/Alias)."""
     return firewall.list_cluster_firewall_refs(client)
 
 
 @mcp.tool()
 def proxmox_list_node_firewall_rules(node: str | None = None) -> str:
-    """List node-level firewall rules."""
+    """(read-only). list node-level firewall rules."""
     return firewall.list_node_firewall_rules(client, node=node)
 
 
@@ -1703,9 +1914,18 @@ def proxmox_create_node_firewall_rule(
     dptype: traffic direction — 'in' (default), 'out', or 'forward'.
     Maps to PVE's 'type' field."""
     return firewall.create_node_firewall_rule(
-        client, node=node, action=action, dptype=dptype, dport=dport,
-        sport=sport, proto=proto, source=source, dest=dest,
-        iface=iface, comment=comment, confirm=confirm,
+        client,
+        node=node,
+        action=action,
+        dptype=dptype,
+        dport=dport,
+        sport=sport,
+        proto=proto,
+        source=source,
+        dest=dest,
+        iface=iface,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -1731,7 +1951,7 @@ def proxmox_list_vm_firewall_rules(
     vmid: int | None = None,
     vmtype: str = "qemu",
 ) -> str:
-    """List VM-level firewall rules. vmtype: 'qemu' or 'lxc'."""
+    """(read-only). list VM-level firewall rules. vmtype: 'qemu' or 'lxc'."""
     return firewall.list_vm_firewall_rules(client, node=node, vmid=vmid, vmtype=vmtype)
 
 
@@ -1756,9 +1976,20 @@ def proxmox_create_vm_firewall_rule(
     dptype: traffic direction — 'in' (default), 'out', or 'forward'.
     Maps to PVE's 'type' field."""
     return firewall.create_vm_firewall_rule(
-        client, node=node, vmid=vmid, vmtype=vmtype, action=action,
-        dptype=dptype, dport=dport, sport=sport, proto=proto,
-        source=source, dest=dest, iface=iface, comment=comment, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        vmtype=vmtype,
+        action=action,
+        dptype=dptype,
+        dport=dport,
+        sport=sport,
+        proto=proto,
+        source=source,
+        dest=dest,
+        iface=iface,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -1772,7 +2003,12 @@ def proxmox_delete_vm_firewall_rule(
 ) -> str:
     """Delete a VM firewall rule (elevated, confirm required). vmtype: 'qemu' or 'lxc'."""
     return firewall.delete_vm_firewall_rule(
-        client, node=node, vmid=vmid, pos=pos, vmtype=vmtype, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        pos=pos,
+        vmtype=vmtype,
+        confirm=confirm,
     )
 
 
@@ -1809,8 +2045,14 @@ def proxmox_create_vm_firewall_alias(
 ) -> str:
     """Create a VM firewall alias (elevated, confirm required). vmtype: 'qemu' or 'lxc'."""
     return firewall.create_vm_firewall_alias(
-        client, node=node, vmid=vmid, name=name, cidr=cidr,
-        vmtype=vmtype, comment=comment, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        cidr=cidr,
+        vmtype=vmtype,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -1824,7 +2066,12 @@ def proxmox_delete_vm_firewall_alias(
 ) -> str:
     """Delete a VM firewall alias (elevated, confirm required). vmtype: 'qemu' or 'lxc'."""
     return firewall.delete_vm_firewall_alias(
-        client, node=node, vmid=vmid, name=name, vmtype=vmtype, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        vmtype=vmtype,
+        confirm=confirm,
     )
 
 
@@ -1865,14 +2112,26 @@ def proxmox_update_vm_firewall_rule(
     iface: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a VM firewall rule (elevated). vmtype: 'qemu' or 'lxc'. Requires confirm=true."""
     return firewall.update_vm_firewall_rule(
-        client, node=node, vmid=vmid, pos=pos, vmtype=vmtype,
-        action=action, dptype=dptype, dport=dport, sport=sport,
-        proto=proto, source=source, dest=dest,
-        iface=iface, comment=comment, confirm=confirm, **kwargs,
+        client,
+        node=node,
+        vmid=vmid,
+        pos=pos,
+        vmtype=vmtype,
+        action=action,
+        dptype=dptype,
+        dport=dport,
+        sport=sport,
+        proto=proto,
+        source=source,
+        dest=dest,
+        iface=iface,
+        comment=comment,
+        confirm=confirm,
+        **_parse(kwargs),
     )
 
 
@@ -1882,10 +2141,12 @@ def proxmox_set_vm_firewall_options(
     vmid: int | None = None,
     vmtype: str = "qemu",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Set VM firewall options (elevated). vmtype: 'qemu' or 'lxc'. Requires confirm=true."""
-    return firewall.set_vm_firewall_options(client, node=node, vmid=vmid, vmtype=vmtype, confirm=confirm, **kwargs)
+    return firewall.set_vm_firewall_options(
+        client, node=node, vmid=vmid, vmtype=vmtype, confirm=confirm, **_parse(kwargs)
+    )
 
 
 @mcp.tool()
@@ -1910,8 +2171,14 @@ def proxmox_update_vm_firewall_alias(
 ) -> str:
     """Update a VM firewall alias (elevated). vmtype: 'qemu' or 'lxc'. Requires confirm=true."""
     return firewall.update_vm_firewall_alias(
-        client, node=node, vmid=vmid, name=name,
-        cidr=cidr, vmtype=vmtype, comment=comment, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        cidr=cidr,
+        vmtype=vmtype,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -1957,8 +2224,13 @@ def proxmox_create_vm_firewall_ipset(
 ) -> str:
     """Create a VM firewall IPSet (elevated). vmtype: 'qemu' or 'lxc'. Requires confirm=true."""
     return firewall.create_vm_firewall_ipset(
-        client, node=node, vmid=vmid,
-        name=name, vmtype=vmtype, comment=comment, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        vmtype=vmtype,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -1987,8 +2259,15 @@ def proxmox_add_vm_firewall_ipset_entry(
 ) -> str:
     """Add IP/CIDR entry to VM firewall IPSet (elevated). vmtype: 'qemu' or 'lxc'. Requires confirm=true."""
     return firewall.add_vm_firewall_ipset_entry(
-        client, node=node, vmid=vmid, name=name, cidr=cidr,
-        vmtype=vmtype, comment=comment, nomatch=nomatch, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        cidr=cidr,
+        vmtype=vmtype,
+        comment=comment,
+        nomatch=nomatch,
+        confirm=confirm,
     )
 
 
@@ -2017,8 +2296,15 @@ def proxmox_update_vm_firewall_ipset_entry(
 ) -> str:
     """Update a VM firewall IPSet entry (elevated). vmtype: 'qemu' or 'lxc'. Requires confirm=true."""
     return firewall.update_vm_firewall_ipset_entry(
-        client, node=node, vmid=vmid, name=name, cidr=cidr,
-        vmtype=vmtype, comment=comment, nomatch=nomatch, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        cidr=cidr,
+        vmtype=vmtype,
+        comment=comment,
+        nomatch=nomatch,
+        confirm=confirm,
     )
 
 
@@ -2033,8 +2319,13 @@ def proxmox_delete_vm_firewall_ipset_entry(
 ) -> str:
     """Delete a VM firewall IPSet entry (elevated). vmtype: 'qemu' or 'lxc'. Requires confirm=true."""
     return firewall.delete_vm_firewall_ipset_entry(
-        client, node=node, vmid=vmid,
-        name=name, cidr=cidr, vmtype=vmtype, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        cidr=cidr,
+        vmtype=vmtype,
+        confirm=confirm,
     )
 
 
@@ -2100,7 +2391,12 @@ def proxmox_add_cluster_firewall_ipset_entry(
 ) -> str:
     """Add an entry to a cluster firewall IPSet (elevated, confirm required)."""
     return firewall.add_cluster_firewall_ipset_entry(
-        client, name=name, cidr=cidr, comment=comment, nomatch=nomatch, confirm=confirm,
+        client,
+        name=name,
+        cidr=cidr,
+        comment=comment,
+        nomatch=nomatch,
+        confirm=confirm,
     )
 
 
@@ -2167,9 +2463,19 @@ def proxmox_update_node_firewall_rule(
 ) -> str:
     """Update a node firewall rule (elevated, confirm required)."""
     return firewall.update_node_firewall_rule(
-        client, node=node, pos=pos, action=action, dptype=dptype, dport=dport,
-        sport=sport, proto=proto, source=source, dest=dest,
-        iface=iface, comment=comment, confirm=confirm,
+        client,
+        node=node,
+        pos=pos,
+        action=action,
+        dptype=dptype,
+        dport=dport,
+        sport=sport,
+        proto=proto,
+        source=source,
+        dest=dest,
+        iface=iface,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -2177,10 +2483,10 @@ def proxmox_update_node_firewall_rule(
 def proxmox_set_node_firewall_options(
     node: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Set node firewall options (elevated, confirm required)."""
-    return firewall.set_node_firewall_options(client, node=node, confirm=confirm, **kwargs)
+    return firewall.set_node_firewall_options(client, node=node, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -2208,9 +2514,15 @@ def proxmox_create_ha_resource(
 ) -> str:
     """Create an HA resource (elevated, confirm required)."""
     return ha.create_ha_resource(
-        client, sid=sid, group=group, comment=comment,
-        max_relocate=max_relocate, max_restart=max_restart,
-        state=state, type=type, confirm=confirm,
+        client,
+        sid=sid,
+        group=group,
+        comment=comment,
+        max_relocate=max_relocate,
+        max_restart=max_restart,
+        state=state,
+        type=type,
+        confirm=confirm,
     )
 
 
@@ -2232,9 +2544,14 @@ def proxmox_update_ha_resource(
 ) -> str:
     """Update an HA resource (elevated, confirm required)."""
     return ha.update_ha_resource(
-        client, sid=sid, group=group, comment=comment,
-        max_relocate=max_relocate, max_restart=max_restart,
-        state=state, confirm=confirm,
+        client,
+        sid=sid,
+        group=group,
+        comment=comment,
+        max_relocate=max_relocate,
+        max_restart=max_restart,
+        state=state,
+        confirm=confirm,
     )
 
 
@@ -2298,9 +2615,15 @@ def proxmox_create_replication(
 ) -> str:
     """Create a replication job (elevated, confirm required)."""
     return replication.create_replication(
-        client, id=id, source=source, target=target,
-        schedule=schedule, comment=comment, disable=disable,
-        rate=rate, confirm=confirm,
+        client,
+        id=id,
+        source=source,
+        target=target,
+        schedule=schedule,
+        comment=comment,
+        disable=disable,
+        rate=rate,
+        confirm=confirm,
     )
 
 
@@ -2323,9 +2646,15 @@ def proxmox_update_replication(
 ) -> str:
     """Update a replication job (elevated, confirm required)."""
     return replication.update_replication(
-        client, id=id, source=source, target=target,
-        schedule=schedule, comment=comment, disable=disable,
-        rate=rate, confirm=confirm,
+        client,
+        id=id,
+        source=source,
+        target=target,
+        schedule=schedule,
+        comment=comment,
+        disable=disable,
+        rate=rate,
+        confirm=confirm,
     )
 
 
@@ -2445,8 +2774,13 @@ def proxmox_zfs_create(
 ) -> str:
     """Create a ZFS pool (elevated, confirm required)."""
     return disks.zfs_create(
-        client, node=node, name=name, devices=devices,
-        raidlevel=raidlevel, ashift=ashift, confirm=confirm,
+        client,
+        node=node,
+        name=name,
+        devices=devices,
+        raidlevel=raidlevel,
+        ashift=ashift,
+        confirm=confirm,
     )
 
 
@@ -2663,7 +2997,11 @@ def proxmox_create_acme_account(
 ) -> str:
     """Create an ACME account (elevated, confirm required)."""
     return acme.create_acme_account(
-        client, name=name, contact=contact, directory=directory, confirm=confirm,
+        client,
+        name=name,
+        contact=contact,
+        directory=directory,
+        confirm=confirm,
     )
 
 
@@ -2681,10 +3019,10 @@ def proxmox_update_acme_account(
     name: str = "",
     contact: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an ACME account (elevated, confirm required)."""
-    return acme.update_acme_account(client, name=name, contact=contact, confirm=confirm, **kwargs)
+    return acme.update_acme_account(client, name=name, contact=contact, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -2722,10 +3060,10 @@ def proxmox_delete_acme_plugin(
 def proxmox_update_acme_plugin(
     id: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an ACME plugin (elevated, confirm required)."""
-    return acme.update_acme_plugin(client, id=id, confirm=confirm, **kwargs)
+    return acme.update_acme_plugin(client, id=id, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -2768,10 +3106,10 @@ def proxmox_get_backup_job(id: str = "") -> str:
 def proxmox_update_backup_job(
     id: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a backup job (elevated, confirm required)."""
-    return cluster.update_backup_job(client, id=id, confirm=confirm, **kwargs)
+    return cluster.update_backup_job(client, id=id, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -2881,7 +3219,7 @@ def proxmox_scan_nfs(
     node: str | None = None,
     server: str = "",
 ) -> str:
-    """Scan for NFS exports on a remote server."""
+    """(read-only). scan for NFS exports on a remote server."""
     return nodes.scan_nfs(client, node=node, server=server)
 
 
@@ -2890,19 +3228,19 @@ def proxmox_scan_iscsi(
     node: str | None = None,
     server: str = "",
 ) -> str:
-    """Scan for iSCSI targets on a remote server."""
+    """(read-only). scan for iSCSI targets on a remote server."""
     return nodes.scan_iscsi(client, node=node, server=server)
 
 
 @mcp.tool()
 def proxmox_scan_lvm(node: str | None = None) -> str:
-    """List LVM volume groups on a node."""
+    """(read-only). list LVM volume groups on a node."""
     return nodes.scan_lvm(client, node=node)
 
 
 @mcp.tool()
 def proxmox_scan_lvmthin(node: str | None = None) -> str:
-    """List LVM thin pools on a node."""
+    """(read-only). list LVM thin pools on a node."""
     return nodes.scan_lvmthin(client, node=node)
 
 
@@ -2911,13 +3249,13 @@ def proxmox_scan_cifs(
     node: str | None = None,
     server: str = "",
 ) -> str:
-    """Scan for CIFS shares on a remote server."""
+    """(read-only). scan for CIFS shares on a remote server."""
     return nodes.scan_cifs(client, node=node, server=server)
 
 
 @mcp.tool()
 def proxmox_scan_zfs(node: str | None = None) -> str:
-    """List ZFS pools on a node."""
+    """(read-only). list ZFS pools on a node."""
     return nodes.scan_zfs(client, node=node)
 
 
@@ -2928,7 +3266,7 @@ def proxmox_scan_pbs(
     username: str | None = None,
     password: str | None = None,
 ) -> str:
-    """Scan for Proxmox Backup Server datastores."""
+    """(read-only). scan for Proxmox Backup Server datastores."""
     return nodes.scan_pbs(client, node=node, server=server, username=username, password=password)
 
 
@@ -3148,8 +3486,13 @@ def proxmox_create_ceph_pool(
 ) -> str:
     """Create a Ceph pool (elevated, confirm required)."""
     return ceph.create_ceph_pool(
-        client, node=node, name=name, confirm=confirm,
-        pg_num=pg_num, size=size, min_size=min_size,
+        client,
+        node=node,
+        name=name,
+        confirm=confirm,
+        pg_num=pg_num,
+        size=size,
+        min_size=min_size,
     )
 
 
@@ -3164,10 +3507,10 @@ def proxmox_update_ceph_pool(
     node: str | None = None,
     name: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a Ceph pool (elevated, confirm required)."""
-    return ceph.update_ceph_pool(client, node=node, name=name, confirm=confirm, **kwargs)
+    return ceph.update_ceph_pool(client, node=node, name=name, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -3292,12 +3635,12 @@ def proxmox_ceph_cfg_value(
     section: str | None = None,
 ) -> str:
     """Get Ceph config values on a node (read-only)."""
-    kwargs = {}
+    params = {}
     if name is not None:
-        kwargs["name"] = name
+        params["name"] = name
     if section is not None:
-        kwargs["section"] = section
-    return ceph.ceph_cfg_value(client, node=node, **kwargs)
+        params["section"] = section
+    return ceph.ceph_cfg_value(client, node=node, **params)
 
 
 @mcp.tool()
@@ -3460,7 +3803,11 @@ def proxmox_upload_custom_certificate(
 ) -> str:
     """Upload custom certificate and key (elevated, confirm required)."""
     return certificates.upload_custom_certificate(
-        client, node=node, certificates=certificates, key=key, confirm=confirm,
+        client,
+        node=node,
+        certificates=certificates,
+        key=key,
+        confirm=confirm,
     )
 
 
@@ -3501,7 +3848,12 @@ def proxmox_create_sdn_zone(
 ) -> str:
     """Create an SDN zone (elevated, confirm required)."""
     return sdn.create_sdn_zone(
-        client, zone=zone, type=type, comment=comment, nodes=nodes, confirm=confirm,
+        client,
+        zone=zone,
+        type=type,
+        comment=comment,
+        nodes=nodes,
+        confirm=confirm,
     )
 
 
@@ -3546,7 +3898,11 @@ def proxmox_create_sdn_vnet(
 ) -> str:
     """Create an SDN VNet (elevated, confirm required)."""
     return sdn.create_sdn_vnet(
-        client, vnet=vnet, zone=zone, comment=comment, confirm=confirm,
+        client,
+        vnet=vnet,
+        zone=zone,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -3721,7 +4077,11 @@ def proxmox_create_sendmail_endpoint(
 ) -> str:
     """Create a sendmail notification endpoint (elevated, confirm required)."""
     return notifications.create_sendmail_endpoint(
-        client, name=name, mailto=mailto, comment=comment, confirm=confirm,
+        client,
+        name=name,
+        mailto=mailto,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -3749,7 +4109,11 @@ def proxmox_create_smtp_endpoint(
 ) -> str:
     """Create an SMTP notification endpoint (elevated, confirm required)."""
     return notifications.create_smtp_endpoint(
-        client, name=name, server=server, comment=comment, confirm=confirm,
+        client,
+        name=name,
+        server=server,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -3778,7 +4142,12 @@ def proxmox_create_gotify_endpoint(
 ) -> str:
     """Create a Gotify notification endpoint (elevated, confirm required)."""
     return notifications.create_gotify_endpoint(
-        client, name=name, server=server, token=token, comment=comment, confirm=confirm,
+        client,
+        name=name,
+        server=server,
+        token=token,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -3806,7 +4175,11 @@ def proxmox_create_webhook_endpoint(
 ) -> str:
     """Create a webhook notification endpoint (elevated, confirm required)."""
     return notifications.create_webhook_endpoint(
-        client, name=name, url=url, comment=comment, confirm=confirm,
+        client,
+        name=name,
+        url=url,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -3863,10 +4236,12 @@ def proxmox_create_notification_matcher(
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Create a notification matcher (elevated, confirm required)."""
-    return notifications.create_notification_matcher(client, name=name, comment=comment, confirm=confirm, **kwargs)
+    return notifications.create_notification_matcher(
+        client, name=name, comment=comment, confirm=confirm, **_parse(kwargs)
+    )
 
 
 @mcp.tool()
@@ -3874,10 +4249,12 @@ def proxmox_update_notification_matcher(
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a notification matcher (elevated, confirm required)."""
-    return notifications.update_notification_matcher(client, name=name, comment=comment, confirm=confirm, **kwargs)
+    return notifications.update_notification_matcher(
+        client, name=name, comment=comment, confirm=confirm, **_parse(kwargs)
+    )
 
 
 @mcp.tool()
@@ -3900,10 +4277,10 @@ def proxmox_update_sendmail_endpoint(
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a sendmail endpoint (elevated, confirm required)."""
-    return notifications.update_sendmail_endpoint(client, name=name, comment=comment, confirm=confirm, **kwargs)
+    return notifications.update_sendmail_endpoint(client, name=name, comment=comment, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -3917,10 +4294,10 @@ def proxmox_update_smtp_endpoint(
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SMTP endpoint (elevated, confirm required)."""
-    return notifications.update_smtp_endpoint(client, name=name, comment=comment, confirm=confirm, **kwargs)
+    return notifications.update_smtp_endpoint(client, name=name, comment=comment, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -3934,10 +4311,10 @@ def proxmox_update_gotify_endpoint(
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a Gotify endpoint (elevated, confirm required)."""
-    return notifications.update_gotify_endpoint(client, name=name, comment=comment, confirm=confirm, **kwargs)
+    return notifications.update_gotify_endpoint(client, name=name, comment=comment, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -3951,10 +4328,10 @@ def proxmox_update_webhook_endpoint(
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a webhook endpoint (elevated, confirm required)."""
-    return notifications.update_webhook_endpoint(client, name=name, comment=comment, confirm=confirm, **kwargs)
+    return notifications.update_webhook_endpoint(client, name=name, comment=comment, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4072,10 +4449,10 @@ def proxmox_update_dir_mapping(
     id: str = "",
     description: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update a directory mapping (elevated, confirm required)."""
-    return mapping.update_dir_mapping(client, id=id, description=description, confirm=confirm, **kwargs)
+    return mapping.update_dir_mapping(client, id=id, description=description, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4110,7 +4487,13 @@ def proxmox_create_metric_server(
 ) -> str:
     """Create a metric server configuration (elevated, confirm required). type: graphite, influxdb, opentelemetry."""
     return metrics.create_metric_server(
-        client, id=id, type=type, server=server, port=port, comment=comment, confirm=confirm,
+        client,
+        id=id,
+        type=type,
+        server=server,
+        port=port,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -4124,7 +4507,12 @@ def proxmox_update_metric_server(
 ) -> str:
     """Update a metric server configuration (elevated, confirm required)."""
     return metrics.update_metric_server(
-        client, id=id, server=server, port=port, comment=comment, confirm=confirm,
+        client,
+        id=id,
+        server=server,
+        port=port,
+        comment=comment,
+        confirm=confirm,
     )
 
 
@@ -4205,8 +4593,14 @@ def proxmox_allocate_disk(
 ) -> str:
     """Allocate a disk image on storage (elevated, confirm required)."""
     return storage_mod.allocate_disk(
-        client, node=node, storage=storage, vmid=vmid,
-        filename=filename, size=size, format=format, confirm=confirm,
+        client,
+        node=node,
+        storage=storage,
+        vmid=vmid,
+        filename=filename,
+        size=size,
+        format=format,
+        confirm=confirm,
     )
 
 
@@ -4306,10 +4700,10 @@ def proxmox_delete_sdn_fabric(
 def proxmox_update_sdn_fabric(
     id: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN fabric (elevated, confirm required)."""
-    return sdn.update_sdn_fabric(client, id=id, confirm=confirm, **kwargs)
+    return sdn.update_sdn_fabric(client, id=id, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4358,10 +4752,10 @@ def proxmox_get_sdn_ipam(ipam: str = "") -> str:
 def proxmox_update_sdn_ipam(
     ipam: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN IPAM (elevated, confirm required)."""
-    return sdn.update_sdn_ipam(client, ipam=ipam, confirm=confirm, **kwargs)
+    return sdn.update_sdn_ipam(client, ipam=ipam, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4374,10 +4768,10 @@ def proxmox_get_sdn_dns(dns: str = "") -> str:
 def proxmox_update_sdn_dns(
     dns: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN DNS entry (elevated, confirm required)."""
-    return sdn.update_sdn_dns(client, dns=dns, confirm=confirm, **kwargs)
+    return sdn.update_sdn_dns(client, dns=dns, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4390,10 +4784,10 @@ def proxmox_get_sdn_controller(controller: str = "") -> str:
 def proxmox_update_sdn_controller(
     controller: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN controller (elevated, confirm required)."""
-    return sdn.update_sdn_controller(client, controller=controller, confirm=confirm, **kwargs)
+    return sdn.update_sdn_controller(client, controller=controller, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4407,10 +4801,10 @@ def proxmox_add_sdn_fabric_node(
     fabric_id: str = "",
     node: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Add an SDN fabric node (elevated, confirm required)."""
-    return sdn.add_sdn_fabric_node(client, fabric_id=fabric_id, node=node, confirm=confirm, **kwargs)
+    return sdn.add_sdn_fabric_node(client, fabric_id=fabric_id, node=node, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4424,10 +4818,10 @@ def proxmox_update_sdn_fabric_node(
     fabric_id: str = "",
     node_id: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN fabric node (elevated, confirm required)."""
-    return sdn.update_sdn_fabric_node(client, fabric_id=fabric_id, node_id=node_id, confirm=confirm, **kwargs)
+    return sdn.update_sdn_fabric_node(client, fabric_id=fabric_id, node_id=node_id, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4444,30 +4838,30 @@ def proxmox_remove_sdn_fabric_node(
 def proxmox_create_sdn_vnet_ip(
     vnet: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Create an SDN VNet IP mapping (elevated, confirm required)."""
-    return sdn.create_sdn_vnet_ip(client, vnet=vnet, confirm=confirm, **kwargs)
+    return sdn.create_sdn_vnet_ip(client, vnet=vnet, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
 def proxmox_update_sdn_vnet_ip(
     vnet: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN VNet IP mapping (elevated, confirm required)."""
-    return sdn.update_sdn_vnet_ip(client, vnet=vnet, confirm=confirm, **kwargs)
+    return sdn.update_sdn_vnet_ip(client, vnet=vnet, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
 def proxmox_delete_sdn_vnet_ip(
     vnet: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Delete an SDN VNet IP mapping (elevated, confirm required)."""
-    return sdn.delete_sdn_vnet_ip(client, vnet=vnet, confirm=confirm, **kwargs)
+    return sdn.delete_sdn_vnet_ip(client, vnet=vnet, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4480,10 +4874,10 @@ def proxmox_get_sdn_vnet_firewall_options(vnet: str = "") -> str:
 def proxmox_set_sdn_vnet_firewall_options(
     vnet: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Set SDN VNet firewall options (elevated, confirm required)."""
-    return sdn.set_sdn_vnet_firewall_options(client, vnet=vnet, confirm=confirm, **kwargs)
+    return sdn.set_sdn_vnet_firewall_options(client, vnet=vnet, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4496,10 +4890,10 @@ def proxmox_list_sdn_vnet_firewall_rules(vnet: str = "") -> str:
 def proxmox_create_sdn_vnet_firewall_rule(
     vnet: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Create an SDN VNet firewall rule (elevated, confirm required)."""
-    return sdn.create_sdn_vnet_firewall_rule(client, vnet=vnet, confirm=confirm, **kwargs)
+    return sdn.create_sdn_vnet_firewall_rule(client, vnet=vnet, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4523,10 +4917,10 @@ def proxmox_update_sdn_vnet_firewall_rule(
     vnet: str = "",
     pos: int = 0,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN VNet firewall rule (elevated, confirm required)."""
-    return sdn.update_sdn_vnet_firewall_rule(client, vnet=vnet, pos=pos, confirm=confirm, **kwargs)
+    return sdn.update_sdn_vnet_firewall_rule(client, vnet=vnet, pos=pos, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4539,10 +4933,10 @@ def proxmox_list_prefix_list_entries(id: str = "") -> str:
 def proxmox_create_prefix_list_entry(
     id: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Create an SDN prefix list entry (elevated, confirm required)."""
-    return sdn.create_prefix_list_entry(client, id=id, confirm=confirm, **kwargs)
+    return sdn.create_prefix_list_entry(client, id=id, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4566,10 +4960,10 @@ def proxmox_update_prefix_list_entry(
     id: str = "",
     url_seq: int = 0,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN prefix list entry (elevated, confirm required)."""
-    return sdn.update_prefix_list_entry(client, id=id, url_seq=url_seq, confirm=confirm, **kwargs)
+    return sdn.update_prefix_list_entry(client, id=id, url_seq=url_seq, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4582,10 +4976,10 @@ def proxmox_list_route_map_entries() -> str:
 def proxmox_create_route_map_entry(
     route_map_id: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Create an SDN route map entry (elevated, confirm required)."""
-    return sdn.create_route_map_entry(client, route_map_id=route_map_id, confirm=confirm, **kwargs)
+    return sdn.create_route_map_entry(client, route_map_id=route_map_id, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4609,10 +5003,10 @@ def proxmox_update_route_map_entry(
     route_map_id: str = "",
     order: int = 0,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an SDN route map entry (elevated, confirm required)."""
-    return sdn.update_route_map_entry(client, route_map_id=route_map_id, order=order, confirm=confirm, **kwargs)
+    return sdn.update_route_map_entry(client, route_map_id=route_map_id, order=order, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4824,8 +5218,12 @@ def proxmox_add_tfa_entry(
 ) -> str:
     """Add a TFA entry for a user (elevated, confirm required)."""
     return access.add_tfa_entry(
-        client, userid=userid, type=type, description=description,
-        value=value, confirm=confirm,
+        client,
+        userid=userid,
+        type=type,
+        description=description,
+        value=value,
+        confirm=confirm,
     )
 
 
@@ -4855,8 +5253,12 @@ def proxmox_update_tfa_entry(
 ) -> str:
     """Update a TFA entry (elevated, confirm required)."""
     return access.update_tfa_entry(
-        client, userid=userid, id=id, description=description,
-        enable=enable, confirm=confirm,
+        client,
+        userid=userid,
+        id=id,
+        description=description,
+        enable=enable,
+        confirm=confirm,
     )
 
 
@@ -4914,10 +5316,10 @@ def proxmox_create_domain(
 def proxmox_update_domain(
     realm: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an auth domain (elevated, confirm required)."""
-    return access.update_domain(client, realm=realm, confirm=confirm, **kwargs)
+    return access.update_domain(client, realm=realm, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -4962,8 +5364,13 @@ def proxmox_update_snapshot_config(
 ) -> str:
     """Update snapshot configuration (elevated, confirm required)."""
     return snapshots.update_snapshot_config(
-        client, node=node, vmid=vmid, snapname=snapname,
-        vmtype=vmtype, description=description, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        snapname=snapname,
+        vmtype=vmtype,
+        description=description,
+        confirm=confirm,
     )
 
 
@@ -5026,7 +5433,12 @@ def proxmox_copy_volume(
 ) -> str:
     """Copy a volume to another storage (elevated, confirm required)."""
     return storage_mod.copy_volume(
-        client, node=node, storage=storage, volume=volume, target=target, confirm=confirm,
+        client,
+        node=node,
+        storage=storage,
+        volume=volume,
+        target=target,
+        confirm=confirm,
     )
 
 
@@ -5036,11 +5448,16 @@ def proxmox_update_volume_attributes(
     storage: str = "local",
     volume: str = "",
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update volume attributes (elevated, confirm required)."""
     return storage_mod.update_volume_attributes(
-        client, node=node, storage=storage, volume=volume, confirm=confirm, **kwargs,
+        client,
+        node=node,
+        storage=storage,
+        volume=volume,
+        confirm=confirm,
+        **_parse(kwargs),
     )
 
 
@@ -5174,12 +5591,17 @@ def proxmox_remote_migrate_lxc(
     target: str | None = None,
     target_endpoint: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Remote migrate an LXC container to another cluster (elevated). Requires confirm=true."""
     return lifecycle.remote_migrate_lxc(
-        client, node=node, vmid=vmid, target=target,
-        target_endpoint=target_endpoint, confirm=confirm, **kwargs,
+        client,
+        node=node,
+        vmid=vmid,
+        target=target,
+        target_endpoint=target_endpoint,
+        confirm=confirm,
+        **_parse(kwargs),
     )
 
 
@@ -5192,13 +5614,19 @@ def proxmox_move_lxc_volume(
     target_vmid: int | None = None,
     target_volume: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Move an LXC container volume to different storage or container (elevated). Requires confirm=true."""
     return lifecycle.move_lxc_volume(
-        client, node=node, vmid=vmid, volume=volume,
-        storage=storage, target_vmid=target_vmid,
-        target_volume=target_volume, confirm=confirm, **kwargs,
+        client,
+        node=node,
+        vmid=vmid,
+        volume=volume,
+        storage=storage,
+        target_vmid=target_vmid,
+        target_volume=target_volume,
+        confirm=confirm,
+        **_parse(kwargs),
     )
 
 
@@ -5217,10 +5645,10 @@ def proxmox_update_vm_config(
     node: str | None = None,
     vmid: int | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update VM configuration (elevated, confirm required, asynchronous API)."""
-    return lifecycle.update_vm_config(client, node=node, vmid=vmid, confirm=confirm, **kwargs)
+    return lifecycle.update_vm_config(client, node=node, vmid=vmid, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -5245,8 +5673,13 @@ def proxmox_remote_migrate_vm(
 ) -> str:
     """Remote migrate a VM to another cluster (elevated, confirm required, EXPERIMENTAL)."""
     return lifecycle.remote_migrate_vm(
-        client, node=node, vmid=vmid, target_address=target_address,
-        target_node=target_node, target_storage=target_storage, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        target_address=target_address,
+        target_node=target_node,
+        target_storage=target_storage,
+        confirm=confirm,
     )
 
 
@@ -5277,10 +5710,10 @@ def proxmox_update_ha_rule(
     rule: str = "",
     comment: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an HA rule (elevated, confirm required)."""
-    return ha.update_ha_rule(client, rule=rule, comment=comment, confirm=confirm, **kwargs)
+    return ha.update_ha_rule(client, rule=rule, comment=comment, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -5304,10 +5737,10 @@ def proxmox_update_ha_group(
     comment: str | None = None,
     nodes: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Update an HA group (elevated, confirm required)."""
-    return ha.update_ha_group(client, group=group, comment=comment, nodes=nodes, confirm=confirm, **kwargs)
+    return ha.update_ha_group(client, group=group, comment=comment, nodes=nodes, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()
@@ -5342,7 +5775,7 @@ def proxmox_create_ticket(
     username: str = "",
     password: str = "",
 ) -> str:
-    """Create an authentication ticket (read-only, returns ticket+CSRF token)."""
+    """(read-only) Create an authentication ticket (returns ticket+CSRF token)."""
     return access.create_ticket(client, username=username, password=password)
 
 
@@ -5351,7 +5784,7 @@ def proxmox_create_vnc_ticket(
     port: int | None = None,
     vnc: str | None = None,
 ) -> str:
-    """Create a VNC ticket (read-only, VNC auth)."""
+    """(read-only) Create a VNC ticket (VNC auth)."""
     return access.create_vnc_ticket(client, port=port, vnc=vnc)
 
 
@@ -5413,10 +5846,10 @@ def proxmox_get_next_vmid() -> str:
 def proxmox_generate_cluster_config(
     node: str | None = None,
     confirm: bool = False,
-    **kwargs: str,
+    kwargs: str | None = None,
 ) -> str:
     """Generate cluster config for joining (elevated, confirm required, DANGEROUS)."""
-    return cluster.generate_cluster_config(client, node=node, confirm=confirm, **kwargs)
+    return cluster.generate_cluster_config(client, node=node, confirm=confirm, **_parse(kwargs))
 
 
 @mcp.tool()

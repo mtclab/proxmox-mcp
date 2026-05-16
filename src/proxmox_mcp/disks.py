@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_disks(client: Any, node: Optional[str] = None) -> str:
+def list_disks(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -35,7 +36,7 @@ def list_disks(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def get_disk_smart(client: Any, node: Optional[str] = None, disk: str = "") -> str:
+def get_disk_smart(client: ProxmoxClient, node: Optional[str] = None, disk: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not disk:
@@ -59,7 +60,7 @@ def get_disk_smart(client: Any, node: Optional[str] = None, disk: str = "") -> s
     return "\n".join(lines)
 
 
-def list_lvm(client: Any, node: Optional[str] = None) -> str:
+def list_lvm(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -78,7 +79,7 @@ def list_lvm(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_lvmthin(client: Any, node: Optional[str] = None) -> str:
+def list_lvmthin(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -97,7 +98,7 @@ def list_lvmthin(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_zfs(client: Any, node: Optional[str] = None) -> str:
+def list_zfs(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -119,7 +120,7 @@ def list_zfs(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def init_gpt(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     disk: str = "",
     confirm: bool = False,
@@ -141,7 +142,7 @@ def init_gpt(
 
 @confirm_required
 def wipe_disk(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     disk: str = "",
     confirm: bool = False,
@@ -161,7 +162,7 @@ def wipe_disk(
     return f"Disk {disk!r} wiped on {resolved_node}. UPID: {upid}"
 
 
-def zfs_detail(client: Any, node: Optional[str] = None, name: str = "") -> str:
+def zfs_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not name:
@@ -180,7 +181,7 @@ def zfs_detail(client: Any, node: Optional[str] = None, name: str = "") -> str:
 
 @confirm_required
 def zfs_create(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
@@ -214,7 +215,7 @@ def zfs_create(
 
 @confirm_required
 def zfs_destroy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -239,7 +240,7 @@ def zfs_destroy(
 
 @confirm_required
 def lvm_create(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
@@ -265,7 +266,7 @@ def lvm_create(
     return f"LVM VG {name!r} created on {resolved_node}. UPID: {upid}"
 
 
-def lvm_detail(client: Any, node: Optional[str] = None, name: str = "") -> str:
+def lvm_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not name:
@@ -284,7 +285,7 @@ def lvm_detail(client: Any, node: Optional[str] = None, name: str = "") -> str:
 
 @confirm_required
 def lvm_destroy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -309,7 +310,7 @@ def lvm_destroy(
 
 @confirm_required
 def lvmthin_create(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
@@ -337,7 +338,7 @@ def lvmthin_create(
 
 @confirm_required
 def lvmthin_destroy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -360,7 +361,7 @@ def lvmthin_destroy(
     return f"LVM thin pool {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
-def directory_list(client: Any, node: Optional[str] = None) -> str:
+def directory_list(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -380,7 +381,7 @@ def directory_list(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def directory_create(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
@@ -408,7 +409,7 @@ def directory_create(
 
 @confirm_required
 def directory_destroy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
@@ -431,7 +432,7 @@ def directory_destroy(
     return f"Directory storage {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
-def get_directory_detail(client: Any, node: Optional[str] = None, name: str = "") -> str:
+def get_directory_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not name:
@@ -448,7 +449,7 @@ def get_directory_detail(client: Any, node: Optional[str] = None, name: str = ""
     return "\n".join(lines)
 
 
-def get_lvmthin_detail(client: Any, node: Optional[str] = None, name: str = "") -> str:
+def get_lvmthin_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not name:

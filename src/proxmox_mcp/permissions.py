@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxNotFoundError
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_acl(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).access.acl.get
-    )
+def list_acl(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).access.acl.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f510 **ACL Rules**\n"]
@@ -35,7 +34,7 @@ def list_acl(client: Any) -> str:
 
 @confirm_required
 def set_acl(
-    client: Any,
+    client: ProxmoxClient,
     users: str = "",
     roles: str = "",
     path: str = "",
@@ -67,7 +66,7 @@ def set_acl(
 
 @confirm_required
 def delete_acl(
-    client: Any,
+    client: ProxmoxClient,
     users: str = "",
     roles: str = "",
     path: str = "",
@@ -104,10 +103,8 @@ def delete_acl(
     return f"ACL deleted: users={users!r} roles={roles!r} path={path!r}"
 
 
-def list_roles(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).access.roles.get
-    )
+def list_roles(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).access.roles.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f511 **Roles**\n"]
@@ -120,10 +117,8 @@ def list_roles(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_users(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).access.users.get
-    )
+def list_users(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).access.users.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f464 **Users**\n"]
@@ -137,12 +132,10 @@ def list_users(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_tokens(client: Any, userid: str = "") -> str:
+def list_tokens(client: ProxmoxClient, userid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required for token listing")
-    result = client.safe_api_call(
-        _api(client).access.users(userid).token.get
-    )
+    result = client.safe_api_call(_api(client).access.users(userid).token.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f511 **API Tokens for {userid}**\n"]
@@ -160,7 +153,7 @@ def list_tokens(client: Any, userid: str = "") -> str:
 
 @confirm_required
 def create_user(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     password: str = "",
     comment: str | None = None,
@@ -197,12 +190,10 @@ def create_user(
     return f"User {userid!r} created"
 
 
-def get_user(client: Any, userid: str = "") -> str:
+def get_user(client: ProxmoxClient, userid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
-    result = client.safe_api_call(
-        _api(client).access.users(userid).get
-    )
+    result = client.safe_api_call(_api(client).access.users(userid).get)
     lines = [f"\U0001f464 **User {userid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -214,7 +205,7 @@ def get_user(client: Any, userid: str = "") -> str:
 
 @confirm_required
 def update_user(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     comment: str | None = None,
     email: str | None = None,
@@ -250,7 +241,7 @@ def update_user(
 
 @confirm_required
 def delete_user(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     confirm: bool = False,
 ) -> str:
@@ -264,7 +255,7 @@ def delete_user(
 
 @confirm_required
 def create_role(
-    client: Any,
+    client: ProxmoxClient,
     roleid: str = "",
     privs: str = "",
     confirm: bool = False,
@@ -276,17 +267,18 @@ def create_role(
         raise ValueError("privs is required for role creation")
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.roles.post, elevated=True, roleid=roleid, privs=privs,
+        elevated.access.roles.post,
+        elevated=True,
+        roleid=roleid,
+        privs=privs,
     )
     return f"Role {roleid!r} created with privileges: {privs}"
 
 
-def get_role(client: Any, roleid: str = "") -> str:
+def get_role(client: ProxmoxClient, roleid: str = "") -> str:
     if not roleid:
         raise ValueError("roleid is required")
-    result = client.safe_api_call(
-        _api(client).access.roles(roleid).get
-    )
+    result = client.safe_api_call(_api(client).access.roles(roleid).get)
     lines = [f"\U0001f511 **Role {roleid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -298,7 +290,7 @@ def get_role(client: Any, roleid: str = "") -> str:
 
 @confirm_required
 def update_role(
-    client: Any,
+    client: ProxmoxClient,
     roleid: str = "",
     privs: str = "",
     confirm: bool = False,
@@ -310,14 +302,16 @@ def update_role(
         raise ValueError("privs is required for role update")
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.roles(roleid).put, elevated=True, privs=privs,
+        elevated.access.roles(roleid).put,
+        elevated=True,
+        privs=privs,
     )
     return f"Role {roleid!r} updated with privileges: {privs}"
 
 
 @confirm_required
 def delete_role(
-    client: Any,
+    client: ProxmoxClient,
     roleid: str = "",
     confirm: bool = False,
 ) -> str:
@@ -331,7 +325,7 @@ def delete_role(
 
 @confirm_required
 def create_token(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     tokenid: str = "",
     comment: str | None = None,
@@ -353,7 +347,9 @@ def create_token(
         params["expire"] = expire
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.access.users(userid).token(tokenid).post, elevated=True, **params,
+        elevated.access.users(userid).token(tokenid).post,
+        elevated=True,
+        **params,
     )
     lines = [f"\U0001f511 **Token {userid}!{tokenid} created**\n"]
     if isinstance(result, dict):
@@ -362,14 +358,12 @@ def create_token(
     return "\n".join(lines)
 
 
-def get_token(client: Any, userid: str = "", tokenid: str = "") -> str:
+def get_token(client: ProxmoxClient, userid: str = "", tokenid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
     if not tokenid:
         raise ValueError("tokenid is required")
-    result = client.safe_api_call(
-        _api(client).access.users(userid).token(tokenid).get
-    )
+    result = client.safe_api_call(_api(client).access.users(userid).token(tokenid).get)
     lines = [f"\U0001f511 **Token {userid}!{tokenid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -381,7 +375,7 @@ def get_token(client: Any, userid: str = "", tokenid: str = "") -> str:
 
 @confirm_required
 def update_token(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     tokenid: str = "",
     comment: str | None = None,
@@ -403,14 +397,16 @@ def update_token(
         params["expire"] = expire
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.users(userid).token(tokenid).put, elevated=True, **params,
+        elevated.access.users(userid).token(tokenid).put,
+        elevated=True,
+        **params,
     )
     return f"Token {userid}!{tokenid} updated"
 
 
 @confirm_required
 def delete_token(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     tokenid: str = "",
     confirm: bool = False,
@@ -422,15 +418,14 @@ def delete_token(
         raise ValueError("tokenid is required for token deletion")
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.users(userid).token(tokenid).delete, elevated=True,
+        elevated.access.users(userid).token(tokenid).delete,
+        elevated=True,
     )
     return f"Token {userid}!{tokenid} deleted"
 
 
-def list_groups(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).access.groups.get
-    )
+def list_groups(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).access.groups.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f465 **Groups**\n"]
@@ -450,7 +445,7 @@ def list_groups(client: Any) -> str:
 
 @confirm_required
 def create_group(
-    client: Any,
+    client: ProxmoxClient,
     groupid: str = "",
     comment: str | None = None,
     confirm: bool = False,
@@ -466,12 +461,10 @@ def create_group(
     return f"Group {groupid!r} created"
 
 
-def get_group(client: Any, groupid: str = "") -> str:
+def get_group(client: ProxmoxClient, groupid: str = "") -> str:
     if not groupid:
         raise ValueError("groupid is required")
-    result = client.safe_api_call(
-        _api(client).access.groups(groupid).get
-    )
+    result = client.safe_api_call(_api(client).access.groups(groupid).get)
     lines = [f"\U0001f465 **Group {groupid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -483,7 +476,7 @@ def get_group(client: Any, groupid: str = "") -> str:
 
 @confirm_required
 def update_group(
-    client: Any,
+    client: ProxmoxClient,
     groupid: str = "",
     comment: str | None = None,
     confirm: bool = False,
@@ -501,7 +494,7 @@ def update_group(
 
 @confirm_required
 def delete_group(
-    client: Any,
+    client: ProxmoxClient,
     groupid: str = "",
     confirm: bool = False,
 ) -> str:
@@ -514,7 +507,7 @@ def delete_group(
 
 
 def check_permissions(
-    client: Any,
+    client: ProxmoxClient,
     userid: str | None = None,
     path: str | None = None,
 ) -> str:
@@ -524,7 +517,8 @@ def check_permissions(
     if path is not None:
         params["path"] = path
     result = client.safe_api_call(
-        _api(client).access.permissions.get, **params,
+        _api(client).access.permissions.get,
+        **params,
     )
     lines = ["\U0001f510 **Effective Permissions**\n"]
     if isinstance(result, dict):

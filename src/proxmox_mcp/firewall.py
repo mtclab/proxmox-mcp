@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from proxmoxer.core import ResourceException
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
 
 ALLOWED_VMTYPES = ("qemu", "lxc")
@@ -11,19 +12,15 @@ ALLOWED_VMTYPES = ("qemu", "lxc")
 
 def _validate_vmtype(vmtype: str) -> None:
     if vmtype not in ALLOWED_VMTYPES:
-        raise ValueError(
-            f"Invalid vmtype {vmtype!r}. Must be one of {ALLOWED_VMTYPES}"
-        )
+        raise ValueError(f"Invalid vmtype {vmtype!r}. Must be one of {ALLOWED_VMTYPES}")
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_cluster_firewall_rules(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.rules.get
-    )
+def list_cluster_firewall_rules(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).cluster.firewall.rules.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall Rules**\n"]
@@ -63,7 +60,7 @@ def list_cluster_firewall_rules(client: Any) -> str:
 
 @confirm_required
 def create_cluster_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     action: str = "ACCEPT",
     dptype: str = "in",
     dport: str | None = None,
@@ -103,10 +100,8 @@ def create_cluster_firewall_rule(
     return f"Cluster firewall rule created: action={action}, pos={pos}"
 
 
-def get_cluster_firewall_rule(client: Any, pos: int = 0) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.rules(pos).get
-    )
+def get_cluster_firewall_rule(client: ProxmoxClient, pos: int = 0) -> str:
+    result = client.safe_api_call(_api(client).cluster.firewall.rules(pos).get)
     if isinstance(result, dict):
         lines = [f"\U0001f6e1 **Cluster Firewall Rule {pos}**\n"]
         for key, val in sorted(result.items()):
@@ -117,7 +112,7 @@ def get_cluster_firewall_rule(client: Any, pos: int = 0) -> str:
 
 @confirm_required
 def update_cluster_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     pos: int = 0,
     action: str | None = None,
     dptype: str | None = None,
@@ -165,7 +160,7 @@ def update_cluster_firewall_rule(
 
 @confirm_required
 def delete_cluster_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     pos: int = 0,
     confirm: bool = False,
 ) -> str:
@@ -178,10 +173,8 @@ def delete_cluster_firewall_rule(
     return f"Cluster firewall rule {pos} deleted"
 
 
-def get_cluster_firewall_options(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.options.get
-    )
+def get_cluster_firewall_options(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).cluster.firewall.options.get)
     lines = ["\U0001f6e1 **Cluster Firewall Options**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -193,7 +186,7 @@ def get_cluster_firewall_options(client: Any) -> str:
 
 @confirm_required
 def set_cluster_firewall_options(
-    client: Any,
+    client: ProxmoxClient,
     confirm: bool = False,
     **kwargs: Any,
 ) -> str:
@@ -210,10 +203,8 @@ def set_cluster_firewall_options(
     return f"Cluster firewall options updated: {opts}"
 
 
-def list_cluster_firewall_aliases(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.aliases.get
-    )
+def list_cluster_firewall_aliases(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).cluster.firewall.aliases.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall Aliases**\n"]
@@ -231,7 +222,7 @@ def list_cluster_firewall_aliases(client: Any) -> str:
 
 @confirm_required
 def create_cluster_firewall_alias(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     cidr: str = "",
     comment: str | None = None,
@@ -256,7 +247,7 @@ def create_cluster_firewall_alias(
 
 @confirm_required
 def delete_cluster_firewall_alias(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -271,10 +262,8 @@ def delete_cluster_firewall_alias(
     return f"Cluster firewall alias {name!r} deleted"
 
 
-def list_cluster_firewall_ipsets(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.ipset.get
-    )
+def list_cluster_firewall_ipsets(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).cluster.firewall.ipset.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall IPSets**\n"]
@@ -288,10 +277,9 @@ def list_cluster_firewall_ipsets(client: Any) -> str:
         lines.append("   No IPSets found.")
     return "\n".join(lines)
 
-def list_cluster_firewall_refs(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.refs.get
-    )
+
+def list_cluster_firewall_refs(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).cluster.firewall.refs.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall References**\n"]
@@ -308,14 +296,12 @@ def list_cluster_firewall_refs(client: Any) -> str:
 
 
 def list_node_firewall_rules(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).firewall.rules.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).firewall.rules.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **Node Firewall Rules ({resolved_node})**\n"]
@@ -349,7 +335,7 @@ def list_node_firewall_rules(
 
 @confirm_required
 def create_node_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     action: str = "ACCEPT",
     dptype: str = "in",
@@ -394,7 +380,7 @@ def create_node_firewall_rule(
 
 @confirm_required
 def delete_node_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     pos: int = 0,
     confirm: bool = False,
@@ -411,14 +397,12 @@ def delete_node_firewall_rule(
 
 
 def get_node_firewall_options(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).firewall.options.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).firewall.options.get)
     lines = [f"\U0001f6e1 **Node Firewall Options ({resolved_node})**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -429,7 +413,7 @@ def get_node_firewall_options(
 
 
 def list_vm_firewall_rules(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -438,9 +422,7 @@ def list_vm_firewall_rules(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.rules.get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.rules.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall Rules ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -474,7 +456,7 @@ def list_vm_firewall_rules(
 
 @confirm_required
 def create_vm_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -523,7 +505,7 @@ def create_vm_firewall_rule(
 
 @confirm_required
 def delete_vm_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     pos: int = 0,
@@ -544,7 +526,7 @@ def delete_vm_firewall_rule(
 
 
 def get_vm_firewall_options(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -553,9 +535,7 @@ def get_vm_firewall_options(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.options.get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.options.get)
     lines = [f"\U0001f6e1 **VM Firewall Options ({vmtype} {vmid} on {resolved_node})**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -566,7 +546,7 @@ def get_vm_firewall_options(
 
 
 def get_vm_firewall_alias(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -578,9 +558,7 @@ def get_vm_firewall_alias(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.aliases(name).get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.aliases(name).get)
     lines = [f"\U0001f6e1 **VM Firewall Alias: {name} ({vmtype} {vmid} on {resolved_node})**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -592,7 +570,7 @@ def get_vm_firewall_alias(
 
 @confirm_required
 def create_vm_firewall_alias(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -624,7 +602,7 @@ def create_vm_firewall_alias(
 
 @confirm_required
 def delete_vm_firewall_alias(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -646,12 +624,10 @@ def delete_vm_firewall_alias(
     return f"VM firewall alias {name!r} deleted for {vmtype} {vmid} on {resolved_node}"
 
 
-def list_cluster_firewall_ipset_content(client: Any, name: str = "") -> str:
+def list_cluster_firewall_ipset_content(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.ipset(name).get
-    )
+    result = client.safe_api_call(_api(client).cluster.firewall.ipset(name).get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **Cluster Firewall IPSet Content: {name}**\n"]
@@ -668,7 +644,7 @@ def list_cluster_firewall_ipset_content(client: Any, name: str = "") -> str:
 
 @confirm_required
 def create_cluster_firewall_ipset(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -690,7 +666,7 @@ def create_cluster_firewall_ipset(
 
 @confirm_required
 def delete_cluster_firewall_ipset(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -706,15 +682,13 @@ def delete_cluster_firewall_ipset(
 
 
 def list_node_firewall_aliases(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     try:
-        result = client.safe_api_call(
-            _api(client).nodes(resolved_node).firewall.aliases.get
-        )
+        result = client.safe_api_call(_api(client).nodes(resolved_node).firewall.aliases.get)
     except ResourceException as exc:
         if exc.status_code == 501:
             return (
@@ -738,14 +712,12 @@ def list_node_firewall_aliases(
 
 
 def node_firewall_log(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).firewall.log.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).firewall.log.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **Node Firewall Log ({resolved_node})**\n"]
@@ -764,12 +736,10 @@ def node_firewall_log(
     return "\n".join(lines)
 
 
-def get_cluster_firewall_alias(client: Any, name: str = "") -> str:
+def get_cluster_firewall_alias(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.aliases(name).get
-    )
+    result = client.safe_api_call(_api(client).cluster.firewall.aliases(name).get)
     lines = [f"\U0001f6e1 **Cluster Firewall Alias: {name}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -781,7 +751,7 @@ def get_cluster_firewall_alias(client: Any, name: str = "") -> str:
 
 @confirm_required
 def update_cluster_firewall_alias(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     cidr: str | None = None,
     comment: str | None = None,
@@ -810,7 +780,7 @@ def update_cluster_firewall_alias(
 
 @confirm_required
 def update_cluster_firewall_ipset(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
@@ -834,7 +804,7 @@ def update_cluster_firewall_ipset(
 
 @confirm_required
 def add_cluster_firewall_ipset_entry(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     cidr: str = "",
     comment: str | None = None,
@@ -861,7 +831,7 @@ def add_cluster_firewall_ipset_entry(
 
 
 def get_cluster_firewall_ipset_entry(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     cidr: str = "",
 ) -> str:
@@ -869,9 +839,7 @@ def get_cluster_firewall_ipset_entry(
         raise ValueError("name is required")
     if not cidr:
         raise ValueError("cidr is required")
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.ipset(name)(cidr).get
-    )
+    result = client.safe_api_call(_api(client).cluster.firewall.ipset(name)(cidr).get)
     lines = [f"\U0001f6e1 **Cluster IPSet Entry: {name}/{cidr}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -883,7 +851,7 @@ def get_cluster_firewall_ipset_entry(
 
 @confirm_required
 def delete_cluster_firewall_ipset_entry(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     cidr: str = "",
     confirm: bool = False,
@@ -901,10 +869,8 @@ def delete_cluster_firewall_ipset_entry(
     return f"Removed {cidr} from cluster IPSet {name!r}"
 
 
-def list_cluster_firewall_macros(client: Any) -> str:
-    result = client.safe_api_call(
-        _api(client).cluster.firewall.macros.get
-    )
+def list_cluster_firewall_macros(client: ProxmoxClient) -> str:
+    result = client.safe_api_call(_api(client).cluster.firewall.macros.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall Macros**\n"]
@@ -920,15 +886,13 @@ def list_cluster_firewall_macros(client: Any) -> str:
 
 
 def get_node_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     pos: int = 0,
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).firewall.rules(pos).get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).firewall.rules(pos).get)
     if isinstance(result, dict):
         lines = [f"\U0001f6e1 **Node Firewall Rule {pos} ({resolved_node})**\n"]
         for key, val in sorted(result.items()):
@@ -939,7 +903,7 @@ def get_node_firewall_rule(
 
 @confirm_required
 def update_node_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     pos: int = 0,
     action: str | None = None,
@@ -990,7 +954,7 @@ def update_node_firewall_rule(
 
 @confirm_required
 def set_node_firewall_options(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
@@ -1011,15 +975,13 @@ def set_node_firewall_options(
 
 
 def list_node_firewall_ipsets(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     try:
-        result = client.safe_api_call(
-            _api(client).nodes(resolved_node).firewall.ipset.get
-        )
+        result = client.safe_api_call(_api(client).nodes(resolved_node).firewall.ipset.get)
     except ResourceException as exc:
         if exc.status_code == 501:
             return (
@@ -1041,9 +1003,8 @@ def list_node_firewall_ipsets(
     return "\n".join(lines)
 
 
-
 def get_vm_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     pos: int = 0,
@@ -1053,9 +1014,7 @@ def get_vm_firewall_rule(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.rules(pos).get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.rules(pos).get)
     if isinstance(result, dict):
         lines = [f"\U0001f6e1 **VM Firewall Rule {pos} ({vmtype} {vmid} on {resolved_node})**\n"]
         for key, val in sorted(result.items()):
@@ -1066,7 +1025,7 @@ def get_vm_firewall_rule(
 
 @confirm_required
 def update_vm_firewall_rule(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     pos: int = 0,
@@ -1121,7 +1080,7 @@ def update_vm_firewall_rule(
 
 @confirm_required
 def set_vm_firewall_options(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -1146,7 +1105,7 @@ def set_vm_firewall_options(
 
 
 def list_vm_firewall_aliases(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -1155,9 +1114,7 @@ def list_vm_firewall_aliases(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.aliases.get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.aliases.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall Aliases ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1175,7 +1132,7 @@ def list_vm_firewall_aliases(
 
 @confirm_required
 def update_vm_firewall_alias(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1208,7 +1165,7 @@ def update_vm_firewall_alias(
 
 
 def vm_firewall_log(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -1217,9 +1174,7 @@ def vm_firewall_log(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.log.get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.log.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall Log ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1239,7 +1194,7 @@ def vm_firewall_log(
 
 
 def vm_firewall_refs(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -1248,9 +1203,7 @@ def vm_firewall_refs(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.refs.get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.refs.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall References ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1267,7 +1220,7 @@ def vm_firewall_refs(
 
 
 def list_vm_firewall_ipset_content(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1279,9 +1232,7 @@ def list_vm_firewall_ipset_content(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.ipset(name).get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.ipset(name).get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall IPSet Content: {name} ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1298,7 +1249,7 @@ def list_vm_firewall_ipset_content(
 
 @confirm_required
 def create_vm_firewall_ipset(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1327,7 +1278,7 @@ def create_vm_firewall_ipset(
 
 @confirm_required
 def delete_vm_firewall_ipset(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1351,7 +1302,7 @@ def delete_vm_firewall_ipset(
 
 @confirm_required
 def add_vm_firewall_ipset_entry(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1385,7 +1336,7 @@ def add_vm_firewall_ipset_entry(
 
 
 def get_vm_firewall_ipset_entry(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1414,7 +1365,7 @@ def get_vm_firewall_ipset_entry(
 
 @confirm_required
 def update_vm_firewall_ipset_entry(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1451,7 +1402,7 @@ def update_vm_firewall_ipset_entry(
 
 @confirm_required
 def delete_vm_firewall_ipset_entry(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1477,7 +1428,7 @@ def delete_vm_firewall_ipset_entry(
 
 
 def list_vm_firewall_ipsets(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -1486,9 +1437,7 @@ def list_vm_firewall_ipsets(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.ipset.get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.ipset.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall IPSets ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1504,7 +1453,7 @@ def list_vm_firewall_ipsets(
 
 
 def get_vm_firewall_ipset(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1515,7 +1464,7 @@ def get_vm_firewall_ipset(
 
 
 def update_vm_firewall_ipset(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1526,6 +1475,13 @@ def update_vm_firewall_ipset(
     confirm: bool = False,
 ) -> str:
     return update_vm_firewall_ipset_entry(
-        client, node=node, vmid=vmid, name=name, cidr=cidr,
-        vmtype=vmtype, comment=comment, nomatch=nomatch, confirm=confirm,
+        client,
+        node=node,
+        vmid=vmid,
+        name=name,
+        cidr=cidr,
+        vmtype=vmtype,
+        comment=comment,
+        nomatch=nomatch,
+        confirm=confirm,
     )

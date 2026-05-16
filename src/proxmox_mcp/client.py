@@ -63,12 +63,13 @@ class ProxmoxClient:
     def raise_if_not_elevated(self) -> None:
         if not self.config.allow_elevated:
             raise ValueError(
-                "Elevated operations are not allowed. "
-                "Set PROXMOX_ALLOW_ELEVATED=true to enable admin-level operations."
+                "Elevated operations are not allowed. Set PROXMOX_ALLOW_ELEVATED=true to enable admin-level operations."
             )
 
     def retry_with_backoff(
-        self, func, *args,
+        self,
+        func,
+        *args,
         max_retries: int = 3,
         initial_delay: float = 1.0,
         elevated: bool = False,
@@ -85,15 +86,16 @@ class ProxmoxClient:
                     if attempt < max_retries:
                         logger.warning(
                             "PVE 595 error on attempt %d/%d, retrying in %.1fs: %s",
-                            attempt + 1, max_retries, delay, exc,
+                            attempt + 1,
+                            max_retries,
+                            delay,
+                            exc,
                         )
                         time.sleep(delay)
                         delay *= 2
                         continue
                     logger.error("PVE 595 error persisted after %d retries: %s", max_retries, exc)
-                    raise ProxmoxConnectionError(
-                        f"PVE 595 error after {max_retries} retries: {exc}"
-                    ) from exc
+                    raise ProxmoxConnectionError(f"PVE 595 error after {max_retries} retries: {exc}") from exc
                 if exc.status_code == 403:
                     endpoint = getattr(exc, "content", "") or ""
                     if elevated:
@@ -244,6 +246,4 @@ class ProxmoxClient:
         }
         if filename:
             data[PVE_UPLOAD_FILE_FIELD] = filename
-        return client.nodes(node).storage(storage).upload.post(
-            data=data, files={PVE_UPLOAD_FILE_FIELD: file_obj}
-        )
+        return client.nodes(node).storage(storage).upload.post(data=data, files={PVE_UPLOAD_FILE_FIELD: file_obj})

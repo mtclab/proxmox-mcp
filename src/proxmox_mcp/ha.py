@@ -5,14 +5,15 @@ from typing import Any, Optional
 
 from proxmoxer.core import ResourceException
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_ha_resources(client: Any) -> str:
+def list_ha_resources(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.ha.resources.get,
     )
@@ -32,7 +33,7 @@ def list_ha_resources(client: Any) -> str:
 
 @confirm_required
 def create_ha_resource(
-    client: Any,
+    client: ProxmoxClient,
     sid: str = "",
     group: Optional[str] = None,
     comment: Optional[str] = None,
@@ -67,7 +68,7 @@ def create_ha_resource(
     return f"HA resource {sid!r} created"
 
 
-def get_ha_resource(client: Any, sid: str = "") -> str:
+def get_ha_resource(client: ProxmoxClient, sid: str = "") -> str:
     if not sid:
         raise ValueError("sid is required")
     result = client.safe_api_call(
@@ -82,7 +83,7 @@ def get_ha_resource(client: Any, sid: str = "") -> str:
 
 @confirm_required
 def update_ha_resource(
-    client: Any,
+    client: ProxmoxClient,
     sid: str = "",
     group: Optional[str] = None,
     comment: Optional[str] = None,
@@ -119,7 +120,7 @@ def update_ha_resource(
 
 @confirm_required
 def delete_ha_resource(
-    client: Any,
+    client: ProxmoxClient,
     sid: str = "",
     confirm: bool = False,
 ) -> str:
@@ -136,7 +137,7 @@ def delete_ha_resource(
 
 @confirm_required
 def migrate_ha_resource(
-    client: Any,
+    client: ProxmoxClient,
     sid: str = "",
     node: str = "",
     confirm: bool = False,
@@ -158,7 +159,7 @@ def migrate_ha_resource(
 
 @confirm_required
 def relocate_ha_resource(
-    client: Any,
+    client: ProxmoxClient,
     sid: str = "",
     node: str = "",
     confirm: bool = False,
@@ -178,7 +179,7 @@ def relocate_ha_resource(
     return f"HA resource {sid!r} relocation to {node!r} initiated"
 
 
-def list_ha_groups(client: Any) -> str:
+def list_ha_groups(client: ProxmoxClient) -> str:
     """List HA groups.
 
     .. deprecated::
@@ -187,8 +188,7 @@ def list_ha_groups(client: Any) -> str:
         instead.
     """
     warnings.warn(
-        "list_ha_groups is deprecated: PVE 9.x migrated HA groups to rules; "
-        "use list_ha_rules instead.",
+        "list_ha_groups is deprecated: PVE 9.x migrated HA groups to rules; use list_ha_rules instead.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -198,10 +198,7 @@ def list_ha_groups(client: Any) -> str:
         )
     except ResourceException as exc:
         if exc.status_code == 500 and "migrated to rules" in str(exc):
-            return (
-                "⚠️ **HA groups have been migrated to rules in PVE 9.x.**\n"
-                "Use `list_ha_rules` instead."
-            )
+            return "⚠️ **HA groups have been migrated to rules in PVE 9.x.**\nUse `list_ha_rules` instead."
         raise
     if not isinstance(result, list):
         result = [result] if result else []
@@ -218,7 +215,7 @@ def list_ha_groups(client: Any) -> str:
     return "\n".join(lines)
 
 
-def ha_status(client: Any) -> str:
+def ha_status(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.ha.status.current.get,
     )
@@ -235,7 +232,7 @@ def ha_status(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_ha_rules(client: Any) -> str:
+def list_ha_rules(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.ha.rules.get,
     )
@@ -253,7 +250,7 @@ def list_ha_rules(client: Any) -> str:
 
 @confirm_required
 def create_ha_rule(
-    client: Any,
+    client: ProxmoxClient,
     group: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -275,7 +272,7 @@ def create_ha_rule(
     return f"HA rule created for group {group!r}"
 
 
-def get_ha_rule(client: Any, rule: str = "") -> str:
+def get_ha_rule(client: ProxmoxClient, rule: str = "") -> str:
     if not rule:
         raise ValueError("rule is required")
     result = client.safe_api_call(
@@ -290,7 +287,7 @@ def get_ha_rule(client: Any, rule: str = "") -> str:
 
 @confirm_required
 def update_ha_rule(
-    client: Any,
+    client: ProxmoxClient,
     rule: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -317,7 +314,7 @@ def update_ha_rule(
 
 @confirm_required
 def delete_ha_rule(
-    client: Any,
+    client: ProxmoxClient,
     rule: str = "",
     confirm: bool = False,
 ) -> str:
@@ -332,7 +329,7 @@ def delete_ha_rule(
     return f"HA rule {rule!r} deleted"
 
 
-def get_ha_group(client: Any, group: str = "") -> str:
+def get_ha_group(client: ProxmoxClient, group: str = "") -> str:
     if not group:
         raise ValueError("group is required")
     result = client.safe_api_call(
@@ -347,7 +344,7 @@ def get_ha_group(client: Any, group: str = "") -> str:
 
 @confirm_required
 def update_ha_group(
-    client: Any,
+    client: ProxmoxClient,
     group: str = "",
     comment: Optional[str] = None,
     nodes: Optional[str] = None,
@@ -377,7 +374,7 @@ def update_ha_group(
 
 @confirm_required
 def delete_ha_group(
-    client: Any,
+    client: ProxmoxClient,
     group: str = "",
     confirm: bool = False,
 ) -> str:
@@ -394,7 +391,7 @@ def delete_ha_group(
 
 @confirm_required
 def arm_ha(
-    client: Any,
+    client: ProxmoxClient,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
@@ -408,7 +405,7 @@ def arm_ha(
 
 @confirm_required
 def disarm_ha(
-    client: Any,
+    client: ProxmoxClient,
     confirm: bool = False,
 ) -> str:
     client.raise_if_not_elevated()
@@ -420,7 +417,7 @@ def disarm_ha(
     return "HA manager disarmed"
 
 
-def ha_manager_status(client: Any) -> str:
+def ha_manager_status(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.ha.status.manager_status.get,
     )

@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, format_bytes, validate_storage_name, validate_vmid
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
 def list_backups(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
 ) -> str:
@@ -35,7 +36,7 @@ def list_backups(
 
 @confirm_required
 def create_backup(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -67,7 +68,7 @@ def create_backup(
 
 @confirm_required
 def restore_backup(
-    client: Any,
+    client: ProxmoxClient,
     vmid: Optional[int] = None,
     archive: str = "",
     storage: str = "local",
@@ -77,10 +78,7 @@ def restore_backup(
 ) -> str:
     client.raise_if_not_elevated()
     if not archive:
-        raise ValueError(
-            "archive is required for backup restore. "
-            "Use list_backups to find available backup archives."
-        )
+        raise ValueError("archive is required for backup restore. Use list_backups to find available backup archives.")
     if not vmid:
         raise ValueError("vmid is required for backup restore")
     validate_vmid(vmid)

@@ -3,23 +3,22 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_iface_name
 
 logger = logging.getLogger(__name__)
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def _is_management_interface(client: Any, node: str, iface: str) -> bool:
+def _is_management_interface(client: ProxmoxClient, node: str, iface: str) -> bool:
     if iface == "vmbr0":
         return True
     try:
         host = client.config.host
-        result = client.safe_api_call(
-            client.get_client(elevated=False).nodes(node).network.get
-        )
+        result = client.safe_api_call(client.get_client(elevated=False).nodes(node).network.get)
         if isinstance(result, list):
             for ent in result:
                 if ent.get("iface") == iface:
@@ -31,7 +30,7 @@ def _is_management_interface(client: Any, node: str, iface: str) -> bool:
     return False
 
 
-def _apply_network(client: Any, node: str, iface: str = "") -> None:
+def _apply_network(client: ProxmoxClient, node: str, iface: str = "") -> None:
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
         elevated.nodes(node).network.put,
@@ -40,13 +39,11 @@ def _apply_network(client: Any, node: str, iface: str = "") -> None:
 
 
 def list_network(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
     resolved_node = client.resolve_node(node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).network.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).network.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f310 **Network Interfaces on {resolved_node}**\n"]
@@ -70,7 +67,7 @@ def list_network(
 
 @confirm_required
 def create_network(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     iface: str = "",
     type: str = "bridge",
@@ -115,7 +112,7 @@ def create_network(
 
 @confirm_required
 def update_network(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     iface: str = "",
     address: Optional[str] = None,
@@ -156,7 +153,7 @@ def update_network(
 
 @confirm_required
 def delete_network(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     iface: str = "",
     confirm: bool = False,
@@ -186,7 +183,7 @@ def delete_network(
 
 @confirm_required
 def revert_network(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:

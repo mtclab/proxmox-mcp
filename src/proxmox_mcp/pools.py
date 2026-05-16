@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_pools(client: Any) -> str:
+def list_pools(client: ProxmoxClient) -> str:
     result = client.safe_api_call(_api(client).pools.get)
     if not isinstance(result, list):
         result = [result] if result else []
@@ -25,7 +26,7 @@ def list_pools(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_pool(client: Any, poolid: str) -> str:
+def get_pool(client: ProxmoxClient, poolid: str) -> str:
     result = client.safe_api_call(_api(client).pools(poolid).get)
     lines = [f"**Pool: {poolid}**\n"]
     if isinstance(result, dict):
@@ -47,7 +48,7 @@ def get_pool(client: Any, poolid: str) -> str:
 
 @confirm_required
 def create_pool(
-    client: Any,
+    client: ProxmoxClient,
     poolid: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -65,7 +66,7 @@ def create_pool(
 
 @confirm_required
 def update_pool(
-    client: Any,
+    client: ProxmoxClient,
     poolid: str = "",
     comment: Optional[str] = None,
     delete: Optional[str] = None,
@@ -89,7 +90,7 @@ def update_pool(
 
 @confirm_required
 def delete_pool(
-    client: Any,
+    client: ProxmoxClient,
     poolid: str = "",
     confirm: bool = False,
 ) -> str:

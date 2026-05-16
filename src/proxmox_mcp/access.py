@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_tfa(client: Any) -> str:
+def list_tfa(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).access.tfa.get,
     )
@@ -25,7 +26,7 @@ def list_tfa(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_user_tfa(client: Any, userid: str = "") -> str:
+def get_user_tfa(client: ProxmoxClient, userid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
     result = client.safe_api_call(
@@ -47,7 +48,7 @@ def get_user_tfa(client: Any, userid: str = "") -> str:
 
 @confirm_required
 def add_tfa_entry(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     type: str = "",
     description: str | None = None,
@@ -66,14 +67,16 @@ def add_tfa_entry(
         params["value"] = value
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.tfa(userid).post, elevated=True, **params,
+        elevated.access.tfa(userid).post,
+        elevated=True,
+        **params,
     )
     return f"TFA entry added for {userid!r} (type={type!r})"
 
 
 @confirm_required
 def delete_tfa_entry(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     id: str = "",
     confirm: bool = False,
@@ -85,12 +88,13 @@ def delete_tfa_entry(
         raise ValueError("id is required for TFA entry deletion")
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.tfa(userid)(id).delete, elevated=True,
+        elevated.access.tfa(userid)(id).delete,
+        elevated=True,
     )
     return f"TFA entry {id!r} deleted for {userid!r}"
 
 
-def get_tfa_entry(client: Any, userid: str = "", id: str = "") -> str:
+def get_tfa_entry(client: ProxmoxClient, userid: str = "", id: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
     if not id:
@@ -109,7 +113,7 @@ def get_tfa_entry(client: Any, userid: str = "", id: str = "") -> str:
 
 @confirm_required
 def update_tfa_entry(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     id: str = "",
     description: str | None = None,
@@ -128,14 +132,16 @@ def update_tfa_entry(
         params["enable"] = 1 if enable else 0
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.tfa(userid)(id).put, elevated=True, **params,
+        elevated.access.tfa(userid)(id).put,
+        elevated=True,
+        **params,
     )
     return f"TFA entry {id!r} updated for {userid!r}"
 
 
 @confirm_required
 def unlock_tfa(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     confirm: bool = False,
 ) -> str:
@@ -144,12 +150,13 @@ def unlock_tfa(
         raise ValueError("userid is required")
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.users(userid)("unlock-tfa").put, elevated=True,
+        elevated.access.users(userid)("unlock-tfa").put,
+        elevated=True,
     )
     return f"TFA unlocked for {userid!r}"
 
 
-def list_domains(client: Any) -> str:
+def list_domains(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).access.domains.get,
     )
@@ -165,7 +172,7 @@ def list_domains(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_domain(client: Any, realm: str = "") -> str:
+def get_domain(client: ProxmoxClient, realm: str = "") -> str:
     if not realm:
         raise ValueError("realm is required")
     result = client.safe_api_call(
@@ -182,7 +189,7 @@ def get_domain(client: Any, realm: str = "") -> str:
 
 @confirm_required
 def sync_domain(
-    client: Any,
+    client: ProxmoxClient,
     realm: str = "",
     confirm: bool = False,
 ) -> str:
@@ -191,7 +198,8 @@ def sync_domain(
         raise ValueError("realm is required")
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.access.domains(realm).sync.post, elevated=True,
+        elevated.access.domains(realm).sync.post,
+        elevated=True,
     )
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Auth domain {realm!r} sync initiated. UPID: {upid}"
@@ -199,7 +207,7 @@ def sync_domain(
 
 @confirm_required
 def create_domain(
-    client: Any,
+    client: ProxmoxClient,
     realm: str = "",
     type: str = "",
     confirm: bool = False,
@@ -214,14 +222,16 @@ def create_domain(
     params.update(kwargs)
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.domains.post, elevated=True, **params,
+        elevated.access.domains.post,
+        elevated=True,
+        **params,
     )
     return f"Auth domain {realm!r} created (type={type!r})"
 
 
 @confirm_required
 def update_domain(
-    client: Any,
+    client: ProxmoxClient,
     realm: str = "",
     confirm: bool = False,
     **kwargs: Any,
@@ -233,7 +243,9 @@ def update_domain(
         raise ValueError("At least one parameter must be provided to update")
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.domains(realm).put, elevated=True, **kwargs,
+        elevated.access.domains(realm).put,
+        elevated=True,
+        **kwargs,
     )
     opts = ", ".join(f"{k}={v!r}" for k, v in kwargs.items())
     return f"Auth domain {realm!r} updated: {opts}"
@@ -241,7 +253,7 @@ def update_domain(
 
 @confirm_required
 def delete_domain(
-    client: Any,
+    client: ProxmoxClient,
     realm: str = "",
     confirm: bool = False,
 ) -> str:
@@ -250,12 +262,13 @@ def delete_domain(
         raise ValueError("realm is required for domain deletion")
     elevated = client.get_client(elevated=True)
     client.safe_api_call(
-        elevated.access.domains(realm).delete, elevated=True,
+        elevated.access.domains(realm).delete,
+        elevated=True,
     )
     return f"Auth domain {realm!r} deleted"
 
 
-def get_user_tfa_types(client: Any, userid: str = "") -> str:
+def get_user_tfa_types(client: ProxmoxClient, userid: str = "") -> str:
     if not userid:
         raise ValueError("userid is required")
     result = client.safe_api_call(
@@ -274,7 +287,7 @@ def get_user_tfa_types(client: Any, userid: str = "") -> str:
     return "\n".join(lines)
 
 
-def openid_auth_url(client: Any, realm: str = "") -> str:
+def openid_auth_url(client: ProxmoxClient, realm: str = "") -> str:
     if not realm:
         raise ValueError("realm is required")
     result = client.safe_api_call(
@@ -294,7 +307,7 @@ def openid_auth_url(client: Any, realm: str = "") -> str:
     return "\n".join(lines)
 
 
-def openid_login(client: Any, realm: str = "", code: str = "", state: str = "") -> str:
+def openid_login(client: ProxmoxClient, realm: str = "", code: str = "", state: str = "") -> str:
     if not realm:
         raise ValueError("realm is required")
     if not code:
@@ -317,7 +330,7 @@ def openid_login(client: Any, realm: str = "", code: str = "", state: str = "") 
 
 @confirm_required
 def change_password(
-    client: Any,
+    client: ProxmoxClient,
     userid: str = "",
     password: str = "",
     confirm: bool = False,
@@ -330,13 +343,15 @@ def change_password(
     elevated = client.get_client(elevated=True)
     params: dict[str, Any] = {"userid": userid, "password": password}
     client.safe_api_call(
-        elevated.access.password.put, elevated=True, **params,
+        elevated.access.password.put,
+        elevated=True,
+        **params,
     )
     return f"Password changed for {userid!r}"
 
 
 def create_ticket(
-    client: Any,
+    client: ProxmoxClient,
     username: str = "",
     password: str = "",
 ) -> str:
@@ -363,7 +378,7 @@ def create_ticket(
 
 
 def create_vnc_ticket(
-    client: Any,
+    client: ProxmoxClient,
     port: int | None = None,
     vnc: str | None = None,
 ) -> str:

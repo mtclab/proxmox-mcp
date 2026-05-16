@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_cpu_models(client: Any, node: Optional[str] = None) -> str:
+def list_cpu_models(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -29,7 +30,7 @@ def list_cpu_models(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_cpu_flags(client: Any, node: Optional[str] = None) -> str:
+def list_cpu_flags(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -49,7 +50,7 @@ def list_cpu_flags(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_machine_types(client: Any, node: Optional[str] = None) -> str:
+def list_machine_types(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -75,7 +76,7 @@ def list_machine_types(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_capabilities(client: Any, node: Optional[str] = None) -> str:
+def list_capabilities(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -93,7 +94,7 @@ def list_capabilities(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_capabilities_qemu(client: Any, node: Optional[str] = None) -> str:
+def list_capabilities_qemu(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -110,7 +111,7 @@ def list_capabilities_qemu(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def get_capability_qemu_migrations(client: Any, node: Optional[str] = None) -> str:
+def get_capability_qemu_migrations(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(

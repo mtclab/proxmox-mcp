@@ -4,16 +4,17 @@ import logging
 import os
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.utils import confirm_required, format_bytes, validate_node_name, validate_storage_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
 def list_isos(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
 ) -> str:
@@ -37,7 +38,7 @@ def list_isos(
 
 @confirm_required
 def upload_iso(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     filepath: str = "",
@@ -56,9 +57,7 @@ def upload_iso(
         real_path = os.path.realpath(filepath)
         real_dir = os.path.realpath(allowed_dir)
         if not real_path.startswith(real_dir + os.sep) and real_path != real_dir:
-            raise ProxmoxPermissionError(
-                f"filepath {filepath!r} is outside allowed upload directory {allowed_dir!r}"
-            )
+            raise ProxmoxPermissionError(f"filepath {filepath!r} is outside allowed upload directory {allowed_dir!r}")
     filename = os.path.basename(filepath)
     with open(filepath, "rb") as f:
         result = client.upload(
@@ -74,7 +73,7 @@ def upload_iso(
 
 
 def get_storage(
-    client: Any,
+    client: ProxmoxClient,
     storage: str,
     node: Optional[str] = None,
 ) -> str:
@@ -93,14 +92,14 @@ def get_storage(
         lines.append(f"   • Path: {result.get('path', 'N/A')}")
         lines.append(f"   • Shared: {result.get('shared', 0)}")
         lines.append(f"   • Active: {result.get('active', 0)}")
-        if result.get('nodes'):
+        if result.get("nodes"):
             lines.append(f"   • Nodes: {result.get('nodes')}")
     return "\n".join(lines)
 
 
 @confirm_required
 def create_storage(
-    client: Any,
+    client: ProxmoxClient,
     storage: str,
     type: str = "dir",
     path: Optional[str] = None,
@@ -133,7 +132,7 @@ def create_storage(
 
 @confirm_required
 def update_storage(
-    client: Any,
+    client: ProxmoxClient,
     storage: str,
     content: Optional[str] = None,
     nodes: Optional[str] = None,
@@ -160,7 +159,7 @@ def update_storage(
 
 @confirm_required
 def delete_storage(
-    client: Any,
+    client: ProxmoxClient,
     storage: str,
     confirm: bool = False,
 ) -> str:
@@ -176,7 +175,7 @@ def delete_storage(
 
 @confirm_required
 def delete_volume(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
@@ -197,7 +196,7 @@ def delete_volume(
 
 @confirm_required
 def prune_backups(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     prune_type: Optional[str] = None,
@@ -225,7 +224,7 @@ def prune_backups(
 
 
 def storage_status(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
 ) -> str:
@@ -252,7 +251,7 @@ def storage_status(
 
 
 def get_volume_info(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
@@ -279,7 +278,7 @@ def get_volume_info(
 
 
 def storage_metrics(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     timeframe: str = "hour",
@@ -301,7 +300,7 @@ def storage_metrics(
 
 
 def storage_identity(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
 ) -> str:
@@ -322,7 +321,7 @@ def storage_identity(
 
 @confirm_required
 def allocate_disk(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     vmid: Optional[int] = None,
@@ -353,7 +352,7 @@ def allocate_disk(
 
 
 def get_storage_on_node(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
 ) -> str:
@@ -376,7 +375,7 @@ def get_storage_on_node(
 
 @confirm_required
 def copy_volume(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
@@ -403,7 +402,7 @@ def copy_volume(
 
 @confirm_required
 def update_volume_attributes(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
@@ -429,7 +428,7 @@ def update_volume_attributes(
 
 
 def file_restore_list(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
 ) -> str:
@@ -459,7 +458,7 @@ def file_restore_list(
 
 
 def file_restore_download(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     filepath: str = "",
@@ -487,7 +486,7 @@ def file_restore_download(
 
 
 def storage_import_metadata(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
@@ -533,7 +532,7 @@ def storage_import_metadata(
 
 @confirm_required
 def oci_registry_pull(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     image: str = "",
@@ -556,10 +555,11 @@ def oci_registry_pull(
 
 
 def node_storage_list(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
 ) -> str:
     from proxmox_mcp.utils import validate_node_name
+
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(

@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def cluster_status(client: Any) -> str:
+def cluster_status(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.status.get,
     )
@@ -35,7 +36,7 @@ def cluster_status(client: Any) -> str:
     return "\n".join(lines)
 
 
-def cluster_options(client: Any) -> str:
+def cluster_options(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.options.get,
     )
@@ -50,7 +51,7 @@ def cluster_options(client: Any) -> str:
 
 @confirm_required
 def update_cluster_options(
-    client: Any,
+    client: ProxmoxClient,
     confirm: bool = False,
     **kwargs: Any,
 ) -> str:
@@ -67,7 +68,7 @@ def update_cluster_options(
     return f"Cluster options updated: {opts}"
 
 
-def list_backup_jobs(client: Any) -> str:
+def list_backup_jobs(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.backup.get,
     )
@@ -89,7 +90,7 @@ def list_backup_jobs(client: Any) -> str:
 
 @confirm_required
 def create_backup_job(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     schedule: Optional[str] = None,
     vmid: Optional[str] = None,
@@ -125,7 +126,7 @@ def create_backup_job(
 
 @confirm_required
 def delete_backup_job(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
 ) -> str:
@@ -140,7 +141,7 @@ def delete_backup_job(
     return f"Backup job {id!r} deleted"
 
 
-def get_backup_job(client: Any, id: str = "") -> str:
+def get_backup_job(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -155,7 +156,7 @@ def get_backup_job(client: Any, id: str = "") -> str:
 
 @confirm_required
 def update_backup_job(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
     **kwargs: Any,
@@ -175,7 +176,7 @@ def update_backup_job(
     return f"Backup job {id!r} updated: {opts}"
 
 
-def cluster_config(client: Any) -> str:
+def cluster_config(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.config.get,
     )
@@ -192,7 +193,7 @@ def cluster_config(client: Any) -> str:
     return "\n".join(lines)
 
 
-def cluster_config_nodes(client: Any) -> str:
+def cluster_config_nodes(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.config.nodes.get,
     )
@@ -209,7 +210,7 @@ def cluster_config_nodes(client: Any) -> str:
     return "\n".join(lines)
 
 
-def cluster_config_join(client: Any) -> str:
+def cluster_config_join(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.config.join.get,
     )
@@ -220,7 +221,7 @@ def cluster_config_join(client: Any) -> str:
     return "\n".join(lines)
 
 
-def backup_info_not_backed_up(client: Any) -> str:
+def backup_info_not_backed_up(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster("backup-info")("not-backed-up").get,
     )
@@ -239,7 +240,7 @@ def backup_info_not_backed_up(client: Any) -> str:
 
 @confirm_required
 def bulk_migrate_guests(
-    client: Any,
+    client: ProxmoxClient,
     vmids: str = "",
     target: str = "",
     confirm: bool = False,
@@ -265,7 +266,7 @@ def bulk_migrate_guests(
 
 @confirm_required
 def bulk_shutdown_guests(
-    client: Any,
+    client: ProxmoxClient,
     vmids: str = "",
     confirm: bool = False,
     **kwargs: Any,
@@ -287,7 +288,7 @@ def bulk_shutdown_guests(
 
 @confirm_required
 def bulk_start_guests(
-    client: Any,
+    client: ProxmoxClient,
     vmids: str = "",
     confirm: bool = False,
     **kwargs: Any,
@@ -309,7 +310,7 @@ def bulk_start_guests(
 
 @confirm_required
 def bulk_suspend_guests(
-    client: Any,
+    client: ProxmoxClient,
     vmids: str = "",
     confirm: bool = False,
     **kwargs: Any,
@@ -329,7 +330,7 @@ def bulk_suspend_guests(
     return f"Bulk suspend initiated: {vmids}. UPID: {upid}"
 
 
-def cluster_config_apiversion(client: Any) -> str:
+def cluster_config_apiversion(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.config.apiversion.get,
     )
@@ -346,7 +347,7 @@ def cluster_config_apiversion(client: Any) -> str:
     return "\n".join(lines)
 
 
-def cluster_jobs_index(client: Any) -> str:
+def cluster_jobs_index(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.jobs.get,
     )
@@ -365,7 +366,7 @@ def cluster_jobs_index(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_realm_sync_jobs(client: Any) -> str:
+def list_realm_sync_jobs(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.jobs("realm-sync").get,
     )
@@ -385,7 +386,7 @@ def list_realm_sync_jobs(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_realm_sync_job(client: Any, id: str = "") -> str:
+def get_realm_sync_job(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -400,7 +401,7 @@ def get_realm_sync_job(client: Any, id: str = "") -> str:
     return "\n".join(lines)
 
 
-def api_version(client: Any) -> str:
+def api_version(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).version.get,
     )
@@ -417,7 +418,7 @@ def api_version(client: Any) -> str:
     return "\n".join(lines)
 
 
-def cluster_config_totem(client: Any) -> str:
+def cluster_config_totem(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.config.totem.get,
     )
@@ -434,7 +435,7 @@ def cluster_config_totem(client: Any) -> str:
     return "\n".join(lines)
 
 
-def cluster_config_qdevice(client: Any) -> str:
+def cluster_config_qdevice(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.config.qdevice.get,
     )
@@ -451,7 +452,7 @@ def cluster_config_qdevice(client: Any) -> str:
     return "\n".join(lines)
 
 
-def backup_info_index(client: Any) -> str:
+def backup_info_index(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster("backup-info").get,
     )
@@ -469,7 +470,7 @@ def backup_info_index(client: Any) -> str:
     return "\n".join(lines)
 
 
-def backup_job_included_volumes(client: Any, id: str = "") -> str:
+def backup_job_included_volumes(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -510,7 +511,7 @@ def backup_job_included_volumes(client: Any, id: str = "") -> str:
 
 @confirm_required
 def generate_cluster_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
@@ -533,7 +534,7 @@ def generate_cluster_config(
 
 @confirm_required
 def remove_cluster_node(
-    client: Any,
+    client: ProxmoxClient,
     node: str = "",
     confirm: bool = False,
 ) -> str:

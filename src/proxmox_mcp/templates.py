@@ -4,15 +4,16 @@ import logging
 import os
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.utils import confirm_required, format_bytes, validate_storage_name, validate_url
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_templates(client: Any, node: Optional[str] = None) -> str:
+def list_templates(client: ProxmoxClient, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(
         _api(client).nodes(node).aplinfo.get,
@@ -36,7 +37,7 @@ def list_templates(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_storage_templates(client: Any, node: Optional[str] = None, storage: str = "local") -> str:
+def list_storage_templates(client: ProxmoxClient, node: Optional[str] = None, storage: str = "local") -> str:
     node = client.resolve_node(node)
     validate_storage_name(storage)
     result = client.safe_api_call(
@@ -57,7 +58,7 @@ def list_storage_templates(client: Any, node: Optional[str] = None, storage: str
 
 @confirm_required
 def download_template(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     url: str = "",
@@ -68,10 +69,7 @@ def download_template(
     resolved_node = client.resolve_node(node)
     validate_storage_name(storage)
     if not url:
-        raise ValueError(
-            "url is required for template download. "
-            "Use list_templates to find available template URLs."
-        )
+        raise ValueError("url is required for template download. Use list_templates to find available template URLs.")
     validate_url(url)
     params: dict[str, Any] = {
         "content": "vztmpl",
@@ -91,7 +89,7 @@ def download_template(
 
 @confirm_required
 def upload_template(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     storage: str = "local",
     filepath: str = "",
@@ -110,9 +108,7 @@ def upload_template(
         real_path = os.path.realpath(filepath)
         real_dir = os.path.realpath(allowed_dir)
         if not real_path.startswith(real_dir + os.sep) and real_path != real_dir:
-            raise ProxmoxPermissionError(
-                f"filepath {filepath!r} is outside allowed upload directory {allowed_dir!r}"
-            )
+            raise ProxmoxPermissionError(f"filepath {filepath!r} is outside allowed upload directory {allowed_dir!r}")
     filename = os.path.basename(filepath)
     with open(filepath, "rb") as f:
         result = client.upload(

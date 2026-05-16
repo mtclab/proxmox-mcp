@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
 def task_log(
-    client: Any,
+    client: ProxmoxClient,
     upid: str,
     node: Optional[str] = None,
     limit: Optional[int] = None,
@@ -21,9 +22,7 @@ def task_log(
     params: dict[str, Any] = {}
     if limit is not None:
         params["limit"] = limit
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).tasks(upid).log.get, **params
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).tasks(upid).log.get, **params)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📋 **Task Log: {upid}** ({len(result)} entries)\n"]
@@ -41,7 +40,7 @@ def task_log(
 
 @confirm_required
 def stop_task(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     upid: str = "",
     confirm: bool = False,
@@ -52,8 +51,6 @@ def stop_task(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
-    result = client.safe_api_call(
-        elevated.nodes(resolved_node).tasks(upid).delete, elevated=True
-    )
+    result = client.safe_api_call(elevated.nodes(resolved_node).tasks(upid).delete, elevated=True)
     data = result if isinstance(result, str) else result.get("data", result)
     return f"Task {upid} stopped on {resolved_node}: {data}"

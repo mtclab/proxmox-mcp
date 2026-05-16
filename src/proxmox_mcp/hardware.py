@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_pci(client: Any, node: Optional[str] = None) -> str:
+def list_pci(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -38,7 +39,7 @@ def list_pci(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_usb(client: Any, node: Optional[str] = None) -> str:
+def list_usb(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
@@ -70,7 +71,7 @@ def list_usb(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def get_pci_device(client: Any, node: Optional[str] = None, pciid: str = "") -> str:
+def get_pci_device(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not pciid:
@@ -87,7 +88,7 @@ def get_pci_device(client: Any, node: Optional[str] = None, pciid: str = "") -> 
     return "\n".join(lines)
 
 
-def list_pci_mdev(client: Any, node: Optional[str] = None, pciid: str = "") -> str:
+def list_pci_mdev(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     if not pciid:

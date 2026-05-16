@@ -74,15 +74,18 @@ def validate_node_name(name: str) -> None:
     if not isinstance(name, str) or not _NODE_RE.match(name):
         raise ValueError(f"Invalid node name: {name!r}")
 
+
 def validate_vmid(vmid: int | None) -> None:
     if vmid is None:
         return
     if not isinstance(vmid, int) or vmid <= 0:
         raise ValueError(f"Invalid vmid: {vmid!r} — must be a positive integer")
 
+
 def validate_storage_name(name: str) -> None:
     if not isinstance(name, str) or not _STORAGE_RE.match(name):
         raise ValueError(f"Invalid storage name: {name!r}")
+
 
 def validate_disk_size(disk_size: int | str) -> str:
     if isinstance(disk_size, int):
@@ -95,9 +98,7 @@ def validate_disk_size(disk_size: int | str) -> str:
                 try:
                     val = int(num)
                 except ValueError:
-                    raise ValueError(
-                        f"Invalid disk_size {disk_size!r}: numeric part {num!r} is not an integer"
-                    )
+                    raise ValueError(f"Invalid disk_size {disk_size!r}: numeric part {num!r} is not an integer")
                 if suffix in ("TiB", "T"):
                     val *= 1024
                 return str(val)
@@ -109,6 +110,7 @@ def validate_disk_size(disk_size: int | str) -> str:
                 "PVE requires size in integer GiB."
             )
     raise ValueError(f"Invalid disk_size {disk_size!r}: must be int or str")
+
 
 def validate_iface_name(name: str) -> None:
     if not isinstance(name, str) or not _IFACE_RE.match(name):
@@ -145,9 +147,7 @@ def validate_url(url: str) -> None:
         addr = ipaddress.ip_address(hostname)
         for network in _PRIVATE_NETWORKS:
             if addr in network:
-                raise ProxmoxPermissionError(
-                    f"URL hostname {hostname!r} resolves to a private/internal IP"
-                )
+                raise ProxmoxPermissionError(f"URL hostname {hostname!r} resolves to a private/internal IP")
     except ValueError:
         pass
     try:
@@ -157,8 +157,6 @@ def validate_url(url: str) -> None:
             addr = ipaddress.ip_address(ip_str)
             for network in _PRIVATE_NETWORKS:
                 if addr in network:
-                    raise ProxmoxPermissionError(
-                        f"URL hostname {hostname!r} resolves to private/internal IP {ip_str}"
-                    )
+                    raise ProxmoxPermissionError(f"URL hostname {hostname!r} resolves to private/internal IP {ip_str}")
     except socket.gaierror:
         pass

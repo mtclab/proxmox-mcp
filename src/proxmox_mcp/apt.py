@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_updates(client: Any, node: Optional[str] = None) -> str:
+def list_updates(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -35,7 +36,7 @@ def list_updates(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def refresh_updates(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
@@ -51,7 +52,7 @@ def refresh_updates(
     return f"APT update refresh initiated on {resolved_node}. UPID: {upid}"
 
 
-def list_repositories(client: Any, node: Optional[str] = None) -> str:
+def list_repositories(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -86,7 +87,7 @@ def list_repositories(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_versions(client: Any, node: Optional[str] = None) -> str:
+def list_versions(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -112,7 +113,7 @@ def list_versions(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def add_apt_repo(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     path: Optional[str] = None,
     index: Optional[int] = None,
@@ -142,7 +143,7 @@ def add_apt_repo(
 
 @confirm_required
 def update_apt_repo(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     path: Optional[str] = None,
     index: Optional[int] = None,
@@ -171,7 +172,7 @@ def update_apt_repo(
 
 
 def list_apt_changelog(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     name: Optional[str] = None,
     version: Optional[str] = None,

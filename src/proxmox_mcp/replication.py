@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_replication(client: Any) -> str:
+def list_replication(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.replication.get,
     )
@@ -33,7 +34,7 @@ def list_replication(client: Any) -> str:
 
 @confirm_required
 def create_replication(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     source: Optional[str] = None,
     target: Optional[str] = None,
@@ -68,7 +69,7 @@ def create_replication(
     return f"Replication job {id!r} created"
 
 
-def get_replication(client: Any, id: str = "") -> str:
+def get_replication(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -83,7 +84,7 @@ def get_replication(client: Any, id: str = "") -> str:
 
 @confirm_required
 def update_replication(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     source: Optional[str] = None,
     target: Optional[str] = None,
@@ -123,7 +124,7 @@ def update_replication(
 
 @confirm_required
 def delete_replication(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
 ) -> str:
@@ -138,7 +139,7 @@ def delete_replication(
     return f"Replication job {id!r} deleted"
 
 
-def list_node_replication(client: Any, node: Optional[str] = None) -> str:
+def list_node_replication(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -160,7 +161,7 @@ def list_node_replication(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def schedule_replication(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     id: str = "",
     confirm: bool = False,
@@ -179,7 +180,7 @@ def schedule_replication(
 
 
 def get_replication_status(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     id: str = "",
 ) -> str:
@@ -207,7 +208,7 @@ def get_replication_status(
 
 
 def get_replication_log(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     id: str = "",
 ) -> str:

@@ -2,20 +2,19 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxNotFoundError, ProxmoxPermissionError
 from proxmox_mcp.utils import format_bytes, format_uptime, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_node_lxc(client: Any, node: Optional[str] = None) -> str:
+def list_node_lxc(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).lxc.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📦 **LXC Containers on {resolved_node}**\n"]
@@ -34,12 +33,10 @@ def list_node_lxc(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_node_vms(client: Any, node: Optional[str] = None) -> str:
+def list_node_vms(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).qemu.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"💻 **VMs on {resolved_node}**\n"]
@@ -58,13 +55,11 @@ def list_node_vms(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_node_tasks(client: Any, node: Optional[str] = None, limit: int = 50) -> str:
+def list_node_tasks(client: ProxmoxClient, node: Optional[str] = None, limit: int = 50) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     params: dict[str, Any] = {"limit": limit}
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).tasks.get, **params
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).tasks.get, **params)
     if not isinstance(result, list):
         result = [result] if result else []
     result = result[:limit]
@@ -77,12 +72,10 @@ def list_node_tasks(client: Any, node: Optional[str] = None, limit: int = 50) ->
     return "\n".join(lines)
 
 
-def node_index(client: Any, node: Optional[str] = None) -> str:
+def node_index(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).get)
     lines = [f"📊 **Node: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -92,7 +85,7 @@ def node_index(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_nodes(client: Any) -> str:
+def list_nodes(client: ProxmoxClient) -> str:
     nodes = client.safe_api_call(_api(client).nodes.get)
     if not isinstance(nodes, list):
         nodes = [nodes]
@@ -111,7 +104,7 @@ def list_nodes(client: Any) -> str:
     return "\n".join(lines)
 
 
-def node_status(client: Any, node: Optional[str] = None) -> str:
+def node_status(client: ProxmoxClient, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
     pve = _api(client)
     result = client.safe_api_call(pve.nodes(node).status.get)
@@ -120,14 +113,14 @@ def node_status(client: Any, node: Optional[str] = None) -> str:
         lines.append(f"   • Kernel: {result.get('kversion', 'N/A')}")
         lines.append(f"   • Uptime: {format_uptime(result.get('uptime', 0))}")
         lines.append(f"   • CPU: {result.get('cpu', 0) * 100:.1f}%")
-        mem = result.get('memory', {})
+        mem = result.get("memory", {})
         if isinstance(mem, dict):
             lines.append(f"   • Memory: {format_bytes(mem.get('used', 0))} / {format_bytes(mem.get('total', 0))}")
         lines.append(f"   • PVE Version: {result.get('version', 'N/A')}")
     return "\n".join(lines)
 
 
-def list_vms(client: Any, node: Optional[str] = None) -> str:
+def list_vms(client: ProxmoxClient, node: Optional[str] = None) -> str:
     result = client.safe_api_call(_api(client).cluster.resources.get)
     if not isinstance(result, list):
         result = [result] if result else []
@@ -152,15 +145,16 @@ def list_vms(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def vm_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None) -> str:
+def vm_info(
+    client: ProxmoxClient,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    name: Optional[str] = None,
+) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
     try:
-        status_data = client.safe_api_call(
-            _api(client).nodes(resolved_node).qemu(resolved_vmid).status.current.get
-        )
-        config_data = client.safe_api_call(
-            _api(client).nodes(resolved_node).qemu(resolved_vmid).config.get
-        )
+        status_data = client.safe_api_call(_api(client).nodes(resolved_node).qemu(resolved_vmid).status.current.get)
+        config_data = client.safe_api_call(_api(client).nodes(resolved_node).qemu(resolved_vmid).config.get)
     except ProxmoxNotFoundError:
         return f"VM {resolved_vmid} not found on node {resolved_node}"
     lines = [f"🖥️ **VM {resolved_vmid} on {resolved_node}**\n"]
@@ -178,7 +172,7 @@ def vm_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None,
     return "\n".join(lines)
 
 
-def list_lxc(client: Any, node: Optional[str] = None) -> str:
+def list_lxc(client: ProxmoxClient, node: Optional[str] = None) -> str:
     all_resources = client.safe_api_call(_api(client).cluster.resources.get)
     if not isinstance(all_resources, list):
         all_resources = [all_resources] if all_resources else []
@@ -202,7 +196,12 @@ def list_lxc(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def lxc_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None) -> str:
+def lxc_info(
+    client: ProxmoxClient,
+    node: Optional[str] = None,
+    vmid: Optional[int] = None,
+    name: Optional[str] = None,
+) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
     try:
         status_data = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).status.current.get)
@@ -223,7 +222,7 @@ def lxc_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None
     return "\n".join(lines)
 
 
-def list_storage(client: Any, node: Optional[str] = None) -> str:
+def list_storage(client: ProxmoxClient, node: Optional[str] = None) -> str:
     result = client.safe_api_call(_api(client).storage.get)
     if not isinstance(result, list):
         result = [result] if result else []
@@ -243,7 +242,7 @@ def list_storage(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def storage_content(client: Any, node: Optional[str] = None, storage: str = "local") -> str:
+def storage_content(client: ProxmoxClient, node: Optional[str] = None, storage: str = "local") -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(_api(client).nodes(node).storage(storage).content.get)
     if not isinstance(result, list):
@@ -257,7 +256,7 @@ def storage_content(client: Any, node: Optional[str] = None, storage: str = "loc
     return "\n".join(lines)
 
 
-def list_tasks(client: Any, node: Optional[str] = None, limit: int = 50) -> str:
+def list_tasks(client: ProxmoxClient, node: Optional[str] = None, limit: int = 50) -> str:
     result = client.safe_api_call(_api(client).cluster.tasks.get)
     if not isinstance(result, list):
         result = [result] if result else []
@@ -271,7 +270,7 @@ def list_tasks(client: Any, node: Optional[str] = None, limit: int = 50) -> str:
     return "\n".join(lines)
 
 
-def task_status(client: Any, upid: str) -> str:
+def task_status(client: ProxmoxClient, upid: str) -> str:
     parts = upid.split(":")
     node = parts[1] if len(parts) > 1 else client.resolve_node()
     result = client.safe_api_call(_api(client).nodes(node).tasks(upid).status.get)
@@ -286,7 +285,12 @@ def task_status(client: Any, upid: str) -> str:
     return "\n".join(lines)
 
 
-def node_metrics(client: Any, node: Optional[str] = None, timeframe: str = "hour", cf: str = "AVERAGE") -> str:
+def node_metrics(
+    client: ProxmoxClient,
+    node: Optional[str] = None,
+    timeframe: str = "hour",
+    cf: str = "AVERAGE",
+) -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(_api(client).nodes(node).rrddata.get, timeframe=timeframe, cf=cf)
     if not isinstance(result, list):
@@ -299,7 +303,7 @@ def node_metrics(client: Any, node: Optional[str] = None, timeframe: str = "hour
 
 
 def vm_metrics(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: Optional[str] = None,
@@ -317,16 +321,14 @@ def vm_metrics(
 
 
 def lxc_metrics(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: Optional[str] = None,
     timeframe: str = "hour",
 ) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(resolved_vmid).rrddata.get, timeframe=timeframe
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).rrddata.get, timeframe=timeframe)
     if not isinstance(result, list):
         return f"No metrics data available for LXC {resolved_vmid}"
     lines = [f"📈 **LXC {resolved_vmid} Metrics** ({timeframe})\n"]
@@ -337,7 +339,7 @@ def lxc_metrics(
 VALID_RESOURCE_TYPES = ("vm", "storage", "node", "sdn")
 
 
-def cluster_resources(client: Any, type: Optional[str] = None) -> str:
+def cluster_resources(client: ProxmoxClient, type: Optional[str] = None) -> str:
     if type is not None and type not in VALID_RESOURCE_TYPES:
         raise ValueError(f"Invalid type {type!r} — must be one of: {', '.join(VALID_RESOURCE_TYPES)}")
     params: dict[str, Any] = {}
@@ -366,7 +368,7 @@ def cluster_resources(client: Any, type: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_bridges(client: Any, node: Optional[str] = None) -> str:
+def list_bridges(client: ProxmoxClient, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(_api(client).nodes(node).network.get)
     if not isinstance(result, list):
@@ -380,7 +382,7 @@ def list_bridges(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def list_network(client: Any, node: Optional[str] = None) -> str:
+def list_network(client: ProxmoxClient, node: Optional[str] = None) -> str:
     node = client.resolve_node(node)
     result = client.safe_api_call(_api(client).nodes(node).network.get)
     if not isinstance(result, list):
@@ -394,12 +396,10 @@ def list_network(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def node_version(client: Any, node: Optional[str] = None) -> str:
+def node_version(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).version.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).version.get)
     lines = [f"📦 **Node Version: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -413,12 +413,10 @@ def node_version(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def node_dns(client: Any, node: Optional[str] = None) -> str:
+def node_dns(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).dns.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).dns.get)
     lines = [f"🌐 **Node DNS: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -432,12 +430,10 @@ def node_dns(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def node_hosts(client: Any, node: Optional[str] = None) -> str:
+def node_hosts(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).hosts.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).hosts.get)
     lines = [f"📋 **Node Hosts: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -454,12 +450,10 @@ def node_hosts(client: Any, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def node_time(client: Any, node: Optional[str] = None) -> str:
+def node_time(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).time.get
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).time.get)
     lines = [f"🕐 **Node Time: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -474,7 +468,7 @@ def node_time(client: Any, node: Optional[str] = None) -> str:
 
 
 def node_syslog(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     limit: Optional[int] = None,
     start: Optional[int] = None,
@@ -493,9 +487,7 @@ def node_syslog(
     if until is not None:
         params["until"] = until
     try:
-        result = client.safe_api_call(
-            _api(client).nodes(resolved_node).syslog.get, **params
-        )
+        result = client.safe_api_call(_api(client).nodes(resolved_node).syslog.get, **params)
     except ProxmoxPermissionError:
         return (
             "⚠️ **Syslog access requires Sys.Syslog permission.**\n"
@@ -519,7 +511,7 @@ def node_syslog(
 
 
 def node_journal(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     limit: Optional[int] = None,
     since: Optional[str] = None,
@@ -537,9 +529,7 @@ def node_journal(
         params["until"] = until
     if service is not None:
         params["service"] = service
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).journal.get, **params
-    )
+    result = client.safe_api_call(_api(client).nodes(resolved_node).journal.get, **params)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📋 **Journal: {resolved_node}** ({len(result)} entries)\n"]
@@ -555,13 +545,11 @@ def node_journal(
     return "\n".join(lines)
 
 
-def cluster_log(client: Any, limit: Optional[int] = None) -> str:
+def cluster_log(client: ProxmoxClient, limit: Optional[int] = None) -> str:
     params: dict[str, Any] = {}
     if limit is not None:
         params["max"] = limit
-    result = client.safe_api_call(
-        _api(client).cluster.log.get, **params
-    )
+    result = client.safe_api_call(_api(client).cluster.log.get, **params)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📋 **Cluster Log** ({len(result)} entries)\n"]
@@ -578,7 +566,7 @@ def cluster_log(client: Any, limit: Optional[int] = None) -> str:
 
 
 def task_log(
-    client: Any,
+    client: ProxmoxClient,
     upid: str,
     node: Optional[str] = None,
     limit: int = 50,
@@ -589,9 +577,7 @@ def task_log(
             node = parts[1]
     if not node:
         node = client.resolve_node()
-    result = client.safe_api_call(
-        _api(client).nodes(node).tasks(upid).log.get, limit=limit
-    )
+    result = client.safe_api_call(_api(client).nodes(node).tasks(upid).log.get, limit=limit)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"**Task Log: {upid}** (last {len(result)} lines)\n"]
@@ -607,7 +593,7 @@ def task_log(
     return "\n".join(lines)
 
 
-def cluster_status(client: Any) -> str:
+def cluster_status(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.status.get,
     )
@@ -633,7 +619,7 @@ def cluster_status(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_next_vmid(client: Any) -> str:
+def get_next_vmid(client: ProxmoxClient) -> str:
     result = client.safe_api_call(_api(client).cluster.nextid.get)
     vmid = int(result) if result else 0
     lines = ["**Next VMID**\n"]

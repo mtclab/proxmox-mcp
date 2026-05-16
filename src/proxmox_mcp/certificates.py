@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_certificates(client: Any, node: Optional[str] = None) -> str:
+def list_certificates(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(
@@ -43,7 +44,7 @@ def list_certificates(client: Any, node: Optional[str] = None) -> str:
 
 @confirm_required
 def order_acme_certificate(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
@@ -67,7 +68,7 @@ def order_acme_certificate(
 
 @confirm_required
 def renew_acme_certificate(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
@@ -91,7 +92,7 @@ def renew_acme_certificate(
 
 @confirm_required
 def revoke_certificate(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
@@ -115,7 +116,7 @@ def revoke_certificate(
 
 @confirm_required
 def upload_custom_certificate(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     certificates: Optional[str] = None,
     key: Optional[str] = None,
@@ -143,7 +144,7 @@ def upload_custom_certificate(
 
 @confirm_required
 def delete_custom_certificate(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
     **kwargs: Any,
@@ -165,7 +166,7 @@ def delete_custom_certificate(
     return f"Custom certificate deleted on {resolved_node}. UPID: {upid}"
 
 
-def list_acme_certs(client: Any, node: Optional[str] = None) -> str:
+def list_acme_certs(client: ProxmoxClient, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     result = client.safe_api_call(

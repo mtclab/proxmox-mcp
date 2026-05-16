@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_notification_targets(client: Any) -> str:
+def list_notification_targets(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.targets.get,
     )
@@ -28,7 +29,7 @@ def list_notification_targets(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_notification_matchers(client: Any) -> str:
+def list_notification_matchers(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.matchers.get,
     )
@@ -46,7 +47,7 @@ def list_notification_matchers(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_notification_matcher(client: Any, name: str = "") -> str:
+def get_notification_matcher(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
     result = client.safe_api_call(
@@ -59,7 +60,7 @@ def get_notification_matcher(client: Any, name: str = "") -> str:
     return "\n".join(lines)
 
 
-def list_sendmail_endpoints(client: Any) -> str:
+def list_sendmail_endpoints(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.endpoints.sendmail.get,
     )
@@ -79,7 +80,7 @@ def list_sendmail_endpoints(client: Any) -> str:
 
 @confirm_required
 def create_sendmail_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     mailto: Optional[str] = None,
     comment: Optional[str] = None,
@@ -106,7 +107,7 @@ def create_sendmail_endpoint(
 
 @confirm_required
 def delete_sendmail_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -121,7 +122,7 @@ def delete_sendmail_endpoint(
     return f"Sendmail endpoint {name!r} deleted"
 
 
-def list_smtp_endpoints(client: Any) -> str:
+def list_smtp_endpoints(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.endpoints.smtp.get,
     )
@@ -142,7 +143,7 @@ def list_smtp_endpoints(client: Any) -> str:
 
 @confirm_required
 def create_smtp_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     server: Optional[str] = None,
     comment: Optional[str] = None,
@@ -169,7 +170,7 @@ def create_smtp_endpoint(
 
 @confirm_required
 def delete_smtp_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -184,7 +185,7 @@ def delete_smtp_endpoint(
     return f"SMTP endpoint {name!r} deleted"
 
 
-def list_gotify_endpoints(client: Any) -> str:
+def list_gotify_endpoints(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.endpoints.gotify.get,
     )
@@ -204,7 +205,7 @@ def list_gotify_endpoints(client: Any) -> str:
 
 @confirm_required
 def create_gotify_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     server: Optional[str] = None,
     token: Optional[str] = None,
@@ -234,7 +235,7 @@ def create_gotify_endpoint(
 
 @confirm_required
 def delete_gotify_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -249,7 +250,7 @@ def delete_gotify_endpoint(
     return f"Gotify endpoint {name!r} deleted"
 
 
-def list_webhook_endpoints(client: Any) -> str:
+def list_webhook_endpoints(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.endpoints.webhook.get,
     )
@@ -269,7 +270,7 @@ def list_webhook_endpoints(client: Any) -> str:
 
 @confirm_required
 def create_webhook_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     url: Optional[str] = None,
     comment: Optional[str] = None,
@@ -296,7 +297,7 @@ def create_webhook_endpoint(
 
 @confirm_required
 def delete_webhook_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -311,7 +312,7 @@ def delete_webhook_endpoint(
     return f"Webhook endpoint {name!r} deleted"
 
 
-def notification_index(client: Any) -> str:
+def notification_index(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.get,
     )
@@ -324,7 +325,7 @@ def notification_index(client: Any) -> str:
     return "\n".join(lines)
 
 
-def notification_endpoints_index(client: Any) -> str:
+def notification_endpoints_index(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications.endpoints.get,
     )
@@ -337,7 +338,7 @@ def notification_endpoints_index(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_notification_target(client: Any, name: str = "") -> str:
+def get_notification_target(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
     result = client.safe_api_call(
@@ -352,7 +353,7 @@ def get_notification_target(client: Any, name: str = "") -> str:
 
 @confirm_required
 def test_notification_target(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -367,7 +368,7 @@ def test_notification_target(
     return f"Test notification sent to target {name!r}"
 
 
-def notification_matcher_fields(client: Any) -> str:
+def notification_matcher_fields(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications("matcher-fields").get,
     )
@@ -385,7 +386,7 @@ def notification_matcher_fields(client: Any) -> str:
     return "\n".join(lines)
 
 
-def notification_matcher_field_values(client: Any) -> str:
+def notification_matcher_field_values(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.notifications("matcher-field-values").get,
     )
@@ -405,7 +406,7 @@ def notification_matcher_field_values(client: Any) -> str:
 
 @confirm_required
 def create_notification_matcher(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -429,7 +430,7 @@ def create_notification_matcher(
 
 @confirm_required
 def update_notification_matcher(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -456,7 +457,7 @@ def update_notification_matcher(
 
 @confirm_required
 def delete_notification_matcher(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     confirm: bool = False,
 ) -> str:
@@ -471,7 +472,7 @@ def delete_notification_matcher(
     return f"Notification matcher {name!r} deleted"
 
 
-def get_sendmail_endpoint(client: Any, name: str = "") -> str:
+def get_sendmail_endpoint(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
     result = client.safe_api_call(
@@ -486,7 +487,7 @@ def get_sendmail_endpoint(client: Any, name: str = "") -> str:
 
 @confirm_required
 def update_sendmail_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -511,7 +512,7 @@ def update_sendmail_endpoint(
     return f"Sendmail endpoint {name!r} updated: {opts}"
 
 
-def get_smtp_endpoint(client: Any, name: str = "") -> str:
+def get_smtp_endpoint(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
     result = client.safe_api_call(
@@ -526,7 +527,7 @@ def get_smtp_endpoint(client: Any, name: str = "") -> str:
 
 @confirm_required
 def update_smtp_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -551,7 +552,7 @@ def update_smtp_endpoint(
     return f"SMTP endpoint {name!r} updated: {opts}"
 
 
-def get_gotify_endpoint(client: Any, name: str = "") -> str:
+def get_gotify_endpoint(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
     result = client.safe_api_call(
@@ -566,7 +567,7 @@ def get_gotify_endpoint(client: Any, name: str = "") -> str:
 
 @confirm_required
 def update_gotify_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
@@ -591,7 +592,7 @@ def update_gotify_endpoint(
     return f"Gotify endpoint {name!r} updated: {opts}"
 
 
-def get_webhook_endpoint(client: Any, name: str = "") -> str:
+def get_webhook_endpoint(client: ProxmoxClient, name: str = "") -> str:
     if not name:
         raise ValueError("name is required")
     result = client.safe_api_call(
@@ -606,7 +607,7 @@ def get_webhook_endpoint(client: Any, name: str = "") -> str:
 
 @confirm_required
 def update_webhook_endpoint(
-    client: Any,
+    client: ProxmoxClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,

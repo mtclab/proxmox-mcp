@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
 
 ALLOWED_VMTYPES = ("qemu", "lxc")
@@ -9,17 +10,15 @@ ALLOWED_VMTYPES = ("qemu", "lxc")
 
 def _validate_vmtype(vmtype: str) -> None:
     if vmtype not in ALLOWED_VMTYPES:
-        raise ValueError(
-            f"Invalid vmtype {vmtype!r}. Must be one of {ALLOWED_VMTYPES}"
-        )
+        raise ValueError(f"Invalid vmtype {vmtype!r}. Must be one of {ALLOWED_VMTYPES}")
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
 def snapshot_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
@@ -41,16 +40,14 @@ def snapshot_config(
 
 
 def list_snapshots(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
 ) -> str:
     _validate_vmtype(vmtype)
     resolved_node = client.resolve_node(node)
-    result = client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).snapshot.get
-    )
+    result = client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).snapshot.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f4f8 **Snapshots for {vmtype} {vmid} on {resolved_node}**\n"]
@@ -71,7 +68,7 @@ def list_snapshots(
 
 @confirm_required
 def create_snapshot(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
@@ -97,7 +94,7 @@ def create_snapshot(
 
 @confirm_required
 def delete_snapshot(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
@@ -126,7 +123,7 @@ def delete_snapshot(
 
 @confirm_required
 def update_snapshot_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
@@ -155,7 +152,7 @@ def update_snapshot_config(
 
 @confirm_required
 def rollback_snapshot(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",

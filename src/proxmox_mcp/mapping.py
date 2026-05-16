@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def list_pci_mappings(client: Any) -> str:
+def list_pci_mappings(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.mapping.pci.get,
     )
@@ -30,7 +31,7 @@ def list_pci_mappings(client: Any) -> str:
 
 @confirm_required
 def create_pci_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
@@ -52,7 +53,7 @@ def create_pci_mapping(
     return f"PCI mapping {id!r} created"
 
 
-def get_pci_mapping(client: Any, id: str = "") -> str:
+def get_pci_mapping(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -67,7 +68,7 @@ def get_pci_mapping(client: Any, id: str = "") -> str:
 
 @confirm_required
 def update_pci_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
@@ -94,7 +95,7 @@ def update_pci_mapping(
 
 @confirm_required
 def delete_pci_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
 ) -> str:
@@ -109,7 +110,7 @@ def delete_pci_mapping(
     return f"PCI mapping {id!r} deleted"
 
 
-def list_usb_mappings(client: Any) -> str:
+def list_usb_mappings(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.mapping.usb.get,
     )
@@ -130,7 +131,7 @@ def list_usb_mappings(client: Any) -> str:
 
 @confirm_required
 def create_usb_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
@@ -152,7 +153,7 @@ def create_usb_mapping(
     return f"USB mapping {id!r} created"
 
 
-def get_usb_mapping(client: Any, id: str = "") -> str:
+def get_usb_mapping(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -167,7 +168,7 @@ def get_usb_mapping(client: Any, id: str = "") -> str:
 
 @confirm_required
 def update_usb_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
@@ -194,7 +195,7 @@ def update_usb_mapping(
 
 @confirm_required
 def delete_usb_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
 ) -> str:
@@ -209,7 +210,7 @@ def delete_usb_mapping(
     return f"USB mapping {id!r} deleted"
 
 
-def mapping_index(client: Any) -> str:
+def mapping_index(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.mapping.get,
     )
@@ -241,7 +242,7 @@ def mapping_index(client: Any) -> str:
     return "\n".join(lines)
 
 
-def list_dir_mappings(client: Any) -> str:
+def list_dir_mappings(client: ProxmoxClient) -> str:
     result = client.safe_api_call(
         _api(client).cluster.mapping.dir.get,
     )
@@ -259,7 +260,7 @@ def list_dir_mappings(client: Any) -> str:
     return "\n".join(lines)
 
 
-def get_dir_mapping(client: Any, id: str = "") -> str:
+def get_dir_mapping(client: ProxmoxClient, id: str = "") -> str:
     if not id:
         raise ValueError("id is required")
     result = client.safe_api_call(
@@ -274,7 +275,7 @@ def get_dir_mapping(client: Any, id: str = "") -> str:
 
 @confirm_required
 def create_dir_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
@@ -298,7 +299,7 @@ def create_dir_mapping(
 
 @confirm_required
 def update_dir_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
@@ -325,7 +326,7 @@ def update_dir_mapping(
 
 @confirm_required
 def delete_dir_mapping(
-    client: Any,
+    client: ProxmoxClient,
     id: str = "",
     confirm: bool = False,
 ) -> str:

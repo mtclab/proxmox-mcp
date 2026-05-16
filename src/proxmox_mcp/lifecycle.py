@@ -2,20 +2,21 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxNotFoundError
 from proxmox_mcp.utils import confirm_required, validate_disk_size, validate_node_name, validate_vmid
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
-def _get_next_vmid(client: Any) -> int:
+def _get_next_vmid(client: ProxmoxClient) -> int:
     result = _api(client).cluster.nextid.get()
     return int(result)
 
 
-def _validate_ostemplate(client: Any, node: str, ostemplate: str) -> None:
+def _validate_ostemplate(client: ProxmoxClient, node: str, ostemplate: str) -> None:
     storage_name = ostemplate.split(":")[0] if ":" in ostemplate else "local"
     try:
         content = client.safe_api_call(_api(client).nodes(node).storage(storage_name).content.get)
@@ -34,7 +35,7 @@ def _validate_ostemplate(client: Any, node: str, ostemplate: str) -> None:
 
 @confirm_required
 def create_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     ostemplate: str = "",
@@ -82,7 +83,7 @@ def create_lxc(
 
 @confirm_required
 def start_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -99,7 +100,7 @@ def start_lxc(
 
 @confirm_required
 def stop_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -116,7 +117,7 @@ def stop_lxc(
 
 @confirm_required
 def shutdown_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -133,7 +134,7 @@ def shutdown_lxc(
 
 @confirm_required
 def reboot_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -150,7 +151,7 @@ def reboot_lxc(
 
 @confirm_required
 def delete_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -167,7 +168,7 @@ def delete_lxc(
 
 @confirm_required
 def configure_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     cores: Optional[int] = None,
@@ -193,7 +194,7 @@ def configure_lxc(
 
 @confirm_required
 def create_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: Optional[str] = None,
@@ -252,7 +253,7 @@ def create_vm(
 
 @confirm_required
 def start_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -269,7 +270,7 @@ def start_vm(
 
 @confirm_required
 def stop_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -286,7 +287,7 @@ def stop_vm(
 
 @confirm_required
 def shutdown_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -303,7 +304,7 @@ def shutdown_vm(
 
 @confirm_required
 def reboot_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -320,7 +321,7 @@ def reboot_vm(
 
 @confirm_required
 def delete_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -337,7 +338,7 @@ def delete_vm(
 
 @confirm_required
 def clone_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     newid: Optional[int] = None,
@@ -367,7 +368,7 @@ def clone_vm(
 
 @confirm_required
 def migrate_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target: Optional[str] = None,
@@ -388,7 +389,7 @@ def migrate_vm(
 
 @confirm_required
 def resize_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     disk: str = "rootfs",
@@ -410,7 +411,7 @@ def resize_lxc(
 
 @confirm_required
 def suspend_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -427,7 +428,7 @@ def suspend_lxc(
 
 @confirm_required
 def resume_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -444,7 +445,7 @@ def resume_lxc(
 
 @confirm_required
 def clone_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     newid: Optional[int] = None,
@@ -477,7 +478,7 @@ def clone_lxc(
 
 @confirm_required
 def migrate_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target: Optional[str] = None,
@@ -497,7 +498,7 @@ def migrate_lxc(
 
 
 def lxc_interfaces(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
@@ -524,7 +525,7 @@ def lxc_interfaces(
 
 @confirm_required
 def configure_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     cores: Optional[int] = None,
@@ -552,7 +553,7 @@ def configure_vm(
 
 @confirm_required
 def resize_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     disk: str = "scsi0",
@@ -573,7 +574,7 @@ def resize_vm(
 
 @confirm_required
 def reset_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -590,7 +591,7 @@ def reset_vm(
 
 @confirm_required
 def suspend_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -607,7 +608,7 @@ def suspend_vm(
 
 @confirm_required
 def resume_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -624,7 +625,7 @@ def resume_vm(
 
 @confirm_required
 def move_vm_disk(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     disk: str = "scsi0",
@@ -649,7 +650,7 @@ def move_vm_disk(
 
 @confirm_required
 def convert_to_template(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -666,7 +667,7 @@ def convert_to_template(
 
 @confirm_required
 def convert_lxc_to_template(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -682,7 +683,7 @@ def convert_lxc_to_template(
 
 
 def lxc_migrate_preconditions(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
@@ -700,7 +701,7 @@ def lxc_migrate_preconditions(
 
 
 def vm_migrate_preconditions(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
@@ -718,7 +719,7 @@ def vm_migrate_preconditions(
 
 
 def lxc_feature_check(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     feature: str = "",
@@ -737,7 +738,7 @@ def lxc_feature_check(
 
 
 def vm_feature_check(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     feature: str = "",
@@ -756,7 +757,7 @@ def vm_feature_check(
 
 
 def vm_pending_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
@@ -781,7 +782,7 @@ def vm_pending_config(
 
 
 def lxc_pending_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
@@ -807,7 +808,7 @@ def lxc_pending_config(
 
 @confirm_required
 def send_vm_key(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     key: str = "",
@@ -827,7 +828,7 @@ def send_vm_key(
 
 @confirm_required
 def vm_monitor_command(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     command: str = "",
@@ -870,7 +871,7 @@ def vm_monitor_command(
 
 @confirm_required
 def unlink_vm_disk(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     idlist: str = "",
@@ -890,7 +891,7 @@ def unlink_vm_disk(
 
 @confirm_required
 def vm_dbus_vmstate(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -908,7 +909,7 @@ def vm_dbus_vmstate(
 
 
 def vm_rrd(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
@@ -941,7 +942,7 @@ def vm_rrd(
 
 
 def get_lxc_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
@@ -964,7 +965,7 @@ def get_lxc_config(
 
 
 def get_lxc_status(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
@@ -986,7 +987,7 @@ def get_lxc_status(
 
 @confirm_required
 def remote_migrate_lxc(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target: Optional[str] = None,
@@ -1012,7 +1013,7 @@ def remote_migrate_lxc(
 
 @confirm_required
 def move_lxc_volume(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     volume: str = "rootfs",
@@ -1041,7 +1042,7 @@ def move_lxc_volume(
 
 
 def lxc_rrddata(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
@@ -1074,7 +1075,7 @@ def lxc_rrddata(
 
 
 def lxc_rrd(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
@@ -1107,7 +1108,7 @@ def lxc_rrd(
 
 
 def get_vm_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     current: bool = False,
@@ -1152,7 +1153,7 @@ def _parse_kwargs(kwargs: Any) -> dict[str, Any]:
 
 @confirm_required
 def update_vm_config(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -1174,7 +1175,7 @@ def update_vm_config(
 
 
 def vm_rrddata(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
@@ -1201,7 +1202,7 @@ def vm_rrddata(
 
 @confirm_required
 def remote_migrate_vm(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target_address: Optional[str] = None,
@@ -1228,7 +1229,7 @@ def remote_migrate_vm(
 
 @confirm_required
 def lxc_sendkey(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     key: str = "",

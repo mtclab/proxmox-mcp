@@ -2,16 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
 
 
-def _api(client: Any) -> Any:
+def _api(client: ProxmoxClient) -> Any:
     return client.get_client(elevated=False)
 
 
 @confirm_required
 def vm_vnc_proxy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -22,7 +23,8 @@ def vm_vnc_proxy(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).vncproxy.post, elevated=True,
+        elevated.nodes(resolved_node).qemu(vmid).vncproxy.post,
+        elevated=True,
     )
     lines = [f"\U0001f5a5 **VNC Proxy: VM {vmid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -35,7 +37,7 @@ def vm_vnc_proxy(
 
 @confirm_required
 def vm_spice_proxy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -46,7 +48,8 @@ def vm_spice_proxy(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).spiceproxy.post, elevated=True,
+        elevated.nodes(resolved_node).qemu(vmid).spiceproxy.post,
+        elevated=True,
     )
     lines = [f"\U0001f5a5 **SPICE Proxy: VM {vmid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -59,7 +62,7 @@ def vm_spice_proxy(
 
 @confirm_required
 def vm_termproxy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -70,7 +73,8 @@ def vm_termproxy(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).termproxy.post, elevated=True,
+        elevated.nodes(resolved_node).qemu(vmid).termproxy.post,
+        elevated=True,
     )
     lines = [f"\U0001f4bb **Terminal Proxy: VM {vmid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -83,7 +87,7 @@ def vm_termproxy(
 
 @confirm_required
 def lxc_vnc_proxy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -94,7 +98,8 @@ def lxc_vnc_proxy(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).vncproxy.post, elevated=True,
+        elevated.nodes(resolved_node).lxc(vmid).vncproxy.post,
+        elevated=True,
     )
     lines = [f"\U0001f5a5 **VNC Proxy: CT {vmid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -107,7 +112,7 @@ def lxc_vnc_proxy(
 
 @confirm_required
 def lxc_termproxy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -118,7 +123,8 @@ def lxc_termproxy(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).termproxy.post, elevated=True,
+        elevated.nodes(resolved_node).lxc(vmid).termproxy.post,
+        elevated=True,
     )
     lines = [f"\U0001f4bb **Terminal Proxy: CT {vmid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -131,7 +137,7 @@ def lxc_termproxy(
 
 @confirm_required
 def node_vncshell(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
@@ -140,7 +146,8 @@ def node_vncshell(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).vncshell.post, elevated=True,
+        elevated.nodes(resolved_node).vncshell.post,
+        elevated=True,
     )
     lines = [f"\U0001f5a5 **VNC Shell: {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -153,7 +160,7 @@ def node_vncshell(
 
 @confirm_required
 def node_spiceshell(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
@@ -162,7 +169,8 @@ def node_spiceshell(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).spiceshell.post, elevated=True,
+        elevated.nodes(resolved_node).spiceshell.post,
+        elevated=True,
     )
     lines = [f"\U0001f5a5 **SPICE Shell: {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -175,7 +183,7 @@ def node_spiceshell(
 
 @confirm_required
 def node_termproxy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     confirm: bool = False,
 ) -> str:
@@ -184,7 +192,8 @@ def node_termproxy(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).termproxy.post, elevated=True,
+        elevated.nodes(resolved_node).termproxy.post,
+        elevated=True,
     )
     lines = [f"\U0001f4bb **Terminal Proxy: {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -197,7 +206,7 @@ def node_termproxy(
 
 @confirm_required
 def lxc_spice_proxy(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
@@ -208,7 +217,8 @@ def lxc_spice_proxy(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).spiceproxy.post, elevated=True,
+        elevated.nodes(resolved_node).lxc(vmid).spiceproxy.post,
+        elevated=True,
     )
     lines = [f"\U0001f5a5 **SPICE Proxy: CT {vmid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -220,7 +230,7 @@ def lxc_spice_proxy(
 
 
 def lxc_vnc_websocket(
-    client: Any,
+    client: ProxmoxClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
 ) -> str:
