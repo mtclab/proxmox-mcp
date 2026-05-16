@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.exceptions import ProxmoxPermissionError
+from proxmox_mcp.exceptions import ProxmoxNotFoundError, ProxmoxPermissionError
 from proxmox_mcp.utils import format_bytes, format_uptime, validate_node_name
 
 
@@ -154,12 +154,15 @@ def list_vms(client: Any, node: Optional[str] = None) -> str:
 
 def vm_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
-    status_data = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu(resolved_vmid).status.current.get
-    )
-    config_data = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu(resolved_vmid).config.get
-    )
+    try:
+        status_data = client.safe_api_call(
+            _api(client).nodes(resolved_node).qemu(resolved_vmid).status.current.get
+        )
+        config_data = client.safe_api_call(
+            _api(client).nodes(resolved_node).qemu(resolved_vmid).config.get
+        )
+    except ProxmoxNotFoundError:
+        return f"VM {resolved_vmid} not found on node {resolved_node}"
     lines = [f"🖥️ **VM {resolved_vmid} on {resolved_node}**\n"]
     if isinstance(status_data, dict):
         lines.append(f"   • Status: {status_data.get('status', 'unknown')}")
@@ -201,8 +204,11 @@ def list_lxc(client: Any, node: Optional[str] = None) -> str:
 
 def lxc_info(client: Any, node: Optional[str] = None, vmid: Optional[int] = None, name: Optional[str] = None) -> str:
     resolved_node, resolved_vmid = client.resolve_guest(name or str(vmid), node)
-    status_data = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).status.current.get)
-    config_data = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).config.get)
+    try:
+        status_data = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).status.current.get)
+        config_data = client.safe_api_call(_api(client).nodes(resolved_node).lxc(resolved_vmid).config.get)
+    except ProxmoxNotFoundError:
+        return f"LXC {resolved_vmid} not found on node {resolved_node}"
     lines = [f"📦 **LXC {resolved_vmid} on {resolved_node}**\n"]
     if isinstance(status_data, dict):
         lines.append(f"   • Status: {status_data.get('status', 'unknown')}")

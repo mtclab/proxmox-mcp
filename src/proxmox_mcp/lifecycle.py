@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from proxmox_mcp.exceptions import ProxmoxNotFoundError
 from proxmox_mcp.utils import confirm_required, validate_disk_size, validate_node_name, validate_vmid
 
 
@@ -1005,9 +1006,12 @@ def get_lxc_config(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(vmid).config.get
-    )
+    try:
+        result = client.safe_api_call(
+            _api(client).nodes(resolved_node).lxc(vmid).config.get
+        )
+    except ProxmoxNotFoundError:
+        return f"LXC {vmid} not found on node {resolved_node}"
     lines = [f"**LXC {vmid} config on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -1027,9 +1031,12 @@ def get_lxc_status(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(vmid).status.current.get
-    )
+    try:
+        result = client.safe_api_call(
+            _api(client).nodes(resolved_node).lxc(vmid).status.current.get
+        )
+    except ProxmoxNotFoundError:
+        return f"LXC {vmid} not found on node {resolved_node}"
     lines = [f"**LXC {vmid} status on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -1177,9 +1184,12 @@ def get_vm_config(
     params: dict[str, Any] = {}
     if current:
         params["current"] = 1
-    result = client.safe_api_call(
-        _api(client).nodes(resolved_node).qemu(vmid).config.get, **params
-    )
+    try:
+        result = client.safe_api_call(
+            _api(client).nodes(resolved_node).qemu(vmid).config.get, **params
+        )
+    except ProxmoxNotFoundError:
+        return f"VM {vmid} not found on node {resolved_node}"
     lines = [f"**VM {vmid} config on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):

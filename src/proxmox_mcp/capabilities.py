@@ -62,11 +62,14 @@ def list_machine_types(client: Any, node: Optional[str] = None) -> str:
         if isinstance(machine, str):
             lines.append(f"   • **{machine}**")
         else:
-            name = machine.get("name", "unknown")
+            name = machine.get("id", machine.get("name", "unknown"))
             mtype = machine.get("type", "")
+            version = machine.get("version", "")
             lines.append(f"   • **{name}**")
             if mtype:
                 lines.append(f"     Type: {mtype}")
+            if version:
+                lines.append(f"     Version: {version}")
     if not result:
         lines.append("   No machine types found.")
     return "\n".join(lines)

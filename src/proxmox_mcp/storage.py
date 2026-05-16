@@ -81,8 +81,10 @@ def get_storage(
     validate_storage_name(storage)
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
+    elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).get,
+        elevated.nodes(resolved_node).storage(storage).get,
+        elevated=True,
     )
     lines = [f"\U0001f4be **Storage: {storage} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -358,8 +360,10 @@ def get_storage_on_node(
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
     validate_storage_name(storage)
+    elevated = client.get_client(elevated=True)
     result = client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).get,
+        elevated.nodes(resolved_node).storage(storage).get,
+        elevated=True,
     )
     lines = [f"💾 **Storage Detail: {storage} on {resolved_node}**\n"]
     if isinstance(result, dict):

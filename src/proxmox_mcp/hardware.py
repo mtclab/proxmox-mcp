@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.utils import validate_node_name
 
 
@@ -42,17 +41,11 @@ def list_pci(client: Any, node: Optional[str] = None) -> str:
 def list_usb(client: Any, node: Optional[str] = None) -> str:
     resolved_node = client.resolve_node(node)
     validate_node_name(resolved_node)
-    try:
-        result = client.safe_api_call(
-            _api(client).nodes(resolved_node).hardware.usb.get,
-        )
-    except ProxmoxPermissionError:
-        return (
-            "⚠️ **USB listing requires Sys.Modify permission.**\n"
-            "The monitor token (PVEAuditor role) does not have Sys.Modify, "
-            "which is required by PVE's /nodes/{node}/usb endpoint.\n"
-            "Use an elevated session or grant Sys.Modify to the monitor token's role."
-        )
+    elevated = client.get_client(elevated=True)
+    result = client.safe_api_call(
+        elevated.nodes(resolved_node).hardware.usb.get,
+        elevated=True,
+    )
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"🔌 **USB Devices on {resolved_node}**\n"]

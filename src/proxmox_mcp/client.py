@@ -12,8 +12,8 @@ from proxmoxer.core import ResourceException
 from proxmox_mcp.config import Config
 from proxmox_mcp.exceptions import (
     ProxmoxConnectionError,
-    ProxmoxNotFoundError,
     ProxmoxNodeError,
+    ProxmoxNotFoundError,
     ProxmoxPermissionError,
     ProxmoxTaskError,
 )
@@ -38,7 +38,7 @@ class ProxmoxClient:
             token_value=config.monitor_token_secret,
             verify_ssl=config.verify,
             backend="https",
-            timeout=30,
+            timeout=60,
         )
 
         admin_user = config.admin_token_id.split("!")[0]
@@ -51,7 +51,7 @@ class ProxmoxClient:
             token_value=config.admin_token_secret,
             verify_ssl=config.verify,
             backend="https",
-            timeout=30,
+            timeout=60,
         )
 
     def get_client(self, elevated: bool = False) -> ProxmoxAPI:

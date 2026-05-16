@@ -227,9 +227,13 @@ def mapping_index(client: Any) -> str:
     elif isinstance(result, list):
         for entry in result:
             if isinstance(entry, dict):
-                mid = entry.get("id", "unknown")
-                mtype = type_labels.get(entry.get("type", ""), entry.get("type", "unknown"))
-                lines.append(f"   • {mid} ({mtype})")
+                mid = entry.get("id", entry.get("name", "unknown"))
+                raw_type = entry.get("type", entry.get("name", ""))
+                mtype = type_labels.get(raw_type, raw_type) if raw_type else ""
+                if mtype:
+                    lines.append(f"   • {mid} ({mtype})")
+                else:
+                    lines.append(f"   • {mid}")
             else:
                 lines.append(f"   • {entry}")
     if not result:

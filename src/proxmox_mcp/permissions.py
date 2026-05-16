@@ -19,8 +19,12 @@ def list_acl(client: Any) -> str:
     lines = ["\U0001f510 **ACL Rules**\n"]
     for rule in result:
         path = rule.get("path", "?")
-        users = rule.get("userid", rule.get("ugid", "unknown"))
-        roles = rule.get("roleid", rule.get("roles", "unknown"))
+        users = rule.get("ugid", rule.get("userid", "unknown"))
+        roles_val = rule.get("roleid", rule.get("roles", "unknown"))
+        if isinstance(roles_val, list):
+            roles = ", ".join(str(r) for r in roles_val)
+        else:
+            roles = roles_val
         propagate = rule.get("propagate", 1)
         lines.append(f"   • Path: {path}")
         lines.append(f"     Users: {users} | Roles: {roles} | Propagate: {propagate}")
