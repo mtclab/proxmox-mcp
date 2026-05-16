@@ -5,17 +5,18 @@ from typing import Any, Optional
 
 from proxmoxer.core import ResourceException
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_ha_resources(client: ProxmoxClient) -> str:
+async def list_ha_resources(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.ha.resources.get,
+        _api(client, endpoint=ep).cluster.ha.resources.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -33,7 +34,7 @@ async def list_ha_resources(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_ha_resource(
-    client: ProxmoxClient,
+    client: MultiClient,
     sid: str = "",
     group: Optional[str] = None,
     comment: Optional[str] = None,
@@ -42,7 +43,8 @@ async def create_ha_resource(
     state: Optional[str] = None,
     type: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not sid:
         raise ValueError("sid is required for HA resource creation")
@@ -59,7 +61,7 @@ async def create_ha_resource(
         params["state"] = state
     if type is not None:
         params["type"] = type
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.resources.post,
         elevated=True,
@@ -68,11 +70,13 @@ async def create_ha_resource(
     return f"HA resource {sid!r} created"
 
 
-async def get_ha_resource(client: ProxmoxClient, sid: str = "") -> str:
+async def get_ha_resource(client: MultiClient, sid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not sid:
         raise ValueError("sid is required")
     result = await client.safe_api_call(
-        _api(client).cluster.ha.resources(sid).get,
+        _api(client, endpoint=ep).cluster.ha.resources(sid).get,
     )
     lines = [f"🔴 **HA Resource: {sid}**\n"]
     if isinstance(result, dict):
@@ -83,7 +87,7 @@ async def get_ha_resource(client: ProxmoxClient, sid: str = "") -> str:
 
 @confirm_required
 async def update_ha_resource(
-    client: ProxmoxClient,
+    client: MultiClient,
     sid: str = "",
     group: Optional[str] = None,
     comment: Optional[str] = None,
@@ -91,7 +95,8 @@ async def update_ha_resource(
     max_restart: Optional[int] = None,
     state: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not sid:
         raise ValueError("sid is required for HA resource update")
@@ -108,7 +113,7 @@ async def update_ha_resource(
         params["state"] = state
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.resources(sid).put,
         elevated=True,
@@ -120,14 +125,15 @@ async def update_ha_resource(
 
 @confirm_required
 async def delete_ha_resource(
-    client: ProxmoxClient,
+    client: MultiClient,
     sid: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not sid:
         raise ValueError("sid is required for HA resource deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.resources(sid).delete,
         elevated=True,
@@ -137,18 +143,19 @@ async def delete_ha_resource(
 
 @confirm_required
 async def migrate_ha_resource(
-    client: ProxmoxClient,
+    client: MultiClient,
     sid: str = "",
     node: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not sid:
         raise ValueError("sid is required")
     if not node:
         raise ValueError("node is required for migration")
     params: dict[str, Any] = {"node": node}
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.resources(sid).migrate.post,
         elevated=True,
@@ -159,18 +166,19 @@ async def migrate_ha_resource(
 
 @confirm_required
 async def relocate_ha_resource(
-    client: ProxmoxClient,
+    client: MultiClient,
     sid: str = "",
     node: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not sid:
         raise ValueError("sid is required")
     if not node:
         raise ValueError("node is required for relocation")
     params: dict[str, Any] = {"node": node}
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.resources(sid).relocate.post,
         elevated=True,
@@ -179,7 +187,8 @@ async def relocate_ha_resource(
     return f"HA resource {sid!r} relocation to {node!r} initiated"
 
 
-async def list_ha_groups(client: ProxmoxClient) -> str:
+async def list_ha_groups(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     """List HA groups.
 
     .. deprecated::
@@ -194,7 +203,7 @@ async def list_ha_groups(client: ProxmoxClient) -> str:
     )
     try:
         result = await client.safe_api_call(
-            _api(client).cluster.ha.groups.get,
+            _api(client, endpoint=ep).cluster.ha.groups.get,
         )
     except ResourceException as exc:
         if exc.status_code == 500 and "migrated to rules" in str(exc):
@@ -215,9 +224,10 @@ async def list_ha_groups(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def ha_status(client: ProxmoxClient) -> str:
+async def ha_status(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.ha.status.current.get,
+        _api(client, endpoint=ep).cluster.ha.status.current.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -232,9 +242,10 @@ async def ha_status(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_ha_rules(client: ProxmoxClient) -> str:
+async def list_ha_rules(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.ha.rules.get,
+        _api(client, endpoint=ep).cluster.ha.rules.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -250,12 +261,14 @@ async def list_ha_rules(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_ha_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     group: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not group:
         raise ValueError("group is required for HA rule creation")
@@ -263,7 +276,7 @@ async def create_ha_rule(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.rules.post,
         elevated=True,
@@ -272,11 +285,13 @@ async def create_ha_rule(
     return f"HA rule created for group {group!r}"
 
 
-async def get_ha_rule(client: ProxmoxClient, rule: str = "") -> str:
+async def get_ha_rule(client: MultiClient, rule: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not rule:
         raise ValueError("rule is required")
     result = await client.safe_api_call(
-        _api(client).cluster.ha.rules(rule).get,
+        _api(client, endpoint=ep).cluster.ha.rules(rule).get,
     )
     lines = [f"🔴 **HA Rule: {rule}**\n"]
     if isinstance(result, dict):
@@ -287,12 +302,14 @@ async def get_ha_rule(client: ProxmoxClient, rule: str = "") -> str:
 
 @confirm_required
 async def update_ha_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     rule: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not rule:
         raise ValueError("rule is required for HA rule update")
@@ -302,7 +319,7 @@ async def update_ha_rule(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.rules(rule).put,
         elevated=True,
@@ -314,14 +331,15 @@ async def update_ha_rule(
 
 @confirm_required
 async def delete_ha_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     rule: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not rule:
         raise ValueError("rule is required for HA rule deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.rules(rule).delete,
         elevated=True,
@@ -329,11 +347,13 @@ async def delete_ha_rule(
     return f"HA rule {rule!r} deleted"
 
 
-async def get_ha_group(client: ProxmoxClient, group: str = "") -> str:
+async def get_ha_group(client: MultiClient, group: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not group:
         raise ValueError("group is required")
     result = await client.safe_api_call(
-        _api(client).cluster.ha.groups(group).get,
+        _api(client, endpoint=ep).cluster.ha.groups(group).get,
     )
     lines = [f"🔴 **HA Group: {group}**\n"]
     if isinstance(result, dict):
@@ -344,13 +364,15 @@ async def get_ha_group(client: ProxmoxClient, group: str = "") -> str:
 
 @confirm_required
 async def update_ha_group(
-    client: ProxmoxClient,
+    client: MultiClient,
     group: str = "",
     comment: Optional[str] = None,
     nodes: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not group:
         raise ValueError("group is required for HA group update")
@@ -362,7 +384,7 @@ async def update_ha_group(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.groups(group).put,
         elevated=True,
@@ -374,14 +396,15 @@ async def update_ha_group(
 
 @confirm_required
 async def delete_ha_group(
-    client: ProxmoxClient,
+    client: MultiClient,
     group: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not group:
         raise ValueError("group is required for HA group deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.groups(group).delete,
         elevated=True,
@@ -391,11 +414,12 @@ async def delete_ha_group(
 
 @confirm_required
 async def arm_ha(
-    client: ProxmoxClient,
+    client: MultiClient,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.status("arm-ha").post,
         elevated=True,
@@ -405,11 +429,12 @@ async def arm_ha(
 
 @confirm_required
 async def disarm_ha(
-    client: ProxmoxClient,
+    client: MultiClient,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.ha.status("disarm-ha").post,
         elevated=True,
@@ -417,9 +442,10 @@ async def disarm_ha(
     return "HA manager disarmed"
 
 
-async def ha_manager_status(client: ProxmoxClient) -> str:
+async def ha_manager_status(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.ha.status.manager_status.get,
+        _api(client, endpoint=ep).cluster.ha.status.manager_status.get,
     )
     lines = ["🔴 **HA Manager Status**\n"]
     if isinstance(result, dict):

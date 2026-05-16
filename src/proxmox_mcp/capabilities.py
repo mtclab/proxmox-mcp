@@ -2,19 +2,22 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_cpu_models(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_cpu_models(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).capabilities.qemu.cpu.get,
+        _api(client, endpoint=ep).nodes(resolved_node).capabilities.qemu.cpu.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -33,11 +36,14 @@ async def list_cpu_models(client: ProxmoxClient, node: Optional[str] = None) -> 
     return "\n".join(lines)
 
 
-async def list_cpu_flags(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_cpu_flags(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).capabilities.qemu("cpu-flags").get,
+        _api(client, endpoint=ep).nodes(resolved_node).capabilities.qemu("cpu-flags").get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -56,11 +62,14 @@ async def list_cpu_flags(client: ProxmoxClient, node: Optional[str] = None) -> s
     return "\n".join(lines)
 
 
-async def list_machine_types(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_machine_types(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).capabilities.qemu.machines.get,
+        _api(client, endpoint=ep).nodes(resolved_node).capabilities.qemu.machines.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -82,11 +91,14 @@ async def list_machine_types(client: ProxmoxClient, node: Optional[str] = None) 
     return "\n".join(lines)
 
 
-async def list_capabilities(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_capabilities(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).capabilities.get,
+        _api(client, endpoint=ep).nodes(resolved_node).capabilities.get,
     )
     lines = [f"🖥️ **Node Capabilities: {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -100,11 +112,14 @@ async def list_capabilities(client: ProxmoxClient, node: Optional[str] = None) -
     return "\n".join(lines)
 
 
-async def list_capabilities_qemu(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_capabilities_qemu(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).capabilities.qemu.get,
+        _api(client, endpoint=ep).nodes(resolved_node).capabilities.qemu.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -120,11 +135,14 @@ async def list_capabilities_qemu(client: ProxmoxClient, node: Optional[str] = No
     return "\n".join(lines)
 
 
-async def get_capability_qemu_migrations(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def get_capability_qemu_migrations(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).capabilities.qemu.migration.get,
+        _api(client, endpoint=ep).nodes(resolved_node).capabilities.qemu.migration.get,
     )
     lines = [f"🖥️ **QEMU Migration Capabilities on {resolved_node}**\n"]
     if isinstance(result, dict):

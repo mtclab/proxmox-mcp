@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_replication(client: ProxmoxClient) -> str:
+async def list_replication(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.replication.get,
+        _api(client, endpoint=ep).cluster.replication.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -34,7 +35,7 @@ async def list_replication(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_replication(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     source: Optional[str] = None,
     target: Optional[str] = None,
@@ -43,7 +44,8 @@ async def create_replication(
     disable: Optional[bool] = None,
     rate: Optional[float] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for replication job creation")
@@ -60,7 +62,7 @@ async def create_replication(
         params["disable"] = 1 if disable else 0
     if rate is not None:
         params["rate"] = rate
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.replication.post,
         elevated=True,
@@ -69,11 +71,13 @@ async def create_replication(
     return f"Replication job {id!r} created"
 
 
-async def get_replication(client: ProxmoxClient, id: str = "") -> str:
+async def get_replication(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.replication(id).get,
+        _api(client, endpoint=ep).cluster.replication(id).get,
     )
     lines = [f"🔄 **Replication Job: {id}**\n"]
     if isinstance(result, dict):
@@ -84,7 +88,7 @@ async def get_replication(client: ProxmoxClient, id: str = "") -> str:
 
 @confirm_required
 async def update_replication(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     source: Optional[str] = None,
     target: Optional[str] = None,
@@ -93,7 +97,8 @@ async def update_replication(
     disable: Optional[bool] = None,
     rate: Optional[float] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for replication job update")
@@ -112,7 +117,7 @@ async def update_replication(
         params["rate"] = rate
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.replication(id).put,
         elevated=True,
@@ -124,14 +129,15 @@ async def update_replication(
 
 @confirm_required
 async def delete_replication(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for replication job deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.replication(id).delete,
         elevated=True,
@@ -139,11 +145,14 @@ async def delete_replication(
     return f"Replication job {id!r} deleted"
 
 
-async def list_node_replication(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_node_replication(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).replication.get,
+        _api(client, endpoint=ep).nodes(resolved_node).replication.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -161,17 +170,19 @@ async def list_node_replication(client: ProxmoxClient, node: Optional[str] = Non
 
 @confirm_required
 async def schedule_replication(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for scheduling replication")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).replication(id).schedule_now.post,
         elevated=True,
@@ -180,16 +191,18 @@ async def schedule_replication(
 
 
 async def get_replication_status(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     id: str = "",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).replication(id).status.get,
+        _api(client, endpoint=ep).nodes(resolved_node).replication(id).status.get,
     )
     lines = [f"🔄 **Replication Status: {id} on {resolved_node}**\n"]
     if isinstance(result, list):
@@ -208,16 +221,18 @@ async def get_replication_status(
 
 
 async def get_replication_log(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     id: str = "",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).replication(id).log.get,
+        _api(client, endpoint=ep).nodes(resolved_node).replication(id).log.get,
     )
     lines = [f"🔄 **Replication Log: {id} on {resolved_node}**\n"]
     if isinstance(result, list):

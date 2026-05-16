@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_notification_targets(client: ProxmoxClient) -> str:
+async def list_notification_targets(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.targets.get,
+        _api(client, endpoint=ep).cluster.notifications.targets.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -29,9 +30,10 @@ async def list_notification_targets(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_notification_matchers(client: ProxmoxClient) -> str:
+async def list_notification_matchers(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.matchers.get,
+        _api(client, endpoint=ep).cluster.notifications.matchers.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -47,11 +49,13 @@ async def list_notification_matchers(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def get_notification_matcher(client: ProxmoxClient, name: str = "") -> str:
+async def get_notification_matcher(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.matchers(name).get,
+        _api(client, endpoint=ep).cluster.notifications.matchers(name).get,
     )
     lines = [f"🔔 **Notification Matcher: {name}**\n"]
     if isinstance(result, dict):
@@ -60,9 +64,10 @@ async def get_notification_matcher(client: ProxmoxClient, name: str = "") -> str
     return "\n".join(lines)
 
 
-async def list_sendmail_endpoints(client: ProxmoxClient) -> str:
+async def list_sendmail_endpoints(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.sendmail.get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.sendmail.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -80,13 +85,15 @@ async def list_sendmail_endpoints(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_sendmail_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     mailto: Optional[str] = None,
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for sendmail endpoint creation")
@@ -96,7 +103,7 @@ async def create_sendmail_endpoint(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.sendmail.post,
         elevated=True,
@@ -107,14 +114,15 @@ async def create_sendmail_endpoint(
 
 @confirm_required
 async def delete_sendmail_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for sendmail endpoint deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.sendmail(name).delete,
         elevated=True,
@@ -122,9 +130,10 @@ async def delete_sendmail_endpoint(
     return f"Sendmail endpoint {name!r} deleted"
 
 
-async def list_smtp_endpoints(client: ProxmoxClient) -> str:
+async def list_smtp_endpoints(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.smtp.get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.smtp.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -143,13 +152,15 @@ async def list_smtp_endpoints(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_smtp_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     server: Optional[str] = None,
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for SMTP endpoint creation")
@@ -159,7 +170,7 @@ async def create_smtp_endpoint(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.smtp.post,
         elevated=True,
@@ -170,14 +181,15 @@ async def create_smtp_endpoint(
 
 @confirm_required
 async def delete_smtp_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for SMTP endpoint deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.smtp(name).delete,
         elevated=True,
@@ -185,9 +197,10 @@ async def delete_smtp_endpoint(
     return f"SMTP endpoint {name!r} deleted"
 
 
-async def list_gotify_endpoints(client: ProxmoxClient) -> str:
+async def list_gotify_endpoints(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.gotify.get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.gotify.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -205,14 +218,16 @@ async def list_gotify_endpoints(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_gotify_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     server: Optional[str] = None,
     token: Optional[str] = None,
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for Gotify endpoint creation")
@@ -224,7 +239,7 @@ async def create_gotify_endpoint(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.gotify.post,
         elevated=True,
@@ -235,14 +250,15 @@ async def create_gotify_endpoint(
 
 @confirm_required
 async def delete_gotify_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for Gotify endpoint deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.gotify(name).delete,
         elevated=True,
@@ -250,9 +266,10 @@ async def delete_gotify_endpoint(
     return f"Gotify endpoint {name!r} deleted"
 
 
-async def list_webhook_endpoints(client: ProxmoxClient) -> str:
+async def list_webhook_endpoints(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.webhook.get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.webhook.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -270,13 +287,15 @@ async def list_webhook_endpoints(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_webhook_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     url: Optional[str] = None,
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for webhook endpoint creation")
@@ -286,7 +305,7 @@ async def create_webhook_endpoint(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.webhook.post,
         elevated=True,
@@ -297,14 +316,15 @@ async def create_webhook_endpoint(
 
 @confirm_required
 async def delete_webhook_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for webhook endpoint deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.webhook(name).delete,
         elevated=True,
@@ -312,9 +332,10 @@ async def delete_webhook_endpoint(
     return f"Webhook endpoint {name!r} deleted"
 
 
-async def notification_index(client: ProxmoxClient) -> str:
+async def notification_index(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.get,
+        _api(client, endpoint=ep).cluster.notifications.get,
     )
     lines = ["\U0001f514 **Notification Index**\n"]
     if isinstance(result, dict):
@@ -325,9 +346,10 @@ async def notification_index(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def notification_endpoints_index(client: ProxmoxClient) -> str:
+async def notification_endpoints_index(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.get,
     )
     lines = ["\U0001f514 **Notification Endpoints Index**\n"]
     if isinstance(result, dict):
@@ -338,11 +360,13 @@ async def notification_endpoints_index(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def get_notification_target(client: ProxmoxClient, name: str = "") -> str:
+async def get_notification_target(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.targets(name).get,
+        _api(client, endpoint=ep).cluster.notifications.targets(name).get,
     )
     lines = [f"\U0001f514 **Notification Target: {name}**\n"]
     if isinstance(result, dict):
@@ -353,14 +377,15 @@ async def get_notification_target(client: ProxmoxClient, name: str = "") -> str:
 
 @confirm_required
 async def test_notification_target(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for notification target test")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.targets(name).test.post,
         elevated=True,
@@ -368,9 +393,10 @@ async def test_notification_target(
     return f"Test notification sent to target {name!r}"
 
 
-async def notification_matcher_fields(client: ProxmoxClient) -> str:
+async def notification_matcher_fields(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications("matcher-fields").get,
+        _api(client, endpoint=ep).cluster.notifications("matcher-fields").get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -386,9 +412,10 @@ async def notification_matcher_fields(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def notification_matcher_field_values(client: ProxmoxClient) -> str:
+async def notification_matcher_field_values(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.notifications("matcher-field-values").get,
+        _api(client, endpoint=ep).cluster.notifications("matcher-field-values").get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -406,12 +433,14 @@ async def notification_matcher_field_values(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_notification_matcher(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for notification matcher creation")
@@ -419,7 +448,7 @@ async def create_notification_matcher(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.matchers.post,
         elevated=True,
@@ -430,12 +459,14 @@ async def create_notification_matcher(
 
 @confirm_required
 async def update_notification_matcher(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for notification matcher update")
@@ -445,7 +476,7 @@ async def update_notification_matcher(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.matchers(name).put,
         elevated=True,
@@ -457,14 +488,15 @@ async def update_notification_matcher(
 
 @confirm_required
 async def delete_notification_matcher(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for notification matcher deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.matchers(name).delete,
         elevated=True,
@@ -472,11 +504,13 @@ async def delete_notification_matcher(
     return f"Notification matcher {name!r} deleted"
 
 
-async def get_sendmail_endpoint(client: ProxmoxClient, name: str = "") -> str:
+async def get_sendmail_endpoint(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.sendmail(name).get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.sendmail(name).get,
     )
     lines = [f"\U0001f4e7 **Sendmail Endpoint: {name}**\n"]
     if isinstance(result, dict):
@@ -487,12 +521,14 @@ async def get_sendmail_endpoint(client: ProxmoxClient, name: str = "") -> str:
 
 @confirm_required
 async def update_sendmail_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for sendmail endpoint update")
@@ -502,7 +538,7 @@ async def update_sendmail_endpoint(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.sendmail(name).put,
         elevated=True,
@@ -512,11 +548,13 @@ async def update_sendmail_endpoint(
     return f"Sendmail endpoint {name!r} updated: {opts}"
 
 
-async def get_smtp_endpoint(client: ProxmoxClient, name: str = "") -> str:
+async def get_smtp_endpoint(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.smtp(name).get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.smtp(name).get,
     )
     lines = [f"\U0001f4e7 **SMTP Endpoint: {name}**\n"]
     if isinstance(result, dict):
@@ -527,12 +565,14 @@ async def get_smtp_endpoint(client: ProxmoxClient, name: str = "") -> str:
 
 @confirm_required
 async def update_smtp_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for SMTP endpoint update")
@@ -542,7 +582,7 @@ async def update_smtp_endpoint(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.smtp(name).put,
         elevated=True,
@@ -552,11 +592,13 @@ async def update_smtp_endpoint(
     return f"SMTP endpoint {name!r} updated: {opts}"
 
 
-async def get_gotify_endpoint(client: ProxmoxClient, name: str = "") -> str:
+async def get_gotify_endpoint(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.gotify(name).get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.gotify(name).get,
     )
     lines = [f"\U0001f514 **Gotify Endpoint: {name}**\n"]
     if isinstance(result, dict):
@@ -567,12 +609,14 @@ async def get_gotify_endpoint(client: ProxmoxClient, name: str = "") -> str:
 
 @confirm_required
 async def update_gotify_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for Gotify endpoint update")
@@ -582,7 +626,7 @@ async def update_gotify_endpoint(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.gotify(name).put,
         elevated=True,
@@ -592,11 +636,13 @@ async def update_gotify_endpoint(
     return f"Gotify endpoint {name!r} updated: {opts}"
 
 
-async def get_webhook_endpoint(client: ProxmoxClient, name: str = "") -> str:
+async def get_webhook_endpoint(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.notifications.endpoints.webhook(name).get,
+        _api(client, endpoint=ep).cluster.notifications.endpoints.webhook(name).get,
     )
     lines = [f"\U0001f517 **Webhook Endpoint: {name}**\n"]
     if isinstance(result, dict):
@@ -607,12 +653,14 @@ async def get_webhook_endpoint(client: ProxmoxClient, name: str = "") -> str:
 
 @confirm_required
 async def update_webhook_endpoint(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for webhook endpoint update")
@@ -622,7 +670,7 @@ async def update_webhook_endpoint(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.notifications.endpoints.webhook(name).put,
         elevated=True,

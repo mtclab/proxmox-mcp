@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from proxmoxer.core import ResourceException
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
 
 ALLOWED_VMTYPES = ("qemu", "lxc")
@@ -15,12 +15,13 @@ def _validate_vmtype(vmtype: str) -> None:
         raise ValueError(f"Invalid vmtype {vmtype!r}. Must be one of {ALLOWED_VMTYPES}")
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_cluster_firewall_rules(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).cluster.firewall.rules.get)
+async def list_cluster_firewall_rules(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.rules.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall Rules**\n"]
@@ -60,7 +61,7 @@ async def list_cluster_firewall_rules(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_cluster_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     action: str = "ACCEPT",
     dptype: str = "in",
     dport: str | None = None,
@@ -71,8 +72,10 @@ async def create_cluster_firewall_rule(
     iface: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     params: dict[str, Any] = {"action": action, "type": dptype}
     if dport is not None:
@@ -90,7 +93,7 @@ async def create_cluster_firewall_rule(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.cluster.firewall.rules.post,
         elevated=True,
@@ -100,8 +103,10 @@ async def create_cluster_firewall_rule(
     return f"Cluster firewall rule created: action={action}, pos={pos}"
 
 
-async def get_cluster_firewall_rule(client: ProxmoxClient, pos: int = 0) -> str:
-    result = await client.safe_api_call(_api(client).cluster.firewall.rules(pos).get)
+async def get_cluster_firewall_rule(client: MultiClient, pos: int = 0,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.rules(pos).get)
     if isinstance(result, dict):
         lines = [f"\U0001f6e1 **Cluster Firewall Rule {pos}**\n"]
         for key, val in sorted(result.items()):
@@ -112,7 +117,7 @@ async def get_cluster_firewall_rule(client: ProxmoxClient, pos: int = 0) -> str:
 
 @confirm_required
 async def update_cluster_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     pos: int = 0,
     action: str | None = None,
     dptype: str | None = None,
@@ -124,8 +129,10 @@ async def update_cluster_firewall_rule(
     iface: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     params: dict[str, Any] = {}
     if action is not None:
@@ -149,7 +156,7 @@ async def update_cluster_firewall_rule(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.rules(pos).put,
         elevated=True,
@@ -160,12 +167,13 @@ async def update_cluster_firewall_rule(
 
 @confirm_required
 async def delete_cluster_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     pos: int = 0,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.rules(pos).delete,
         elevated=True,
@@ -173,8 +181,9 @@ async def delete_cluster_firewall_rule(
     return f"Cluster firewall rule {pos} deleted"
 
 
-async def get_cluster_firewall_options(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).cluster.firewall.options.get)
+async def get_cluster_firewall_options(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.options.get)
     lines = ["\U0001f6e1 **Cluster Firewall Options**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -186,14 +195,16 @@ async def get_cluster_firewall_options(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def set_cluster_firewall_options(
-    client: ProxmoxClient,
+    client: MultiClient,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not kwargs:
         raise ValueError("At least one option must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.options.put,
         elevated=True,
@@ -203,8 +214,9 @@ async def set_cluster_firewall_options(
     return f"Cluster firewall options updated: {opts}"
 
 
-async def list_cluster_firewall_aliases(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).cluster.firewall.aliases.get)
+async def list_cluster_firewall_aliases(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.aliases.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall Aliases**\n"]
@@ -222,12 +234,13 @@ async def list_cluster_firewall_aliases(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_cluster_firewall_alias(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     cidr: str = "",
     comment: str | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for alias creation")
@@ -236,7 +249,7 @@ async def create_cluster_firewall_alias(
     params: dict[str, Any] = {"name": name, "cidr": cidr}
     if comment is not None:
         params["comment"] = comment
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.aliases.post,
         elevated=True,
@@ -247,14 +260,15 @@ async def create_cluster_firewall_alias(
 
 @confirm_required
 async def delete_cluster_firewall_alias(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for alias deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.aliases(name).delete,
         elevated=True,
@@ -262,8 +276,9 @@ async def delete_cluster_firewall_alias(
     return f"Cluster firewall alias {name!r} deleted"
 
 
-async def list_cluster_firewall_ipsets(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).cluster.firewall.ipset.get)
+async def list_cluster_firewall_ipsets(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.ipset.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall IPSets**\n"]
@@ -278,8 +293,9 @@ async def list_cluster_firewall_ipsets(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_cluster_firewall_refs(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).cluster.firewall.refs.get)
+async def list_cluster_firewall_refs(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.refs.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall References**\n"]
@@ -296,12 +312,14 @@ async def list_cluster_firewall_refs(client: ProxmoxClient) -> str:
 
 
 async def list_node_firewall_rules(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).firewall.rules.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).firewall.rules.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **Node Firewall Rules ({resolved_node})**\n"]
@@ -335,7 +353,7 @@ async def list_node_firewall_rules(
 
 @confirm_required
 async def create_node_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     action: str = "ACCEPT",
     dptype: str = "in",
@@ -347,10 +365,13 @@ async def create_node_firewall_rule(
     iface: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params: dict[str, Any] = {"action": action, "type": dptype}
     if dport is not None:
@@ -368,7 +389,7 @@ async def create_node_firewall_rule(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).firewall.rules.post,
         elevated=True,
@@ -380,15 +401,17 @@ async def create_node_firewall_rule(
 
 @confirm_required
 async def delete_node_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     pos: int = 0,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).firewall.rules(pos).delete,
         elevated=True,
@@ -397,12 +420,14 @@ async def delete_node_firewall_rule(
 
 
 async def get_node_firewall_options(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).firewall.options.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).firewall.options.get)
     lines = [f"\U0001f6e1 **Node Firewall Options ({resolved_node})**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -413,16 +438,19 @@ async def get_node_firewall_options(
 
 
 async def list_vm_firewall_rules(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.rules.get)
+    result = await client.safe_api_call(getattr(_api(client,
+        endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.rules.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall Rules ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -456,7 +484,7 @@ async def list_vm_firewall_rules(
 
 @confirm_required
 async def create_vm_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -470,11 +498,14 @@ async def create_vm_firewall_rule(
     iface: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"action": action, "type": dptype}
@@ -493,7 +524,7 @@ async def create_vm_firewall_rule(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.rules.post,
         elevated=True,
@@ -505,19 +536,21 @@ async def create_vm_firewall_rule(
 
 @confirm_required
 async def delete_vm_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     pos: int = 0,
     vmtype: str = "qemu",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.rules(pos).delete,
         elevated=True,
@@ -526,16 +559,19 @@ async def delete_vm_firewall_rule(
 
 
 async def get_vm_firewall_options(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.options.get)
+    result = await client.safe_api_call(getattr(_api(client,
+        endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.options.get)
     lines = [f"\U0001f6e1 **VM Firewall Options ({vmtype} {vmid} on {resolved_node})**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -546,20 +582,22 @@ async def get_vm_firewall_options(
 
 
 async def get_vm_firewall_alias(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     result = await client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.aliases(name).get
+        getattr(_api(client, endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.aliases(name).get
     )
     lines = [f"\U0001f6e1 **VM Firewall Alias: {name} ({vmtype} {vmid} on {resolved_node})**\n"]
     if isinstance(result, dict):
@@ -572,7 +610,7 @@ async def get_vm_firewall_alias(
 
 @confirm_required
 async def create_vm_firewall_alias(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -580,20 +618,22 @@ async def create_vm_firewall_alias(
     vmtype: str = "qemu",
     comment: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required for alias creation")
     if not cidr:
         raise ValueError("cidr is required for alias creation")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"name": name, "cidr": cidr}
     if comment is not None:
         params["comment"] = comment
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.aliases.post,
         elevated=True,
@@ -604,21 +644,23 @@ async def create_vm_firewall_alias(
 
 @confirm_required
 async def delete_vm_firewall_alias(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     vmtype: str = "qemu",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required for alias deletion")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.aliases(name).delete,
         elevated=True,
@@ -626,10 +668,12 @@ async def delete_vm_firewall_alias(
     return f"VM firewall alias {name!r} deleted for {vmtype} {vmid} on {resolved_node}"
 
 
-async def list_cluster_firewall_ipset_content(client: ProxmoxClient, name: str = "") -> str:
+async def list_cluster_firewall_ipset_content(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
-    result = await client.safe_api_call(_api(client).cluster.firewall.ipset(name).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.ipset(name).get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **Cluster Firewall IPSet Content: {name}**\n"]
@@ -646,18 +690,19 @@ async def list_cluster_firewall_ipset_content(client: ProxmoxClient, name: str =
 
 @confirm_required
 async def create_cluster_firewall_ipset(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for IPSet creation")
     params: dict[str, Any] = {"name": name}
     if comment is not None:
         params["comment"] = comment
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.ipset.post,
         elevated=True,
@@ -668,14 +713,15 @@ async def create_cluster_firewall_ipset(
 
 @confirm_required
 async def delete_cluster_firewall_ipset(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for IPSet deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.ipset(name).delete,
         elevated=True,
@@ -684,13 +730,15 @@ async def delete_cluster_firewall_ipset(
 
 
 async def list_node_firewall_aliases(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     try:
-        result = await client.safe_api_call(_api(client).nodes(resolved_node).firewall.aliases.get)
+        result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).firewall.aliases.get)
     except ResourceException as exc:
         if exc.status_code == 501:
             return (
@@ -714,12 +762,14 @@ async def list_node_firewall_aliases(
 
 
 async def node_firewall_log(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).firewall.log.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).firewall.log.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **Node Firewall Log ({resolved_node})**\n"]
@@ -738,10 +788,12 @@ async def node_firewall_log(
     return "\n".join(lines)
 
 
-async def get_cluster_firewall_alias(client: ProxmoxClient, name: str = "") -> str:
+async def get_cluster_firewall_alias(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
-    result = await client.safe_api_call(_api(client).cluster.firewall.aliases(name).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.aliases(name).get)
     lines = [f"\U0001f6e1 **Cluster Firewall Alias: {name}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -753,13 +805,15 @@ async def get_cluster_firewall_alias(client: ProxmoxClient, name: str = "") -> s
 
 @confirm_required
 async def update_cluster_firewall_alias(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     cidr: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for alias update")
@@ -771,7 +825,7 @@ async def update_cluster_firewall_alias(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.aliases(name).put,
         elevated=True,
@@ -782,12 +836,14 @@ async def update_cluster_firewall_alias(
 
 @confirm_required
 async def update_cluster_firewall_ipset(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for IPSet update")
@@ -795,7 +851,7 @@ async def update_cluster_firewall_ipset(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.ipset(name).put,
         elevated=True,
@@ -806,13 +862,14 @@ async def update_cluster_firewall_ipset(
 
 @confirm_required
 async def add_cluster_firewall_ipset_entry(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     cidr: str = "",
     comment: str | None = None,
     nomatch: int | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required")
@@ -823,7 +880,7 @@ async def add_cluster_firewall_ipset_entry(
         params["comment"] = comment
     if nomatch is not None:
         params["nomatch"] = nomatch
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.ipset(name).post,
         elevated=True,
@@ -833,15 +890,16 @@ async def add_cluster_firewall_ipset_entry(
 
 
 async def get_cluster_firewall_ipset_entry(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     cidr: str = "",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     if not cidr:
         raise ValueError("cidr is required")
-    result = await client.safe_api_call(_api(client).cluster.firewall.ipset(name)(cidr).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.ipset(name)(cidr).get)
     lines = [f"\U0001f6e1 **Cluster IPSet Entry: {name}/{cidr}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -853,17 +911,18 @@ async def get_cluster_firewall_ipset_entry(
 
 @confirm_required
 async def delete_cluster_firewall_ipset_entry(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     cidr: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required")
     if not cidr:
         raise ValueError("cidr is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.firewall.ipset(name)(cidr).delete,
         elevated=True,
@@ -871,8 +930,9 @@ async def delete_cluster_firewall_ipset_entry(
     return f"Removed {cidr} from cluster IPSet {name!r}"
 
 
-async def list_cluster_firewall_macros(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).cluster.firewall.macros.get)
+async def list_cluster_firewall_macros(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.firewall.macros.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f6e1 **Cluster Firewall Macros**\n"]
@@ -888,13 +948,15 @@ async def list_cluster_firewall_macros(client: ProxmoxClient) -> str:
 
 
 async def get_node_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     pos: int = 0,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).firewall.rules(pos).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).firewall.rules(pos).get)
     if isinstance(result, dict):
         lines = [f"\U0001f6e1 **Node Firewall Rule {pos} ({resolved_node})**\n"]
         for key, val in sorted(result.items()):
@@ -905,7 +967,7 @@ async def get_node_firewall_rule(
 
 @confirm_required
 async def update_node_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     pos: int = 0,
     action: str | None = None,
@@ -918,10 +980,13 @@ async def update_node_firewall_rule(
     iface: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if action is not None:
@@ -945,7 +1010,7 @@ async def update_node_firewall_rule(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).firewall.rules(pos).put,
         elevated=True,
@@ -956,17 +1021,20 @@ async def update_node_firewall_rule(
 
 @confirm_required
 async def set_node_firewall_options(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not kwargs:
         raise ValueError("At least one option must be provided to update")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).firewall.options.put,
         elevated=True,
@@ -977,13 +1045,15 @@ async def set_node_firewall_options(
 
 
 async def list_node_firewall_ipsets(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     try:
-        result = await client.safe_api_call(_api(client).nodes(resolved_node).firewall.ipset.get)
+        result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).firewall.ipset.get)
     except ResourceException as exc:
         if exc.status_code == 501:
             return (
@@ -1006,18 +1076,20 @@ async def list_node_firewall_ipsets(
 
 
 async def get_vm_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     pos: int = 0,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     result = await client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.rules(pos).get
+        getattr(_api(client, endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.rules(pos).get
     )
     if isinstance(result, dict):
         lines = [f"\U0001f6e1 **VM Firewall Rule {pos} ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1029,7 +1101,7 @@ async def get_vm_firewall_rule(
 
 @confirm_required
 async def update_vm_firewall_rule(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     pos: int = 0,
@@ -1044,11 +1116,14 @@ async def update_vm_firewall_rule(
     iface: str | None = None,
     comment: str | None = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {}
@@ -1073,7 +1148,7 @@ async def update_vm_firewall_rule(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.rules(pos).put,
         elevated=True,
@@ -1084,21 +1159,24 @@ async def update_vm_firewall_rule(
 
 @confirm_required
 async def set_vm_firewall_options(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not kwargs:
         raise ValueError("At least one option must be provided to update")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.options.put,
         elevated=True,
@@ -1109,16 +1187,19 @@ async def set_vm_firewall_options(
 
 
 async def list_vm_firewall_aliases(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.aliases.get)
+    result = await client.safe_api_call(getattr(_api(client,
+        endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.aliases.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall Aliases ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1136,7 +1217,7 @@ async def list_vm_firewall_aliases(
 
 @confirm_required
 async def update_vm_firewall_alias(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1144,12 +1225,14 @@ async def update_vm_firewall_alias(
     vmtype: str = "qemu",
     comment: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required for alias update")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {}
@@ -1159,7 +1242,7 @@ async def update_vm_firewall_alias(
         params["comment"] = comment
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.aliases(name).put,
         elevated=True,
@@ -1169,16 +1252,19 @@ async def update_vm_firewall_alias(
 
 
 async def vm_firewall_log(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.log.get)
+    result = await client.safe_api_call(getattr(_api(client,
+        endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.log.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall Log ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1198,16 +1284,19 @@ async def vm_firewall_log(
 
 
 async def vm_firewall_refs(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.refs.get)
+    result = await client.safe_api_call(getattr(_api(client,
+        endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.refs.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall References ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1224,20 +1313,22 @@ async def vm_firewall_refs(
 
 
 async def list_vm_firewall_ipset_content(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     result = await client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.ipset(name).get
+        getattr(_api(client, endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.ipset(name).get
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -1255,25 +1346,27 @@ async def list_vm_firewall_ipset_content(
 
 @confirm_required
 async def create_vm_firewall_ipset(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     vmtype: str = "qemu",
     comment: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required for IPSet creation")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"name": name}
     if comment is not None:
         params["comment"] = comment
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.ipset.post,
         elevated=True,
@@ -1284,21 +1377,23 @@ async def create_vm_firewall_ipset(
 
 @confirm_required
 async def delete_vm_firewall_ipset(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     vmtype: str = "qemu",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required for IPSet deletion")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.ipset(name).delete,
         elevated=True,
@@ -1308,7 +1403,7 @@ async def delete_vm_firewall_ipset(
 
 @confirm_required
 async def add_vm_firewall_ipset_entry(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1317,14 +1412,16 @@ async def add_vm_firewall_ipset_entry(
     comment: Optional[str] = None,
     nomatch: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required")
     if not cidr:
         raise ValueError("cidr is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"cidr": cidr}
@@ -1332,7 +1429,7 @@ async def add_vm_firewall_ipset_entry(
         params["comment"] = comment
     if nomatch is not None:
         params["nomatch"] = nomatch
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.ipset(name).post,
         elevated=True,
@@ -1342,23 +1439,25 @@ async def add_vm_firewall_ipset_entry(
 
 
 async def get_vm_firewall_ipset_entry(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     cidr: str = "",
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required")
     if not cidr:
         raise ValueError("cidr is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     result = await client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.ipset(name)(cidr).get
+        getattr(_api(client, endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.ipset(name)(cidr).get
     )
     lines = [f"\U0001f6e1 **VM IPSet Entry: {name}/{cidr} ({vmtype} {vmid} on {resolved_node})**\n"]
     if isinstance(result, dict):
@@ -1371,7 +1470,7 @@ async def get_vm_firewall_ipset_entry(
 
 @confirm_required
 async def update_vm_firewall_ipset_entry(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1380,14 +1479,16 @@ async def update_vm_firewall_ipset_entry(
     comment: Optional[str] = None,
     nomatch: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required")
     if not cidr:
         raise ValueError("cidr is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {}
@@ -1397,7 +1498,7 @@ async def update_vm_firewall_ipset_entry(
         params["nomatch"] = nomatch
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.ipset(name)(cidr).put,
         elevated=True,
@@ -1408,24 +1509,26 @@ async def update_vm_firewall_ipset_entry(
 
 @confirm_required
 async def delete_vm_firewall_ipset_entry(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     cidr: str = "",
     vmtype: str = "qemu",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
     if not name:
         raise ValueError("name is required")
     if not cidr:
         raise ValueError("cidr is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).firewall.ipset(name)(cidr).delete,
         elevated=True,
@@ -1434,16 +1537,19 @@ async def delete_vm_firewall_ipset_entry(
 
 
 async def list_vm_firewall_ipsets(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).firewall.ipset.get)
+    result = await client.safe_api_call(getattr(_api(client,
+        endpoint=ep).nodes(resolved_node), vmtype)(vmid).firewall.ipset.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f6e1 **VM Firewall IPSets ({vmtype} {vmid} on {resolved_node})**\n"]
@@ -1459,18 +1565,20 @@ async def list_vm_firewall_ipsets(
 
 
 async def get_vm_firewall_ipset(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
     cidr: str = "",
     vmtype: str = "qemu",
-) -> str:
-    return await get_vm_firewall_ipset_entry(client, node=node, vmid=vmid, name=name, cidr=cidr, vmtype=vmtype)
+    endpoint: str | None = None) -> str:
+    return await get_vm_firewall_ipset_entry(
+        client, node=node, vmid=vmid, name=name,
+        cidr=cidr, vmtype=vmtype, endpoint=endpoint)
 
 
 async def update_vm_firewall_ipset(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: str = "",
@@ -1479,7 +1587,7 @@ async def update_vm_firewall_ipset(
     comment: Optional[str] = None,
     nomatch: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
     return await update_vm_firewall_ipset_entry(
         client,
         node=node,
@@ -1490,4 +1598,5 @@ async def update_vm_firewall_ipset(
         comment=comment,
         nomatch=nomatch,
         confirm=confirm,
+        endpoint=endpoint,
     )

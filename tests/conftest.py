@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from proxmox_mcp.client import ProxmoxClient
-from proxmox_mcp.config import Config
+from proxmox_mcp.config import Config, MultiConfig
+from proxmox_mcp.multi_client import MultiClient
 
 SECRETS_PATH = Path(os.environ.get("PROXMOX_SECRETS", "/home/kasm-user/.config/opencode/secrets/proxmox.json"))
 
@@ -47,13 +47,14 @@ def _make_config() -> Config:
 
 
 @pytest.fixture(scope="session")
-def pve_client() -> ProxmoxClient:
+def pve_client() -> MultiClient:
     config = _make_config()
-    client = ProxmoxClient(config)
+    multi_config = MultiConfig.from_config(config)
+    client = MultiClient(multi_config)
     return client
 
 
 @pytest.fixture(scope="session")
-async def pve_client_ready(pve_client: ProxmoxClient) -> ProxmoxClient:
-    await pve_client.discover_nodes()
+async def pve_client_ready(pve_client: MultiClient) -> MultiClient:
+    await pve_client.initialize()
     return pve_client

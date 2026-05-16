@@ -146,7 +146,23 @@ class MultiClient:
 
     @property
     def is_single_node(self) -> bool:
-        return self.config._single_node_compat or len(self.clients) == 1
+        return self.config.single_node_compat or len(self.clients) == 1
+
+    def list_endpoints(self) -> str:
+        lines = []
+        for name, cli in self.clients.items():
+            cfg = cli.config
+            healthy = name in self._healthy
+            default = " (default)" if name == self.default_endpoint else ""
+            elevated = "elevated" if cfg.allow_elevated else "monitor-only"
+            lines.append(
+                f"- {name}: url={cfg.url}, node={cfg.default_node or 'auto'}, "
+                f"status={'healthy' if healthy else 'unhealthy'}, "
+                f"access={elevated}{default}"
+            )
+        if self.is_single_node:
+            lines.append("\nSingle-node mode (backward compatible)")
+        return "\n".join(lines)
 
     async def wait_for_task(
         self,

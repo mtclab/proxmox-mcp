@@ -4,7 +4,6 @@ import asyncio
 
 import pytest
 
-from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.discovery import list_lxc, list_vms, lxc_info, vm_info
 from proxmox_mcp.lifecycle import (
     create_lxc,
@@ -17,12 +16,13 @@ from proxmox_mcp.lifecycle import (
     stop_lxc,
     stop_vm,
 )
+from proxmox_mcp.multi_client import MultiClient
 
 NODE = "pve"
 
 
 async def wait_for_guest_status(
-    client: ProxmoxClient, vmid: int, expected_status: str, is_lxc: bool = False, timeout: int = 60, interval: int = 3
+    client: MultiClient, vmid: int, expected_status: str, is_lxc: bool = False, timeout: int = 60, interval: int = 3
 ) -> None:
     import asyncio
 
@@ -44,7 +44,7 @@ class TestLXCLifecycle:
     _vmid: int = 0
 
     @pytest.fixture(autouse=True)
-    async def cleanup_lxc(self, pve_client: ProxmoxClient):
+    async def cleanup_lxc(self, pve_client: MultiClient):
         yield
         vmid = getattr(self, "_vmid", 0)
         if vmid:
@@ -57,7 +57,7 @@ class TestLXCLifecycle:
             except Exception:
                 pass
 
-    async def test_lxc_create_start_stop_delete(self, pve_client: ProxmoxClient):
+    async def test_lxc_create_start_stop_delete(self, pve_client: MultiClient):
         result = await create_lxc(
             pve_client,
             node=NODE,
@@ -95,7 +95,7 @@ class TestVMLifecycle:
     _vmid: int = 0
 
     @pytest.fixture(autouse=True)
-    async def cleanup_vm(self, pve_client: ProxmoxClient):
+    async def cleanup_vm(self, pve_client: MultiClient):
         yield
         vmid = getattr(self, "_vmid", 0)
         if vmid:
@@ -109,7 +109,7 @@ class TestVMLifecycle:
             except Exception:
                 pass
 
-    async def test_vm_create_start_stop_delete(self, pve_client: ProxmoxClient):
+    async def test_vm_create_start_stop_delete(self, pve_client: MultiClient):
         result = await create_vm(
             pve_client,
             node=NODE,

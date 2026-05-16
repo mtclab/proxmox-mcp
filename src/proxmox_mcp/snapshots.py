@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
 
 ALLOWED_VMTYPES = ("qemu", "lxc")
@@ -13,23 +13,25 @@ def _validate_vmtype(vmtype: str) -> None:
         raise ValueError(f"Invalid vmtype {vmtype!r}. Must be one of {ALLOWED_VMTYPES}")
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
 async def snapshot_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     result = await client.safe_api_call(
-        getattr(_api(client).nodes(resolved_node), vmtype)(vmid).snapshot(snapname).config.get
+        getattr(_api(client, endpoint=ep).nodes(resolved_node), vmtype)(vmid).snapshot(snapname).config.get
     )
     if not isinstance(result, dict):
         return f"Snapshot {snapname!r} config for {vmtype} {vmid} on {resolved_node}: {result}"
@@ -40,14 +42,17 @@ async def snapshot_config(
 
 
 async def list_snapshots(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
-    result = await client.safe_api_call(getattr(_api(client).nodes(resolved_node), vmtype)(vmid).snapshot.get)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
+    result = await client.safe_api_call(getattr(_api(client,
+        endpoint=ep).nodes(resolved_node), vmtype)(vmid).snapshot.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f4f8 **Snapshots for {vmtype} {vmid} on {resolved_node}**\n"]
@@ -68,21 +73,23 @@ async def list_snapshots(
 
 @confirm_required
 async def create_snapshot(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
     vmtype: str = "qemu",
     description: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     params: dict[str, Any] = {"snapname": snapname}
     if description:
         params["description"] = description
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot.post,
         elevated=True,
@@ -94,13 +101,14 @@ async def create_snapshot(
 
 @confirm_required
 async def delete_snapshot(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
     vmtype: str = "qemu",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     """Delete a snapshot for a VM or LXC container (elevated, confirm required).
 
     Note: For qemu VMs, PVE requires the VM.Snapshot permission even when
@@ -111,8 +119,9 @@ async def delete_snapshot(
     """
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
-    elevated = client.get_client(elevated=True)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).delete,
         elevated=True,
@@ -123,25 +132,28 @@ async def delete_snapshot(
 
 @confirm_required
 async def update_snapshot_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
     vmtype: str = "qemu",
     description: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {}
     if description is not None:
         params["description"] = description
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).config.put,
         elevated=True,
@@ -152,17 +164,19 @@ async def update_snapshot_config(
 
 @confirm_required
 async def rollback_snapshot(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     snapname: str = "",
     vmtype: str = "qemu",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     _validate_vmtype(vmtype)
-    resolved_node = await client.resolve_node(node)
-    elevated = client.get_client(elevated=True)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).rollback.post,
         elevated=True,

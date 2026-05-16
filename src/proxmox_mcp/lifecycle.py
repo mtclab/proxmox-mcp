@@ -2,24 +2,27 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxNotFoundError
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_disk_size, validate_node_name, validate_vmid
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def _get_next_vmid(client: ProxmoxClient) -> int:
-    result = await client.safe_api_call(_api(client).cluster.nextid.get)
+async def _get_next_vmid(client: MultiClient, endpoint: str | None = None) -> int:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).cluster.nextid.get)
     return int(result)
 
 
-async def _validate_ostemplate(client: ProxmoxClient, node: str, ostemplate: str) -> None:
+async def _validate_ostemplate(client: MultiClient, node: str, ostemplate: str,
+    endpoint: str | None = None) -> None:
+    ep = endpoint or client.default_endpoint
     storage_name = ostemplate.split(":")[0] if ":" in ostemplate else "local"
     try:
-        content = await client.safe_api_call(_api(client).nodes(node).storage(storage_name).content.get)
+        content = await client.safe_api_call(_api(client, endpoint=ep).nodes(node).storage(storage_name).content.get)
         if isinstance(content, list):
             volids = [item.get("volid", "") for item in content]
             if ostemplate not in volids:
@@ -35,7 +38,7 @@ async def _validate_ostemplate(client: ProxmoxClient, node: str, ostemplate: str
 
 @confirm_required
 async def create_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     ostemplate: str = "",
@@ -47,9 +50,11 @@ async def create_lxc(
     password: Optional[str] = None,
     start: bool = False,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
 
     if not vmid:
@@ -78,7 +83,7 @@ async def create_lxc(
     if start:
         params["start"] = 1
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC container {vmid} created on {resolved_node}. UPID: {upid}"
@@ -86,100 +91,116 @@ async def create_lxc(
 
 @confirm_required
 async def start_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.start.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.start.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} start initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def stop_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.stop.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.stop.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} stop initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def shutdown_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.shutdown.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.shutdown.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} shutdown initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def reboot_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.reboot.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.reboot.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} reboot initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def delete_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).delete, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).delete, elevated=True, endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} deleted on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def configure_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     cores: Optional[int] = None,
     memory: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
@@ -189,7 +210,7 @@ async def configure_lxc(
     if memory is not None:
         params["memory"] = memory
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).config.put, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} configured on {resolved_node}. UPID: {upid}"
@@ -197,7 +218,7 @@ async def configure_lxc(
 
 @confirm_required
 async def create_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: Optional[str] = None,
@@ -210,9 +231,11 @@ async def create_vm(
     ostype: Optional[str] = None,
     net0: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
 
     if not vmid:
@@ -250,7 +273,7 @@ async def create_vm(
     if net0:
         params["net0"] = net0
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} created on {resolved_node}. UPID: {upid}"
@@ -258,101 +281,117 @@ async def create_vm(
 
 @confirm_required
 async def start_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.start.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.start.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} start initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def stop_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.stop.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.stop.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} stop initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def shutdown_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.shutdown.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.shutdown.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} shutdown initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def reboot_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reboot.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reboot.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} reboot initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def delete_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).delete, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).delete, elevated=True, endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} deleted on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def clone_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     newid: Optional[int] = None,
     name: Optional[str] = None,
     full: bool = True,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
@@ -365,7 +404,7 @@ async def clone_vm(
         params["name"] = name
     params["full"] = 1 if full else 0
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).clone.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} clone initiated → {newid} on {resolved_node}. UPID: {upid}"
@@ -373,20 +412,22 @@ async def clone_vm(
 
 @confirm_required
 async def migrate_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
     params: dict[str, Any] = {"target": target}
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).migrate.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} migration to {target} initiated. UPID: {upid}"
@@ -394,19 +435,21 @@ async def migrate_vm(
 
 @confirm_required
 async def resize_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     disk: str = "rootfs",
     size: str = "+10G",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).resize.put, elevated=True, disk=disk, size=size
     )
@@ -416,41 +459,47 @@ async def resize_lxc(
 
 @confirm_required
 async def suspend_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.suspend.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.suspend.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} suspend initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def resume_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.resume.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.resume.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} resume initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def clone_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     newid: Optional[int] = None,
@@ -458,9 +507,11 @@ async def clone_lxc(
     full: bool = True,
     target: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
@@ -475,7 +526,7 @@ async def clone_lxc(
     if target:
         params["target"] = target
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).clone.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} clone initiated → {newid} on {resolved_node}. UPID: {upid}"
@@ -483,34 +534,38 @@ async def clone_lxc(
 
 @confirm_required
 async def migrate_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
     params: dict[str, Any] = {"target": target}
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).migrate.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} migration to {target} initiated. UPID: {upid}"
 
 
 async def lxc_interfaces(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).interfaces.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).interfaces.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"**Interfaces for LXC {vmid} on {resolved_node}**\n"]
@@ -530,15 +585,17 @@ async def lxc_interfaces(
 
 @confirm_required
 async def configure_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     cores: Optional[int] = None,
     memory: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
@@ -548,7 +605,7 @@ async def configure_vm(
     if memory is not None:
         params["memory"] = memory
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)
     if result is None:
         return f"VM {vmid} configuration updated on {resolved_node} (no pending changes)"
@@ -558,18 +615,20 @@ async def configure_vm(
 
 @confirm_required
 async def resize_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     disk: str = "scsi0",
     size: str = "+10G",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).resize.put, elevated=True, disk=disk, size=size
     )
@@ -579,67 +638,78 @@ async def resize_vm(
 
 @confirm_required
 async def reset_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reset.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reset.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} reset initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def suspend_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.suspend.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.suspend.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} suspend initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def resume_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.resume.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.resume.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} resume initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def move_vm_disk(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     disk: str = "scsi0",
     storage: Optional[str] = None,
     format: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
 
@@ -647,7 +717,7 @@ async def move_vm_disk(
     if format:
         params["format"] = format
 
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).move_disk.post, elevated=True, **params
     )
@@ -657,47 +727,55 @@ async def move_vm_disk(
 
 @confirm_required
 async def convert_to_template(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).template.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).template.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} convert to template initiated on {resolved_node}. UPID: {upid}"
 
 
 @confirm_required
 async def convert_lxc_to_template(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).template.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).template.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} convert to template initiated on {resolved_node}. UPID: {upid}"
 
 
 async def lxc_migrate_preconditions(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).migrate.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).migrate.get)
     lines = [f"**LXC {vmid} migrate preconditions on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -708,14 +786,16 @@ async def lxc_migrate_preconditions(
 
 
 async def vm_migrate_preconditions(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).migrate.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).qemu(vmid).migrate.get)
     lines = [f"**VM {vmid} migrate preconditions on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -726,15 +806,18 @@ async def vm_migrate_preconditions(
 
 
 async def lxc_feature_check(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     feature: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).feature.get, feature=feature)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).feature.get,
+        feature=feature)
     lines = [f"**LXC {vmid} feature check on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in result.items():
@@ -745,15 +828,18 @@ async def lxc_feature_check(
 
 
 async def vm_feature_check(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     feature: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).feature.get, feature=feature)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).qemu(vmid).feature.get,
+        feature=feature)
     lines = [f"**VM {vmid} feature check on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in result.items():
@@ -764,14 +850,16 @@ async def vm_feature_check(
 
 
 async def vm_pending_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).pending.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).qemu(vmid).pending.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"**VM {vmid} pending config on {resolved_node}**\n"]
@@ -789,14 +877,16 @@ async def vm_pending_config(
 
 
 async def lxc_pending_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).pending.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).pending.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"**LXC {vmid} pending config on {resolved_node}**\n"]
@@ -815,19 +905,21 @@ async def lxc_pending_config(
 
 @confirm_required
 async def send_vm_key(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     key: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     if not key:
         raise ValueError("key is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).sendkey.put, elevated=True, key=key)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Key {key!r} sent to VM {vmid} on {resolved_node}. UPID: {upid}"
@@ -835,12 +927,13 @@ async def send_vm_key(
 
 @confirm_required
 async def vm_monitor_command(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     command: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     """WARNING: This sends a raw QEMU monitor command directly to the VM.
     Extremely powerful and dangerous — can crash or corrupt the guest.
     Use with extreme caution.
@@ -849,7 +942,8 @@ async def vm_monitor_command(
     starting with entries in that allowlist are permitted. If not set,
     all commands are allowed (require elevated token + confirm)."""
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     if not command:
@@ -865,7 +959,7 @@ async def vm_monitor_command(
                 f"Monitor command {command!r} is not in PROXMOX_ALLOWED_MONITOR_COMMANDS allowlist. "
                 f"Allowed prefixes: {client.config.allowed_monitor_commands}"
             )
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).monitor.post, elevated=True, command=command
     )
@@ -880,19 +974,21 @@ async def vm_monitor_command(
 
 @confirm_required
 async def unlink_vm_disk(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     idlist: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     if not idlist:
         raise ValueError("idlist is required (comma-separated disk IDs)")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).unlink.put, elevated=True, idlist=idlist
     )
@@ -902,16 +998,18 @@ async def unlink_vm_disk(
 
 @confirm_required
 async def vm_dbus_vmstate(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).dbus_vmstate.post,
         elevated=True,
@@ -920,20 +1018,22 @@ async def vm_dbus_vmstate(
 
 
 async def vm_rrd(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
     cf: str = "AVERAGE",
     ds: str = "cpu,maxmem,maxnet",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"timeframe": timeframe, "cf": cf, "ds": ds}
     try:
         result = await client.safe_api_call(
-            _api(client).nodes(resolved_node).qemu(vmid).rrd.get,
+            _api(client, endpoint=ep).nodes(resolved_node).qemu(vmid).rrd.get,
             **params,
         )
     except Exception as exc:
@@ -953,15 +1053,17 @@ async def vm_rrd(
 
 
 async def get_lxc_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     try:
-        result = await client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).config.get)
+        result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).config.get)
     except ProxmoxNotFoundError:
         return f"LXC {vmid} not found on node {resolved_node}"
     lines = [f"**LXC {vmid} config on {resolved_node}**\n"]
@@ -976,15 +1078,17 @@ async def get_lxc_config(
 
 
 async def get_lxc_status(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     try:
-        result = await client.safe_api_call(_api(client).nodes(resolved_node).lxc(vmid).status.current.get)
+        result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).status.current.get)
     except ProxmoxNotFoundError:
         return f"LXC {vmid} not found on node {resolved_node}"
     lines = [f"**LXC {vmid} status on {resolved_node}**\n"]
@@ -998,16 +1102,19 @@ async def get_lxc_status(
 
 @confirm_required
 async def remote_migrate_lxc(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target: Optional[str] = None,
     target_endpoint: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     if not target:
@@ -1016,9 +1123,9 @@ async def remote_migrate_lxc(
         raise ValueError("target_endpoint is required for remote migration")
     params: dict[str, Any] = {"target": target, "target-endpoint": target_endpoint}
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
-        elevated.nodes(resolved_node).lxc(vmid).remote_migrate.post, elevated=True, **params
+        elevated.nodes(resolved_node).lxc(vmid).remote_migrate.post, elevated=True, endpoint=ep, **params
     )
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"LXC {vmid} remote migration to {target} via {target_endpoint} initiated. UPID: {upid}"
@@ -1026,7 +1133,7 @@ async def remote_migrate_lxc(
 
 @confirm_required
 async def move_lxc_volume(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     volume: str = "rootfs",
@@ -1034,10 +1141,13 @@ async def move_lxc_volume(
     target_vmid: Optional[int] = None,
     target_volume: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"volume": volume}
@@ -1048,7 +1158,7 @@ async def move_lxc_volume(
     if target_volume is not None:
         params["target-volume"] = target_volume
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).move_volume.post, elevated=True, **params
     )
@@ -1057,18 +1167,20 @@ async def move_lxc_volume(
 
 
 async def lxc_rrddata(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
     cf: str = "AVERAGE",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"timeframe": timeframe, "cf": cf}
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).lxc(vmid).rrddata.get,
+        _api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).rrddata.get,
         **params,
     )
     if not isinstance(result, list):
@@ -1090,20 +1202,22 @@ async def lxc_rrddata(
 
 
 async def lxc_rrd(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
     cf: str = "AVERAGE",
     ds: str = "cpu,maxmem,maxnet",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"timeframe": timeframe, "cf": cf, "ds": ds}
     try:
         result = await client.safe_api_call(
-            _api(client).nodes(resolved_node).lxc(vmid).rrd.get,
+            _api(client, endpoint=ep).nodes(resolved_node).lxc(vmid).rrd.get,
             **params,
         )
     except Exception as exc:
@@ -1123,19 +1237,22 @@ async def lxc_rrd(
 
 
 async def get_vm_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     current: bool = False,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {}
     if current:
         params["current"] = 1
     try:
-        result = await client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).config.get, **params)
+        result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).qemu(vmid).config.get,
+            **params)
     except ProxmoxNotFoundError:
         return f"VM {vmid} not found on node {resolved_node}"
     lines = [f"**VM {vmid} config on {resolved_node}**\n"]
@@ -1168,20 +1285,23 @@ def _parse_kwargs(kwargs: Any) -> dict[str, Any]:
 
 @confirm_required
 async def update_vm_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     parsed = _parse_kwargs(kwargs)
     if not parsed:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **parsed)
     if result is None:
         return f"VM {vmid} config updated on {resolved_node} (no pending changes)"
@@ -1190,17 +1310,19 @@ async def update_vm_config(
 
 
 async def vm_rrddata(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     timeframe: str = "hour",
     cf: str = "AVERAGE",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     params: dict[str, Any] = {"timeframe": timeframe, "cf": cf}
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).qemu(vmid).rrddata.get, **params)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).qemu(vmid).rrddata.get, **params)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"📈 **VM {vmid} RRD data on {resolved_node} (timeframe={timeframe}, cf={cf})**\n"]
@@ -1217,16 +1339,18 @@ async def vm_rrddata(
 
 @confirm_required
 async def remote_migrate_vm(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target_address: Optional[str] = None,
     target_node: Optional[str] = None,
     target_storage: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     if not target_address:
@@ -1236,9 +1360,9 @@ async def remote_migrate_vm(
         params["target-node"] = target_node
     if target_storage:
         params["target-storage"] = target_storage
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
-        elevated.nodes(resolved_node).qemu(vmid).remote_migrate.post, elevated=True, **params
+        elevated.nodes(resolved_node).qemu(vmid).remote_migrate.post, elevated=True, endpoint=ep, **params
     )
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"VM {vmid} remote migration to {target_address} initiated. UPID: {upid}"
@@ -1246,19 +1370,21 @@ async def remote_migrate_vm(
 
 @confirm_required
 async def lxc_sendkey(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     key: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_vmid(vmid)
     if not key:
         raise ValueError("key is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).sendkey.put, elevated=True, key=key)
     upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
     return f"Key {key!r} sent to LXC {vmid} on {resolved_node}. UPID: {upid}"

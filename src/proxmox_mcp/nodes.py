@@ -5,17 +5,19 @@ from typing import Any, Optional
 from proxmox_mcp.utils import confirm_required, validate_iface_name, validate_node_name
 
 
-def _api(client: Any) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: Any, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
 async def node_config(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).config.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).config.get)
     lines = [f"⚙️ **Node Config: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -31,9 +33,11 @@ async def update_node_config(
     keyboard: Optional[str] = None,
     time_zone: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if description is not None:
@@ -42,7 +46,7 @@ async def update_node_config(
         params["keyboard"] = keyboard
     if time_zone is not None:
         params["timezone"] = time_zone
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).config.put, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} config updated. UPID: {upid}"
@@ -53,11 +57,13 @@ async def reboot_node(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="reboot")
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} reboot initiated. UPID: {upid}"
@@ -68,11 +74,13 @@ async def shutdown_node(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="shutdown")
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Node {resolved_node} shutdown initiated. UPID: {upid}"
@@ -83,12 +91,14 @@ async def start_all(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).startall.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).startall.post, elevated=True, endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Start all on node {resolved_node} initiated. UPID: {upid}"
 
@@ -98,12 +108,14 @@ async def stop_all(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).stopall.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).stopall.post, elevated=True, endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Stop all on node {resolved_node} initiated. UPID: {upid}"
 
@@ -113,12 +125,14 @@ async def suspend_all(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).suspendall.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).suspendall.post, elevated=True, endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Suspend all on node {resolved_node} initiated. UPID: {upid}"
 
@@ -129,14 +143,16 @@ async def migrate_all(
     node: Optional[str] = None,
     target: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if target is not None:
         params["target"] = target
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).migrateall.post, elevated=True, **params)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Migrate all on node {resolved_node} initiated. UPID: {upid}"
@@ -145,10 +161,12 @@ async def migrate_all(
 async def get_node_detailed_status(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).status.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).status.get)
     lines = [f"📊 **Node Status: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, val in sorted(result.items()):
@@ -159,10 +177,12 @@ async def get_node_detailed_status(
 async def list_services(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).services.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).services.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"🔧 **Services on {resolved_node}**\n"]
@@ -182,12 +202,14 @@ async def service_state(
     client: Any,
     node: Optional[str] = None,
     service: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).services(service).state.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).services(service).state.get)
     lines = [f"🔧 **Service: {service} on {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -201,14 +223,17 @@ async def start_service(
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).start.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).start.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} start initiated on {resolved_node}. UPID: {upid}"
 
@@ -219,14 +244,17 @@ async def stop_service(
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).stop.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).stop.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} stop initiated on {resolved_node}. UPID: {upid}"
 
@@ -237,14 +265,17 @@ async def restart_service(
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).restart.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).restart.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"Service {service!r} restart initiated on {resolved_node}. UPID: {upid}"
 
@@ -252,10 +283,12 @@ async def restart_service(
 async def node_dns(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).dns.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).dns.get)
     lines = [f"🌐 **DNS Settings: {resolved_node}**\n"]
     if isinstance(result, dict):
         for key, value in sorted(result.items()):
@@ -266,10 +299,12 @@ async def node_dns(
 async def node_hosts(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).hosts.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).hosts.get)
     lines = [f"📋 **Hosts File: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -285,10 +320,12 @@ async def node_hosts(
 async def node_report(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).report.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).report.get)
     lines = [f"📋 **Node Report: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)
@@ -313,10 +350,12 @@ async def node_report(
 async def node_netstat(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client).nodes(resolved_node).netstat.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).netstat.get)
     lines = [f"🌐 **Netstat: {resolved_node}**\n"]
     if isinstance(result, list):
         for entry in result[:50]:
@@ -356,13 +395,15 @@ async def scan_nfs(
     client: Any,
     node: Optional[str] = None,
     server: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).scan.nfs.get,
+        _api(client, endpoint=ep).nodes(resolved_node).scan.nfs.get,
         server=server,
     )
     if not isinstance(result, list):
@@ -380,13 +421,15 @@ async def scan_iscsi(
     client: Any,
     node: Optional[str] = None,
     server: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).scan.iscsi.get,
+        _api(client, endpoint=ep).nodes(resolved_node).scan.iscsi.get,
         server=server,
     )
     if not isinstance(result, list):
@@ -403,11 +446,13 @@ async def scan_iscsi(
 async def scan_lvm(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).scan.lvm.get,
+        _api(client, endpoint=ep).nodes(resolved_node).scan.lvm.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -423,11 +468,13 @@ async def scan_lvm(
 async def scan_lvmthin(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).scan.lvmthin.get,
+        _api(client, endpoint=ep).nodes(resolved_node).scan.lvmthin.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -444,13 +491,15 @@ async def scan_cifs(
     client: Any,
     node: Optional[str] = None,
     server: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).scan.cifs.get,
+        _api(client, endpoint=ep).nodes(resolved_node).scan.cifs.get,
         server=server,
     )
     if not isinstance(result, list):
@@ -471,11 +520,13 @@ async def scan_cifs(
 async def scan_zfs(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).scan.zfs.get,
+        _api(client, endpoint=ep).nodes(resolved_node).scan.zfs.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -494,8 +545,10 @@ async def scan_pbs(
     server: str = "",
     username: Optional[str] = None,
     password: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not server:
         raise ValueError("server is required")
@@ -505,7 +558,7 @@ async def scan_pbs(
     if password is not None:
         params["password"] = password
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).scan.pbs.get,
+        _api(client, endpoint=ep).nodes(resolved_node).scan.pbs.get,
         **params,
     )
     if not isinstance(result, list):
@@ -523,13 +576,15 @@ async def query_url_metadata(
     client: Any,
     node: Optional[str] = None,
     url: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not url:
         raise ValueError("url is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).query_url_metadata.get,
+        _api(client, endpoint=ep).nodes(resolved_node).query_url_metadata.get,
         url=url,
     )
     lines = [f"🔗 **URL Metadata: {url}**\n"]
@@ -551,13 +606,15 @@ async def wake_on_lan(
     node: Optional[str] = None,
     macaddr: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not macaddr:
         raise ValueError("macaddr is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).wakeonlan.post,
         elevated=True,
@@ -570,11 +627,13 @@ async def wake_on_lan(
 async def get_subscription(
     client: Any,
     node: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).subscription.get,
+        _api(client, endpoint=ep).nodes(resolved_node).subscription.get,
     )
     lines = [f"📋 **Subscription: {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -594,13 +653,15 @@ async def update_subscription(
     node: Optional[str] = None,
     key: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not key:
         raise ValueError("key is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).subscription.post,
         elevated=True,
@@ -615,11 +676,13 @@ async def delete_subscription(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).subscription.delete,
         elevated=True,
@@ -632,11 +695,13 @@ async def check_subscription(
     client: Any,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).subscription.post,
         elevated=True,
@@ -651,14 +716,17 @@ async def reload_service(
     node: Optional[str] = None,
     service: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not service:
         raise ValueError("service is required")
-    elevated = client.get_client(elevated=True)
-    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).reload.post, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).reload.post, elevated=True,
+        endpoint=ep)
     upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
     return f"Service {service!r} reload initiated on {resolved_node}. UPID: {upid}"
 
@@ -669,9 +737,11 @@ async def node_execute(
     node: Optional[str] = None,
     commands: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not commands:
         raise ValueError("commands is required")
@@ -686,7 +756,7 @@ async def node_execute(
                 f"Command {commands!r} is not in PROXMOX_ALLOWED_NODE_COMMANDS allowlist. "
                 f"Allowed prefixes: {client.config.allowed_node_commands}"
             )
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {"command": commands}
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).execute.post,
@@ -710,14 +780,16 @@ async def get_network_interface(
     client: Any,
     node: Optional[str] = None,
     iface: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not iface:
         raise ValueError("iface is required")
     validate_iface_name(iface)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).network(iface).get,
+        _api(client, endpoint=ep).nodes(resolved_node).network(iface).get,
     )
     lines = [f"🌐 **Network Interface: {iface} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -734,10 +806,13 @@ async def update_dns(
     dns2: Optional[str] = None,
     search: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if dns1 is not None:
@@ -749,7 +824,7 @@ async def update_dns(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update DNS")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).dns.put,
         elevated=True,
@@ -765,13 +840,15 @@ async def update_hosts(
     node: Optional[str] = None,
     data: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not data:
         raise ValueError("data is required for hosts update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).hosts.post,
         elevated=True,
@@ -786,13 +863,15 @@ async def update_time(
     node: Optional[str] = None,
     timezone: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not timezone:
         raise ValueError("timezone is required for time update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).time.put,
         elevated=True,
@@ -805,14 +884,16 @@ async def vzdump_defaults(
     client: Any,
     node: Optional[str] = None,
     storage: Optional[str] = None,
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if storage is not None:
         params["storage"] = storage
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).vzdump.defaults.get,
+        _api(client, endpoint=ep).nodes(resolved_node).vzdump.defaults.get,
         **params,
     )
     lines = [f"\U0001f4be **VZDump Defaults: {resolved_node}**\n"]
@@ -832,13 +913,15 @@ async def extract_backup_config(
     client: Any,
     node: Optional[str] = None,
     archive: str = "",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not archive:
         raise ValueError("archive is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).vzdump.extractconfig.get,
+        _api(client, endpoint=ep).nodes(resolved_node).vzdump.extractconfig.get,
         archive=archive,
     )
     lines = [f"\U0001f4be **Backup Config: {archive} ({resolved_node})**\n"]
