@@ -1,7 +1,7 @@
 # Proxmox MCP Server — Agent Conventions
 
 ## Session Start
-Read `/tmp/opencode/handoffs/session-state.md` FIRST. Check `git log` and `gh issue list`.
+Read `~/.config/opencode/handoffs/session-state.md` FIRST. Check `git log` and `gh issue list`.
 
 ## Code Conventions
 - Python 3.12+, async/await
