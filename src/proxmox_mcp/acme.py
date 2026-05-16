@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_acme_accounts(client: ProxmoxClient) -> str:
+async def list_acme_accounts(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.acme.account.get,
+        _api(client, endpoint=ep).cluster.acme.account.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -31,11 +32,13 @@ async def list_acme_accounts(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def get_acme_account(client: ProxmoxClient, name: str = "") -> str:
+async def get_acme_account(client: MultiClient, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.acme.account(name).get,
+        _api(client, endpoint=ep).cluster.acme.account(name).get,
     )
     lines = [f"\U0001f512 **ACME Account: {name}**\n"]
     if isinstance(result, dict):
@@ -46,13 +49,15 @@ async def get_acme_account(client: ProxmoxClient, name: str = "") -> str:
 
 @confirm_required
 async def create_acme_account(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     contact: str = "",
     directory: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for ACME account creation")
@@ -62,7 +67,7 @@ async def create_acme_account(
     if directory is not None:
         params["directory"] = directory
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.acme.account.post,
         elevated=True,
@@ -73,17 +78,19 @@ async def create_acme_account(
 
 @confirm_required
 async def update_acme_plugin(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for ACME plugin update")
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.acme.plugins(id).put,
         elevated=True,
@@ -93,11 +100,13 @@ async def update_acme_plugin(
     return f"ACME plugin {id!r} updated: {opts}"
 
 
-async def get_acme_plugin(client: ProxmoxClient, id: str = "") -> str:
+async def get_acme_plugin(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.acme.plugins(id).get,
+        _api(client, endpoint=ep).cluster.acme.plugins(id).get,
     )
     lines = [f"\U0001f50c **ACME Plugin: {id}**\n"]
     if isinstance(result, dict):
@@ -106,9 +115,10 @@ async def get_acme_plugin(client: ProxmoxClient, id: str = "") -> str:
     return "\n".join(lines)
 
 
-async def acme_meta(client: ProxmoxClient) -> str:
+async def acme_meta(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.acme.meta.get,
+        _api(client, endpoint=ep).cluster.acme.meta.get,
     )
     lines = ["\U0001f512 **ACME Meta**\n"]
     if isinstance(result, dict):
@@ -125,14 +135,15 @@ async def acme_meta(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def delete_acme_account(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for ACME account deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.acme.account(name).delete,
         elevated=True,
@@ -142,12 +153,14 @@ async def delete_acme_account(
 
 @confirm_required
 async def update_acme_account(
-    client: ProxmoxClient,
+    client: MultiClient,
     name: str = "",
     contact: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not name:
         raise ValueError("name is required for ACME account update")
@@ -157,7 +170,7 @@ async def update_acme_account(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.acme.account(name).put,
         elevated=True,
@@ -167,9 +180,10 @@ async def update_acme_account(
     return f"ACME account {name!r} updated: {opts}"
 
 
-async def list_acme_directories(client: ProxmoxClient) -> str:
+async def list_acme_directories(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.acme.directories.get,
+        _api(client, endpoint=ep).cluster.acme.directories.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -185,9 +199,10 @@ async def list_acme_directories(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_acme_plugins(client: ProxmoxClient) -> str:
+async def list_acme_plugins(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.acme.plugins.get,
+        _api(client, endpoint=ep).cluster.acme.plugins.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -203,12 +218,14 @@ async def list_acme_plugins(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_acme_plugin(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     type: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for ACME plugin creation")
@@ -216,7 +233,7 @@ async def create_acme_plugin(
         raise ValueError("type is required for ACME plugin creation")
     params: dict[str, Any] = {"id": id, "type": type}
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.acme.plugins.post,
         elevated=True,
@@ -227,14 +244,15 @@ async def create_acme_plugin(
 
 @confirm_required
 async def delete_acme_plugin(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for ACME plugin deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.acme.plugins(id).delete,
         elevated=True,
@@ -242,9 +260,10 @@ async def delete_acme_plugin(
     return f"ACME plugin {id!r} deleted"
 
 
-async def get_acme_challenge_schema(client: ProxmoxClient) -> str:
+async def get_acme_challenge_schema(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.acme("challenge-schema").get,
+        _api(client, endpoint=ep).cluster.acme("challenge-schema").get,
     )
     lines = ["\U0001f512 **ACME Challenge Schema**\n"]
     if isinstance(result, dict):
@@ -259,9 +278,10 @@ async def get_acme_challenge_schema(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_acme_tos(client: ProxmoxClient) -> str:
+async def list_acme_tos(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.acme.tos.get,
+        _api(client, endpoint=ep).cluster.acme.tos.get,
     )
     lines = ["\U0001f512 **ACME Terms of Service**\n"]
     if isinstance(result, dict):

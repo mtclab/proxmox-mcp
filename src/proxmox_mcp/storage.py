@@ -4,24 +4,26 @@ import logging
 import os
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxPermissionError
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, format_bytes, validate_node_name, validate_storage_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
 async def list_isos(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_storage_name(storage)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).content.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage).content.get,
         content="iso",
     )
     if not isinstance(result, list):
@@ -38,14 +40,16 @@ async def list_isos(
 
 @confirm_required
 async def upload_iso(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     filepath: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_storage_name(storage)
     if not filepath:
         raise ValueError("filepath is required for ISO upload")
@@ -67,20 +71,22 @@ async def upload_iso(
             file_obj=f,
             filename=filename,
             elevated=True,
+            endpoint=ep,
         )
     upid = result if isinstance(result, str) else result.get("data", result)
     return f"ISO upload initiated to {resolved_node}/{storage}. UPID: {upid}"
 
 
 async def get_storage(
-    client: ProxmoxClient,
+    client: MultiClient,
     storage: str,
     node: Optional[str] = None,
-) -> str:
-    validate_storage_name(storage)
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    client.raise_if_not_elevated()
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).get,
         elevated=True,
@@ -99,14 +105,15 @@ async def get_storage(
 
 @confirm_required
 async def create_storage(
-    client: ProxmoxClient,
+    client: MultiClient,
     storage: str,
     type: str = "dir",
     path: Optional[str] = None,
     content: Optional[str] = None,
     nodes: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     validate_storage_name(storage)
     if not type:
@@ -121,7 +128,7 @@ async def create_storage(
         params["content"] = content
     if nodes is not None:
         params["nodes"] = nodes
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.storage.post,
         elevated=True,
@@ -132,13 +139,14 @@ async def create_storage(
 
 @confirm_required
 async def update_storage(
-    client: ProxmoxClient,
+    client: MultiClient,
     storage: str,
     content: Optional[str] = None,
     nodes: Optional[str] = None,
     delete: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     validate_storage_name(storage)
     params: dict[str, Any] = {}
@@ -148,7 +156,7 @@ async def update_storage(
         params["nodes"] = nodes
     if delete is not None:
         params["delete"] = delete
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.storage(storage).put,
         elevated=True,
@@ -159,13 +167,14 @@ async def update_storage(
 
 @confirm_required
 async def delete_storage(
-    client: ProxmoxClient,
+    client: MultiClient,
     storage: str,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     validate_storage_name(storage)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.storage(storage).delete,
         elevated=True,
@@ -175,18 +184,20 @@ async def delete_storage(
 
 @confirm_required
 async def delete_volume(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_storage_name(storage)
     if not volume:
         raise ValueError("volume is required for volume deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).content(volume).delete,
         elevated=True,
@@ -196,19 +207,21 @@ async def delete_volume(
 
 @confirm_required
 async def prune_backups(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     prune_type: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_storage_name(storage)
     params: dict[str, Any] = {}
     if prune_type is not None:
         params["prune_type"] = prune_type
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).prunebackups.delete,
         elevated=True,
@@ -224,15 +237,17 @@ async def prune_backups(
 
 
 async def storage_status(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_storage_name(storage)
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).status.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage).status.get,
     )
     lines = [f"\U0001f4be **Storage Status: {storage} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -251,18 +266,20 @@ async def storage_status(
 
 
 async def get_volume_info(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not volume:
         raise ValueError("volume is required")
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_storage_name(storage)
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).content(volume).get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage).content(volume).get,
     )
     lines = [f"\U0001f4be **Volume: {volume}**\n"]
     if isinstance(result, dict):
@@ -278,17 +295,19 @@ async def get_volume_info(
 
 
 async def storage_metrics(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     timeframe: str = "hour",
     cf: str = "AVERAGE",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).rrddata.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage).rrddata.get,
         timeframe=timeframe,
         cf=cf,
     )
@@ -300,15 +319,17 @@ async def storage_metrics(
 
 
 async def storage_identity(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).identity.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage).identity.get,
     )
     lines = [f"💾 **Storage Identity: {storage} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -321,7 +342,7 @@ async def storage_identity(
 
 @confirm_required
 async def allocate_disk(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     vmid: Optional[int] = None,
@@ -329,9 +350,11 @@ async def allocate_disk(
     size: str = "1G",
     format: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     params: dict[str, Any] = {"size": size}
@@ -341,7 +364,7 @@ async def allocate_disk(
         params["filename"] = filename
     if format is not None:
         params["format"] = format
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).content.post,
         elevated=True,
@@ -352,14 +375,16 @@ async def allocate_disk(
 
 
 async def get_storage_on_node(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).get,
         elevated=True,
@@ -375,22 +400,24 @@ async def get_storage_on_node(
 
 @confirm_required
 async def copy_volume(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
     target: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     if not volume:
         raise ValueError("volume is required")
     if not target:
         raise ValueError("target is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).content(volume).post,
         elevated=True,
@@ -402,22 +429,25 @@ async def copy_volume(
 
 @confirm_required
 async def update_volume_attributes(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     if not volume:
         raise ValueError("volume is required")
     if not kwargs:
         raise ValueError("At least one attribute must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage).content(volume).put,
         elevated=True,
@@ -428,15 +458,17 @@ async def update_volume_attributes(
 
 
 async def file_restore_list(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage)("file-restore").list.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage)("file-restore").list.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -458,18 +490,20 @@ async def file_restore_list(
 
 
 async def file_restore_download(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     filepath: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     if not filepath:
         raise ValueError("filepath is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage)("file-restore").download.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage)("file-restore").download.get,
         filepath=filepath,
     )
     lines = [f"📥 **File Restore Download: {filepath}**\n"]
@@ -486,18 +520,20 @@ async def file_restore_download(
 
 
 async def storage_import_metadata(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     volume: str = "",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     if not volume:
         raise ValueError("volume is required for import metadata")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).content(volume).importmetadata.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage).content(volume).importmetadata.get,
     )
     lines = [f"📦 **Storage Import Metadata: {storage} on {resolved_node}**\n"]
     if isinstance(result, list):
@@ -532,19 +568,21 @@ async def storage_import_metadata(
 
 @confirm_required
 async def oci_registry_pull(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
     image: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     validate_storage_name(storage)
     if not image:
         raise ValueError("image is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).storage(storage)("oci-registry-pull").post,
         elevated=True,
@@ -555,15 +593,18 @@ async def oci_registry_pull(
 
 
 async def node_storage_list(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     from proxmox_mcp.utils import validate_node_name
 
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []

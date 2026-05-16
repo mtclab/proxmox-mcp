@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def cluster_options(client: ProxmoxClient) -> str:
+async def cluster_options(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.options.get,
+        _api(client, endpoint=ep).cluster.options.get,
     )
     lines = ["\U0001f527 **Cluster Options**\n"]
     if isinstance(result, dict):
@@ -25,14 +26,16 @@ async def cluster_options(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def update_cluster_options(
-    client: ProxmoxClient,
+    client: MultiClient,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not kwargs:
         raise ValueError("At least one option must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.options.put,
         elevated=True,
@@ -42,9 +45,10 @@ async def update_cluster_options(
     return f"Cluster options updated: {opts}"
 
 
-async def list_backup_jobs(client: ProxmoxClient) -> str:
+async def list_backup_jobs(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.backup.get,
+        _api(client, endpoint=ep).cluster.backup.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -64,7 +68,7 @@ async def list_backup_jobs(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_backup_job(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     schedule: Optional[str] = None,
     vmid: Optional[str] = None,
@@ -72,8 +76,10 @@ async def create_backup_job(
     mode: Optional[str] = None,
     compress: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for backup job creation")
@@ -89,7 +95,7 @@ async def create_backup_job(
     if compress is not None:
         params["compress"] = compress
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.backup.post,
         elevated=True,
@@ -100,14 +106,15 @@ async def create_backup_job(
 
 @confirm_required
 async def delete_backup_job(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for backup job deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.backup(id).delete,
         elevated=True,
@@ -115,11 +122,13 @@ async def delete_backup_job(
     return f"Backup job {id!r} deleted"
 
 
-async def get_backup_job(client: ProxmoxClient, id: str = "") -> str:
+async def get_backup_job(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.backup(id).get,
+        _api(client, endpoint=ep).cluster.backup(id).get,
     )
     lines = [f"\U0001f4be **Backup Job: {id}**\n"]
     if isinstance(result, dict):
@@ -130,17 +139,19 @@ async def get_backup_job(client: ProxmoxClient, id: str = "") -> str:
 
 @confirm_required
 async def update_backup_job(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for backup job update")
     if not kwargs:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.backup(id).put,
         elevated=True,
@@ -150,9 +161,10 @@ async def update_backup_job(
     return f"Backup job {id!r} updated: {opts}"
 
 
-async def cluster_config(client: ProxmoxClient) -> str:
+async def cluster_config(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.config.get,
+        _api(client, endpoint=ep).cluster.config.get,
     )
     lines = ["\u2699\ufe0f **Cluster Config (Corosync)**\n"]
     if isinstance(result, dict):
@@ -167,9 +179,10 @@ async def cluster_config(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def cluster_config_nodes(client: ProxmoxClient) -> str:
+async def cluster_config_nodes(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.config.nodes.get,
+        _api(client, endpoint=ep).cluster.config.nodes.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -184,9 +197,10 @@ async def cluster_config_nodes(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def cluster_config_join(client: ProxmoxClient) -> str:
+async def cluster_config_join(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.config.join.get,
+        _api(client, endpoint=ep).cluster.config.join.get,
     )
     lines = ["\U0001f517 **Cluster Join Info**\n"]
     if isinstance(result, dict):
@@ -195,9 +209,10 @@ async def cluster_config_join(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def backup_info_not_backed_up(client: ProxmoxClient) -> str:
+async def backup_info_not_backed_up(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster("backup-info")("not-backed-up").get,
+        _api(client, endpoint=ep).cluster("backup-info")("not-backed-up").get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -214,12 +229,14 @@ async def backup_info_not_backed_up(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def bulk_migrate_guests(
-    client: ProxmoxClient,
+    client: MultiClient,
     vmids: str = "",
     target: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not vmids:
         raise ValueError("vmids is required")
@@ -228,7 +245,7 @@ async def bulk_migrate_guests(
     validate_node_name(target)
     params: dict[str, Any] = {"vmids": vmids, "target": target}
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.cluster("bulk-action").guest.migrate.post,
         elevated=True,
@@ -240,17 +257,19 @@ async def bulk_migrate_guests(
 
 @confirm_required
 async def bulk_shutdown_guests(
-    client: ProxmoxClient,
+    client: MultiClient,
     vmids: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not vmids:
         raise ValueError("vmids is required")
     params: dict[str, Any] = {"vmids": vmids}
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.cluster("bulk-action").guest.shutdown.post,
         elevated=True,
@@ -262,17 +281,19 @@ async def bulk_shutdown_guests(
 
 @confirm_required
 async def bulk_start_guests(
-    client: ProxmoxClient,
+    client: MultiClient,
     vmids: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not vmids:
         raise ValueError("vmids is required")
     params: dict[str, Any] = {"vmids": vmids}
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.cluster("bulk-action").guest.start.post,
         elevated=True,
@@ -284,17 +305,19 @@ async def bulk_start_guests(
 
 @confirm_required
 async def bulk_suspend_guests(
-    client: ProxmoxClient,
+    client: MultiClient,
     vmids: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not vmids:
         raise ValueError("vmids is required")
     params: dict[str, Any] = {"vmids": vmids}
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.cluster("bulk-action").guest.suspend.post,
         elevated=True,
@@ -304,9 +327,10 @@ async def bulk_suspend_guests(
     return f"Bulk suspend initiated: {vmids}. UPID: {upid}"
 
 
-async def cluster_config_apiversion(client: ProxmoxClient) -> str:
+async def cluster_config_apiversion(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.config.apiversion.get,
+        _api(client, endpoint=ep).cluster.config.apiversion.get,
     )
     lines = ["📋 **Cluster API Version**\n"]
     if isinstance(result, dict):
@@ -321,9 +345,10 @@ async def cluster_config_apiversion(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def cluster_jobs_index(client: ProxmoxClient) -> str:
+async def cluster_jobs_index(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.jobs.get,
+        _api(client, endpoint=ep).cluster.jobs.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -340,9 +365,10 @@ async def cluster_jobs_index(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_realm_sync_jobs(client: ProxmoxClient) -> str:
+async def list_realm_sync_jobs(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.jobs("realm-sync").get,
+        _api(client, endpoint=ep).cluster.jobs("realm-sync").get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -360,11 +386,13 @@ async def list_realm_sync_jobs(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def get_realm_sync_job(client: ProxmoxClient, id: str = "") -> str:
+async def get_realm_sync_job(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.jobs("realm-sync")(id).get,
+        _api(client, endpoint=ep).cluster.jobs("realm-sync")(id).get,
     )
     lines = [f"🔄 **Realm Sync Job: {id}**\n"]
     if isinstance(result, dict):
@@ -375,9 +403,10 @@ async def get_realm_sync_job(client: ProxmoxClient, id: str = "") -> str:
     return "\n".join(lines)
 
 
-async def api_version(client: ProxmoxClient) -> str:
+async def api_version(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).version.get,
+        _api(client, endpoint=ep).version.get,
     )
     lines = ["\U0001f4cb **API Version**\n"]
     if isinstance(result, dict):
@@ -392,9 +421,10 @@ async def api_version(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def cluster_config_totem(client: ProxmoxClient) -> str:
+async def cluster_config_totem(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.config.totem.get,
+        _api(client, endpoint=ep).cluster.config.totem.get,
     )
     lines = ["\U0001f527 **Cluster Config Totem**\n"]
     if isinstance(result, dict):
@@ -409,9 +439,10 @@ async def cluster_config_totem(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def cluster_config_qdevice(client: ProxmoxClient) -> str:
+async def cluster_config_qdevice(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.config.qdevice.get,
+        _api(client, endpoint=ep).cluster.config.qdevice.get,
     )
     lines = ["\U0001f527 **Cluster QDevice Status**\n"]
     if isinstance(result, dict):
@@ -426,9 +457,10 @@ async def cluster_config_qdevice(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def backup_info_index(client: ProxmoxClient) -> str:
+async def backup_info_index(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster("backup-info").get,
+        _api(client, endpoint=ep).cluster("backup-info").get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -444,11 +476,13 @@ async def backup_info_index(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def backup_job_included_volumes(client: ProxmoxClient, id: str = "") -> str:
+async def backup_job_included_volumes(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.backup(id)("included-volumes").get,
+        _api(client, endpoint=ep).cluster.backup(id)("included-volumes").get,
     )
     lines = [f"\U0001f4be **Backup Job Included Volumes: {id}**\n"]
     if isinstance(result, dict):
@@ -485,18 +519,20 @@ async def backup_job_included_volumes(client: ProxmoxClient, id: str = "") -> st
 
 @confirm_required
 async def generate_cluster_config(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     validate_node_name(node) if node else None
     params: dict[str, Any] = {}
     if node:
         params["node"] = node
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.cluster.config.post,
         elevated=True,
@@ -508,15 +544,16 @@ async def generate_cluster_config(
 
 @confirm_required
 async def remove_cluster_node(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not node:
         raise ValueError("node is required for cluster node removal")
     validate_node_name(node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.config.nodes(node).delete,
         elevated=True,

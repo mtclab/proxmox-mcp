@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def ceph_status(client: ProxmoxClient) -> str:
+async def ceph_status(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.ceph.status.get,
+        _api(client, endpoint=ep).cluster.ceph.status.get,
     )
     lines = ["🐟 **Ceph Cluster Status**\n"]
     if isinstance(result, dict):
@@ -47,9 +48,10 @@ async def ceph_status(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def ceph_metadata(client: ProxmoxClient) -> str:
+async def ceph_metadata(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.ceph.metadata.get,
+        _api(client, endpoint=ep).cluster.ceph.metadata.get,
     )
     lines = ["📋 **Ceph Metadata**\n"]
     if isinstance(result, dict):
@@ -70,11 +72,14 @@ async def ceph_metadata(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def node_ceph_status(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def node_ceph_status(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.status.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.status.get,
     )
     lines = [f"🐟 **Ceph Status on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -100,11 +105,14 @@ async def node_ceph_status(client: ProxmoxClient, node: Optional[str] = None) ->
     return "\n".join(lines)
 
 
-async def node_ceph_fs(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def node_ceph_fs(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.fs.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.fs.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -125,18 +133,21 @@ async def node_ceph_fs(client: ProxmoxClient, node: Optional[str] = None) -> str
 
 @confirm_required
 async def create_ceph_fs(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("Ceph filesystem name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {"name": name}
     for k, v in kwargs.items():
         if v is not None:
@@ -150,11 +161,14 @@ async def create_ceph_fs(
     return f"Ceph filesystem {name!r} created on {resolved_node}. UPID: {upid}"
 
 
-async def list_ceph_osd(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_ceph_osd(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.osd.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.osd.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -176,11 +190,14 @@ async def list_ceph_osd(client: ProxmoxClient, node: Optional[str] = None) -> st
     return "\n".join(lines)
 
 
-async def list_ceph_mon(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_ceph_mon(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.mon.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.mon.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -198,11 +215,14 @@ async def list_ceph_mon(client: ProxmoxClient, node: Optional[str] = None) -> st
     return "\n".join(lines)
 
 
-async def list_ceph_mgr(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_ceph_mgr(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.mgr.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.mgr.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -219,11 +239,14 @@ async def list_ceph_mgr(client: ProxmoxClient, node: Optional[str] = None) -> st
     return "\n".join(lines)
 
 
-async def ceph_config(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def ceph_config(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.cfg.raw.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.cfg.raw.get,
     )
     lines = [f"🐟 **Ceph Configuration on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -242,9 +265,10 @@ async def ceph_config(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-async def ceph_flags(client: ProxmoxClient) -> str:
+async def ceph_flags(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.ceph.flags.get,
+        _api(client, endpoint=ep).cluster.ceph.flags.get,
     )
     lines = ["🏴 **Ceph Cluster Flags**\n"]
     if isinstance(result, dict):
@@ -267,15 +291,17 @@ async def ceph_flags(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def set_ceph_flags(
-    client: ProxmoxClient,
+    client: MultiClient,
     flags: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not flags:
         raise ValueError("Flags string is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {"flags": flags}
     for k, v in kwargs.items():
         if v is not None:
@@ -288,11 +314,13 @@ async def set_ceph_flags(
     return f"Ceph flags set to {flags!r}."
 
 
-async def get_ceph_flag(client: ProxmoxClient, flag: str) -> str:
+async def get_ceph_flag(client: MultiClient, flag: str,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not flag:
         raise ValueError("Flag name is required")
     result = await client.safe_api_call(
-        _api(client).cluster.ceph.flags(flag).get,
+        _api(client, endpoint=ep).cluster.ceph.flags(flag).get,
     )
     lines = [f"🏴 **Ceph Flag: {flag}**\n"]
     if isinstance(result, dict):
@@ -313,15 +341,16 @@ async def get_ceph_flag(client: ProxmoxClient, flag: str) -> str:
 
 @confirm_required
 async def set_ceph_flag(
-    client: ProxmoxClient,
+    client: MultiClient,
     flag: str = "",
     value: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not flag:
         raise ValueError("Flag name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     if value.lower() in ("1", "true", "yes"):
         params["value"] = 1
@@ -337,11 +366,14 @@ async def set_ceph_flag(
     return f"Ceph flag {flag!r} set to {value!r}."
 
 
-async def list_ceph_osd_detail(client: ProxmoxClient, node: Optional[str] = None, osdid: int = 0) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_ceph_osd_detail(client: MultiClient, node: Optional[str] = None, osdid: int = 0,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.osd(osdid).get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.osd(osdid).get,
     )
     lines = [f"🐟 **Ceph OSD {osdid} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -370,18 +402,21 @@ async def list_ceph_osd_detail(client: ProxmoxClient, node: Optional[str] = None
 
 @confirm_required
 async def create_ceph_osd(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     dev: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not dev:
         raise ValueError("Device path is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {"dev": dev}
     for k, v in kwargs.items():
         if v is not None:
@@ -397,16 +432,19 @@ async def create_ceph_osd(
 
 @confirm_required
 async def destroy_ceph_osd(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -422,15 +460,17 @@ async def destroy_ceph_osd(
 
 @confirm_required
 async def ceph_osd_in(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).ceph.osd(osdid)("in").post,
         elevated=True,
@@ -441,15 +481,17 @@ async def ceph_osd_in(
 
 @confirm_required
 async def ceph_osd_out(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).ceph.osd(osdid)("out").post,
         elevated=True,
@@ -460,15 +502,17 @@ async def ceph_osd_out(
 
 @confirm_required
 async def ceph_osd_scrub(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     osdid: int = 0,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).ceph.osd(osdid).scrub.post,
         elevated=True,
@@ -477,11 +521,14 @@ async def ceph_osd_scrub(
     return f"Ceph OSD {osdid} scrub started on {resolved_node}. UPID: {upid}"
 
 
-async def ceph_osd_metadata(client: ProxmoxClient, node: Optional[str] = None, osdid: int = 0) -> str:
-    resolved_node = await client.resolve_node(node)
+async def ceph_osd_metadata(client: MultiClient, node: Optional[str] = None, osdid: int = 0,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.osd(osdid).metadata.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.osd(osdid).metadata.get,
     )
     lines = [f"🐟 **Ceph OSD {osdid} Metadata on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -502,11 +549,14 @@ async def ceph_osd_metadata(client: ProxmoxClient, node: Optional[str] = None, o
     return "\n".join(lines)
 
 
-async def list_ceph_pools(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_ceph_pools(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.pool.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.pool.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -525,18 +575,21 @@ async def list_ceph_pools(client: ProxmoxClient, node: Optional[str] = None) -> 
 
 @confirm_required
 async def create_ceph_pool(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("Pool name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {"name": name}
     for k, v in kwargs.items():
         if v is not None:
@@ -550,13 +603,16 @@ async def create_ceph_pool(
     return f"Ceph pool {name!r} created on {resolved_node}. UPID: {upid}"
 
 
-async def get_ceph_pool(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def get_ceph_pool(client: MultiClient, node: Optional[str] = None, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("Pool name is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.pool(name).get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.pool(name).get,
     )
     lines = [f"🐟 **Ceph Pool: {name} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -573,18 +629,21 @@ async def get_ceph_pool(client: ProxmoxClient, node: Optional[str] = None, name:
 
 @confirm_required
 async def update_ceph_pool(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("Pool name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -599,18 +658,21 @@ async def update_ceph_pool(
 
 @confirm_required
 async def destroy_ceph_pool(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("Pool name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -624,13 +686,16 @@ async def destroy_ceph_pool(
     return f"Ceph pool {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
-async def ceph_pool_status(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def ceph_pool_status(client: MultiClient, node: Optional[str] = None, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("Pool name is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.pool(name).status.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.pool(name).status.get,
     )
     lines = [f"🐟 **Ceph Pool Status: {name} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -645,11 +710,14 @@ async def ceph_pool_status(client: ProxmoxClient, node: Optional[str] = None, na
     return "\n".join(lines)
 
 
-async def list_ceph_mds_detail(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_ceph_mds_detail(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.mds.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.mds.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -670,18 +738,21 @@ async def list_ceph_mds_detail(client: ProxmoxClient, node: Optional[str] = None
 
 @confirm_required
 async def create_ceph_mds(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("MDS name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -697,18 +768,21 @@ async def create_ceph_mds(
 
 @confirm_required
 async def destroy_ceph_mds(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("MDS name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -724,18 +798,21 @@ async def destroy_ceph_mds(
 
 @confirm_required
 async def create_ceph_mgr(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     id: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not id:
         raise ValueError("MGR id is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -751,18 +828,21 @@ async def create_ceph_mgr(
 
 @confirm_required
 async def destroy_ceph_mgr(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     id: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not id:
         raise ValueError("MGR id is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -778,18 +858,21 @@ async def destroy_ceph_mgr(
 
 @confirm_required
 async def create_ceph_mon(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     monid: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not monid:
         raise ValueError("Monitor id is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -805,18 +888,21 @@ async def create_ceph_mon(
 
 @confirm_required
 async def destroy_ceph_mon(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     monid: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not monid:
         raise ValueError("Monitor id is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -832,14 +918,16 @@ async def destroy_ceph_mon(
 
 @confirm_required
 async def start_ceph(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).ceph.start.post,
         elevated=True,
@@ -850,14 +938,16 @@ async def start_ceph(
 
 @confirm_required
 async def stop_ceph(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).ceph.stop.post,
         elevated=True,
@@ -868,14 +958,16 @@ async def stop_ceph(
 
 @confirm_required
 async def restart_ceph(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).ceph.restart.post,
         elevated=True,
@@ -884,11 +976,14 @@ async def restart_ceph(
     return f"Ceph services restarted on {resolved_node}. UPID: {upid}"
 
 
-async def ceph_cfg_db(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def ceph_cfg_db(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.cfg.db.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.cfg.db.get,
     )
     lines = [f"🐟 **Ceph Config DB on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -919,15 +1014,18 @@ async def ceph_cfg_db(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-async def ceph_cfg_value(client: ProxmoxClient, node: Optional[str] = None, **kwargs: Any) -> str:
-    resolved_node = await client.resolve_node(node)
+endpoint: str | None = None,
+async def ceph_cfg_value(client: MultiClient, node: Optional[str] = None, **kwargs: Any) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
             params[k] = v
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.cfg.value.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.cfg.value.get,
         **params,
     )
     lines = [f"🐟 **Ceph Config Value on {resolved_node}**\n"]
@@ -943,11 +1041,14 @@ async def ceph_cfg_value(client: ProxmoxClient, node: Optional[str] = None, **kw
     return "\n".join(lines)
 
 
-async def ceph_crush(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def ceph_crush(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.crush.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.crush.get,
     )
     lines = [f"🐟 **Ceph CRUSH Map on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -976,11 +1077,14 @@ async def ceph_crush(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-async def ceph_log(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def ceph_log(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).ceph.log.get,
+        _api(client, endpoint=ep).nodes(resolved_node).ceph.log.get,
     )
     lines = [f"🐟 **Ceph Log on {resolved_node}**\n"]
     if isinstance(result, list):
@@ -1014,15 +1118,18 @@ async def ceph_log(client: ProxmoxClient, node: Optional[str] = None) -> str:
 
 @confirm_required
 async def init_ceph(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:

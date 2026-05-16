@@ -2,23 +2,25 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, format_bytes, validate_storage_name, validate_vmid
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
 async def list_backups(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     storage: str = "local",
-) -> str:
-    resolved_node = await client.resolve_node(node)
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_storage_name(storage)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).storage(storage).content.get,
+        _api(client, endpoint=ep).nodes(resolved_node).storage(storage).content.get,
         content="backup",
     )
     if not isinstance(result, list):
@@ -36,7 +38,7 @@ async def list_backups(
 
 @confirm_required
 async def create_backup(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     vmtype: str = "qemu",
@@ -44,9 +46,11 @@ async def create_backup(
     mode: str = "snapshot",
     compress: str = "zstd",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_vmid(vmid)
     validate_storage_name(storage)
     params: dict[str, Any] = {
@@ -56,7 +60,7 @@ async def create_backup(
         "compress": compress,
         "type": vmtype,
     }
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).vzdump.post,
         elevated=True,
@@ -68,14 +72,15 @@ async def create_backup(
 
 @confirm_required
 async def restore_backup(
-    client: ProxmoxClient,
+    client: MultiClient,
     vmid: Optional[int] = None,
     archive: str = "",
     storage: str = "local",
     vmtype: str = "qemu",
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not archive:
         raise ValueError("archive is required for backup restore. Use list_backups to find available backup archives.")
@@ -83,8 +88,9 @@ async def restore_backup(
         raise ValueError("vmid is required for backup restore")
     validate_vmid(vmid)
     validate_storage_name(storage)
-    resolved_node = await client.resolve_node(node)
-    elevated = client.get_client(elevated=True)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
+    elevated = client.get_client(elevated=True, endpoint=ep)
     if vmtype == "lxc":
         params: dict[str, Any] = {
             "vmid": vmid,

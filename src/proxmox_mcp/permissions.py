@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxNotFoundError
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_acl(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).access.acl.get)
+async def list_acl(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.acl.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f510 **ACL Rules**\n"]
@@ -32,13 +33,14 @@ async def list_acl(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def set_acl(
-    client: ProxmoxClient,
+    client: MultiClient,
     users: str = "",
     roles: str = "",
     path: str = "",
     propagate: bool = True,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not users:
         raise ValueError("users is required for ACL creation")
@@ -53,7 +55,7 @@ async def set_acl(
     }
     if not propagate:
         params["propagate"] = 0
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.access.acl.put,
         elevated=True,
@@ -64,13 +66,14 @@ async def set_acl(
 
 @confirm_required
 async def delete_acl(
-    client: ProxmoxClient,
+    client: MultiClient,
     users: str = "",
     roles: str = "",
     path: str = "",
     propagate: bool = True,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not users:
         raise ValueError("users is required for ACL deletion")
@@ -86,7 +89,7 @@ async def delete_acl(
     }
     if not propagate:
         params["propagate"] = 0
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     try:
         await client.safe_api_call(
             elevated.access.acl.put,
@@ -101,8 +104,9 @@ async def delete_acl(
     return f"ACL deleted: users={users!r} roles={roles!r} path={path!r}"
 
 
-async def list_roles(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).access.roles.get)
+async def list_roles(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.roles.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f511 **Roles**\n"]
@@ -115,8 +119,9 @@ async def list_roles(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_users(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).access.users.get)
+async def list_users(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.users.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f464 **Users**\n"]
@@ -130,10 +135,12 @@ async def list_users(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_tokens(client: ProxmoxClient, userid: str = "") -> str:
+async def list_tokens(client: MultiClient, userid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not userid:
         raise ValueError("userid is required for token listing")
-    result = await client.safe_api_call(_api(client).access.users(userid).token.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.users(userid).token.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = [f"\U0001f511 **API Tokens for {userid}**\n"]
@@ -151,7 +158,7 @@ async def list_tokens(client: ProxmoxClient, userid: str = "") -> str:
 
 @confirm_required
 async def create_user(
-    client: ProxmoxClient,
+    client: MultiClient,
     userid: str = "",
     password: str = "",
     comment: str | None = None,
@@ -162,7 +169,8 @@ async def create_user(
     expire: int | None = None,
     groups: str | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not userid:
         raise ValueError("userid is required for user creation")
@@ -183,15 +191,17 @@ async def create_user(
         params["expire"] = expire
     if groups is not None:
         params["groups"] = groups
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(elevated.access.users.post, elevated=True, **params)
     return f"User {userid!r} created"
 
 
-async def get_user(client: ProxmoxClient, userid: str = "") -> str:
+async def get_user(client: MultiClient, userid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not userid:
         raise ValueError("userid is required")
-    result = await client.safe_api_call(_api(client).access.users(userid).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.users(userid).get)
     lines = [f"\U0001f464 **User {userid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -203,7 +213,7 @@ async def get_user(client: ProxmoxClient, userid: str = "") -> str:
 
 @confirm_required
 async def update_user(
-    client: ProxmoxClient,
+    client: MultiClient,
     userid: str = "",
     comment: str | None = None,
     email: str | None = None,
@@ -213,7 +223,8 @@ async def update_user(
     expire: int | None = None,
     groups: str | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not userid:
         raise ValueError("userid is required for user update")
@@ -232,38 +243,40 @@ async def update_user(
         params["expire"] = expire
     if groups is not None:
         params["groups"] = groups
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(elevated.access.users(userid).put, elevated=True, **params)
     return f"User {userid!r} updated"
 
 
 @confirm_required
 async def delete_user(
-    client: ProxmoxClient,
+    client: MultiClient,
     userid: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not userid:
         raise ValueError("userid is required for user deletion")
-    elevated = client.get_client(elevated=True)
-    await client.safe_api_call(elevated.access.users(userid).delete, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    await client.safe_api_call(elevated.access.users(userid).delete, elevated=True, endpoint=ep)
     return f"User {userid!r} deleted"
 
 
 @confirm_required
 async def create_role(
-    client: ProxmoxClient,
+    client: MultiClient,
     roleid: str = "",
     privs: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not roleid:
         raise ValueError("roleid is required for role creation")
     if not privs:
         raise ValueError("privs is required for role creation")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.access.roles.post,
         elevated=True,
@@ -273,10 +286,12 @@ async def create_role(
     return f"Role {roleid!r} created with privileges: {privs}"
 
 
-async def get_role(client: ProxmoxClient, roleid: str = "") -> str:
+async def get_role(client: MultiClient, roleid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not roleid:
         raise ValueError("roleid is required")
-    result = await client.safe_api_call(_api(client).access.roles(roleid).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.roles(roleid).get)
     lines = [f"\U0001f511 **Role {roleid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -288,17 +303,18 @@ async def get_role(client: ProxmoxClient, roleid: str = "") -> str:
 
 @confirm_required
 async def update_role(
-    client: ProxmoxClient,
+    client: MultiClient,
     roleid: str = "",
     privs: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not roleid:
         raise ValueError("roleid is required for role update")
     if not privs:
         raise ValueError("privs is required for role update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.access.roles(roleid).put,
         elevated=True,
@@ -309,28 +325,30 @@ async def update_role(
 
 @confirm_required
 async def delete_role(
-    client: ProxmoxClient,
+    client: MultiClient,
     roleid: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not roleid:
         raise ValueError("roleid is required for role deletion")
-    elevated = client.get_client(elevated=True)
-    await client.safe_api_call(elevated.access.roles(roleid).delete, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    await client.safe_api_call(elevated.access.roles(roleid).delete, elevated=True, endpoint=ep)
     return f"Role {roleid!r} deleted"
 
 
 @confirm_required
 async def create_token(
-    client: ProxmoxClient,
+    client: MultiClient,
     userid: str = "",
     tokenid: str = "",
     comment: str | None = None,
     privsep: bool | None = None,
     expire: int | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not userid:
         raise ValueError("userid is required for token creation")
@@ -343,7 +361,7 @@ async def create_token(
         params["privsep"] = 1 if privsep else 0
     if expire is not None:
         params["expire"] = expire
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.access.users(userid).token(tokenid).post,
         elevated=True,
@@ -356,12 +374,14 @@ async def create_token(
     return "\n".join(lines)
 
 
-async def get_token(client: ProxmoxClient, userid: str = "", tokenid: str = "") -> str:
+async def get_token(client: MultiClient, userid: str = "", tokenid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not userid:
         raise ValueError("userid is required")
     if not tokenid:
         raise ValueError("tokenid is required")
-    result = await client.safe_api_call(_api(client).access.users(userid).token(tokenid).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.users(userid).token(tokenid).get)
     lines = [f"\U0001f511 **Token {userid}!{tokenid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -373,14 +393,15 @@ async def get_token(client: ProxmoxClient, userid: str = "", tokenid: str = "") 
 
 @confirm_required
 async def update_token(
-    client: ProxmoxClient,
+    client: MultiClient,
     userid: str = "",
     tokenid: str = "",
     comment: str | None = None,
     privsep: bool | None = None,
     expire: int | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not userid:
         raise ValueError("userid is required for token update")
@@ -393,7 +414,7 @@ async def update_token(
         params["privsep"] = 1 if privsep else 0
     if expire is not None:
         params["expire"] = expire
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.access.users(userid).token(tokenid).put,
         elevated=True,
@@ -404,17 +425,18 @@ async def update_token(
 
 @confirm_required
 async def delete_token(
-    client: ProxmoxClient,
+    client: MultiClient,
     userid: str = "",
     tokenid: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not userid:
         raise ValueError("userid is required for token deletion")
     if not tokenid:
         raise ValueError("tokenid is required for token deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.access.users(userid).token(tokenid).delete,
         elevated=True,
@@ -422,8 +444,9 @@ async def delete_token(
     return f"Token {userid}!{tokenid} deleted"
 
 
-async def list_groups(client: ProxmoxClient) -> str:
-    result = await client.safe_api_call(_api(client).access.groups.get)
+async def list_groups(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.groups.get)
     if not isinstance(result, list):
         result = [result] if result else []
     lines = ["\U0001f465 **Groups**\n"]
@@ -443,26 +466,29 @@ async def list_groups(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_group(
-    client: ProxmoxClient,
+    client: MultiClient,
     groupid: str = "",
     comment: str | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not groupid:
         raise ValueError("groupid is required for group creation")
     params: dict[str, Any] = {"groupid": groupid}
     if comment is not None:
         params["comment"] = comment
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(elevated.access.groups.post, elevated=True, **params)
     return f"Group {groupid!r} created"
 
 
-async def get_group(client: ProxmoxClient, groupid: str = "") -> str:
+async def get_group(client: MultiClient, groupid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not groupid:
         raise ValueError("groupid is required")
-    result = await client.safe_api_call(_api(client).access.groups(groupid).get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).access.groups(groupid).get)
     lines = [f"\U0001f465 **Group {groupid}**\n"]
     if isinstance(result, dict):
         for key, val in result.items():
@@ -474,48 +500,51 @@ async def get_group(client: ProxmoxClient, groupid: str = "") -> str:
 
 @confirm_required
 async def update_group(
-    client: ProxmoxClient,
+    client: MultiClient,
     groupid: str = "",
     comment: str | None = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not groupid:
         raise ValueError("groupid is required for group update")
     params: dict[str, Any] = {}
     if comment is not None:
         params["comment"] = comment
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(elevated.access.groups(groupid).put, elevated=True, **params)
     return f"Group {groupid!r} updated"
 
 
 @confirm_required
 async def delete_group(
-    client: ProxmoxClient,
+    client: MultiClient,
     groupid: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not groupid:
         raise ValueError("groupid is required for group deletion")
-    elevated = client.get_client(elevated=True)
-    await client.safe_api_call(elevated.access.groups(groupid).delete, elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
+    await client.safe_api_call(elevated.access.groups(groupid).delete, elevated=True, endpoint=ep)
     return f"Group {groupid!r} deleted"
 
 
 async def check_permissions(
-    client: ProxmoxClient,
+    client: MultiClient,
     userid: str | None = None,
     path: str | None = None,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     params: dict[str, Any] = {}
     if userid is not None:
         params["userid"] = userid
     if path is not None:
         params["path"] = path
     result = await client.safe_api_call(
-        _api(client).access.permissions.get,
+        _api(client, endpoint=ep).access.permissions.get,
         **params,
     )
     lines = ["\U0001f510 **Effective Permissions**\n"]

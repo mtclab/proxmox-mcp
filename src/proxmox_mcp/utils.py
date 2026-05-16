@@ -34,10 +34,10 @@ def resolve_node_for(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         if "node" not in kwargs or kwargs["node"] is None:
-            from proxmox_mcp.client import ProxmoxClient
+            from proxmox_mcp.multi_client import MultiClient
 
             client = kwargs.get("client") or args[0] if args else None
-            if isinstance(client, ProxmoxClient):
+            if isinstance(client, MultiClient):
                 kwargs["node"] = await client.resolve_node()
         return await func(*args, **kwargs)
 

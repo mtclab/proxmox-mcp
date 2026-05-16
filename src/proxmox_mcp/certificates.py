@@ -2,19 +2,22 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_certificates(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_certificates(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).certificates.info.get,
+        _api(client, endpoint=ep).nodes(resolved_node).certificates.info.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -44,15 +47,18 @@ async def list_certificates(client: ProxmoxClient, node: Optional[str] = None) -
 
 @confirm_required
 async def order_acme_certificate(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -68,15 +74,18 @@ async def order_acme_certificate(
 
 @confirm_required
 async def renew_acme_certificate(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -92,15 +101,18 @@ async def renew_acme_certificate(
 
 @confirm_required
 async def revoke_certificate(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -116,19 +128,22 @@ async def revoke_certificate(
 
 @confirm_required
 async def upload_custom_certificate(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     certificates: Optional[str] = None,
     key: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not certificates or not key:
         raise ValueError("Both 'certificates' and 'key' are required for custom certificate upload")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {"certificates": certificates, "key": key}
     for k, v in kwargs.items():
         if v is not None:
@@ -144,15 +159,18 @@ async def upload_custom_certificate(
 
 @confirm_required
 async def delete_custom_certificate(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params = {}
     for k, v in kwargs.items():
         if v is not None:
@@ -166,11 +184,14 @@ async def delete_custom_certificate(
     return f"Custom certificate deleted on {resolved_node}. UPID: {upid}"
 
 
-async def list_acme_certs(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_acme_certs(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).certificates.acme.get,
+        _api(client, endpoint=ep).nodes(resolved_node).certificates.acme.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []

@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_metric_servers(client: ProxmoxClient) -> str:
+async def list_metric_servers(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.metrics.server.get,
+        _api(client, endpoint=ep).cluster.metrics.server.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -27,11 +28,13 @@ async def list_metric_servers(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def get_metric_server(client: ProxmoxClient, id: str = "") -> str:
+async def get_metric_server(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.metrics.server(id).get,
+        _api(client, endpoint=ep).cluster.metrics.server(id).get,
     )
     lines = [f"📊 **Metric Server: {id}**\n"]
     if isinstance(result, dict):
@@ -42,15 +45,17 @@ async def get_metric_server(client: ProxmoxClient, id: str = "") -> str:
 
 @confirm_required
 async def create_metric_server(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     type: str = "graphite",
     server: Optional[str] = None,
     port: Optional[int] = None,
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for metric server creation")
@@ -65,7 +70,7 @@ async def create_metric_server(
     if comment is not None:
         params["comment"] = comment
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.metrics.server(id).post,
         elevated=True,
@@ -76,14 +81,16 @@ async def create_metric_server(
 
 @confirm_required
 async def update_metric_server(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     server: Optional[str] = None,
     port: Optional[int] = None,
     comment: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for metric server update")
@@ -97,7 +104,7 @@ async def update_metric_server(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.metrics.server(id).put,
         elevated=True,
@@ -109,14 +116,15 @@ async def update_metric_server(
 
 @confirm_required
 async def delete_metric_server(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for metric server deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.metrics.server(id).delete,
         elevated=True,
@@ -124,9 +132,10 @@ async def delete_metric_server(
     return f"Metric server {id!r} deleted"
 
 
-async def metrics_index(client: ProxmoxClient) -> str:
+async def metrics_index(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.metrics.get,
+        _api(client, endpoint=ep).cluster.metrics.get,
     )
     lines = ["\U0001f4ca **Metrics Index**\n"]
     if isinstance(result, dict):
@@ -137,9 +146,10 @@ async def metrics_index(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def export_metrics(client: ProxmoxClient) -> str:
+async def export_metrics(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.metrics.export.get,
+        _api(client, endpoint=ep).cluster.metrics.export.get,
     )
     lines = ["\U0001f4ca **Cluster Metrics Export**\n"]
     if isinstance(result, list):

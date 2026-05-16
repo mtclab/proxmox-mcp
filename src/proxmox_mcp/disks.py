@@ -2,20 +2,23 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ProxmoxPermissionError
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_disks(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_disks(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.list.get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.list.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -37,13 +40,16 @@ async def list_disks(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-async def get_disk_smart(client: ProxmoxClient, node: Optional[str] = None, disk: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def get_disk_smart(client: MultiClient, node: Optional[str] = None, disk: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not disk:
         raise ValueError("disk identifier is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.smart.get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.smart.get,
         disk=disk,
     )
     lines = [f"💿 **SMART: {disk} on {resolved_node}**\n"]
@@ -61,11 +67,14 @@ async def get_disk_smart(client: ProxmoxClient, node: Optional[str] = None, disk
     return "\n".join(lines)
 
 
-async def list_lvm(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_lvm(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.lvm.get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.lvm.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -80,11 +89,14 @@ async def list_lvm(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-async def list_lvmthin(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_lvmthin(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.lvmthin.get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.lvmthin.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -99,11 +111,14 @@ async def list_lvmthin(client: ProxmoxClient, node: Optional[str] = None) -> str
     return "\n".join(lines)
 
 
-async def list_zfs(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_zfs(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.zfs.get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.zfs.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -121,17 +136,19 @@ async def list_zfs(client: ProxmoxClient, node: Optional[str] = None) -> str:
 
 @confirm_required
 async def init_gpt(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     disk: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not disk:
         raise ValueError("disk identifier is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).disks.initgpt.post,
         elevated=True,
@@ -143,17 +160,19 @@ async def init_gpt(
 
 @confirm_required
 async def wipe_disk(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     disk: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not disk:
         raise ValueError("disk identifier is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     try:
         result = await client.safe_api_call(
             elevated.nodes(resolved_node).disks.wipedisk.put,
@@ -170,13 +189,16 @@ async def wipe_disk(
     return f"Disk {disk!r} wiped on {resolved_node}. UPID: {upid}"
 
 
-async def zfs_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def zfs_detail(client: MultiClient, node: Optional[str] = None, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.zfs(name).get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.zfs(name).get,
     )
     lines = [f"💿 **ZFS Pool: {name} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -189,23 +211,26 @@ async def zfs_detail(client: ProxmoxClient, node: Optional[str] = None, name: st
 
 @confirm_required
 async def zfs_create(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
     raidlevel: str = "single",
     ashift: Optional[int] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
     if not devices:
         raise ValueError("'devices' is required for ZFS pool creation (comma-separated disk paths)")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {"name": name, "devices": devices, "raidlevel": raidlevel}
     if ashift is not None:
         params["ashift"] = ashift
@@ -221,18 +246,21 @@ async def zfs_create(
 
 @confirm_required
 async def zfs_destroy(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {}
     params.update(kwargs)
     result = await client.safe_api_call(
@@ -246,19 +274,22 @@ async def zfs_destroy(
 
 @confirm_required
 async def lvm_create(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {"name": name}
     if devices:
         params["devices"] = devices
@@ -272,13 +303,16 @@ async def lvm_create(
     return f"LVM VG {name!r} created on {resolved_node}. UPID: {upid}"
 
 
-async def lvm_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def lvm_detail(client: MultiClient, node: Optional[str] = None, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.lvm(name).get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.lvm(name).get,
     )
     lines = [f"💿 **LVM VG: {name} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -291,18 +325,21 @@ async def lvm_detail(client: ProxmoxClient, node: Optional[str] = None, name: st
 
 @confirm_required
 async def lvm_destroy(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {}
     params.update(kwargs)
     result = await client.safe_api_call(
@@ -316,19 +353,22 @@ async def lvm_destroy(
 
 @confirm_required
 async def lvmthin_create(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     # Note: PVE auto-generates thinpool and vgname from the name parameter.
     # Pass thinpool/vgname via **kwargs only if custom names are needed.
     params: dict[str, Any] = {"name": name}
@@ -346,18 +386,21 @@ async def lvmthin_create(
 
 @confirm_required
 async def lvmthin_destroy(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {}
     params.update(kwargs)
     result = await client.safe_api_call(
@@ -369,11 +412,14 @@ async def lvmthin_destroy(
     return f"LVM thin pool {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
-async def directory_list(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def directory_list(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.directory.get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.directory.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -389,19 +435,22 @@ async def directory_list(client: ProxmoxClient, node: Optional[str] = None) -> s
 
 @confirm_required
 async def directory_create(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {"name": name}
     if devices:
         params["devices"] = devices
@@ -417,18 +466,21 @@ async def directory_create(
 
 @confirm_required
 async def directory_destroy(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: str = "",
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {}
     params.update(kwargs)
     result = await client.safe_api_call(
@@ -440,13 +492,16 @@ async def directory_destroy(
     return f"Directory storage {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
-async def get_directory_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def get_directory_detail(client: MultiClient, node: Optional[str] = None, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.directory(name).get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.directory(name).get,
     )
     lines = [f"💿 **Directory Storage: {name} on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -457,13 +512,16 @@ async def get_directory_detail(client: ProxmoxClient, node: Optional[str] = None
     return "\n".join(lines)
 
 
-async def get_lvmthin_detail(client: ProxmoxClient, node: Optional[str] = None, name: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def get_lvmthin_detail(client: MultiClient, node: Optional[str] = None, name: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not name:
         raise ValueError("name is required")
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).disks.lvmthin(name).get,
+        _api(client, endpoint=ep).nodes(resolved_node).disks.lvmthin(name).get,
     )
     lines = [f"💿 **LVM Thin Pool: {name} on {resolved_node}**\n"]
     if isinstance(result, dict):

@@ -2,19 +2,22 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required, validate_node_name
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_updates(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_updates(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).apt.update.get,
+        _api(client, endpoint=ep).nodes(resolved_node).apt.update.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -36,14 +39,16 @@ async def list_updates(client: ProxmoxClient, node: Optional[str] = None) -> str
 
 @confirm_required
 async def refresh_updates(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).apt.update.post,
         elevated=True,
@@ -52,11 +57,14 @@ async def refresh_updates(
     return f"APT update refresh initiated on {resolved_node}. UPID: {upid}"
 
 
-async def list_repositories(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_repositories(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).apt.repositories.get,
+        _api(client, endpoint=ep).nodes(resolved_node).apt.repositories.get,
     )
     lines = [f"📦 **APT Repositories on {resolved_node}**\n"]
     if isinstance(result, dict):
@@ -87,11 +95,14 @@ async def list_repositories(client: ProxmoxClient, node: Optional[str] = None) -
     return "\n".join(lines)
 
 
-async def list_versions(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_versions(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).apt.versions.get,
+        _api(client, endpoint=ep).nodes(resolved_node).apt.versions.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -113,18 +124,21 @@ async def list_versions(client: ProxmoxClient, node: Optional[str] = None) -> st
 
 @confirm_required
 async def add_apt_repo(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     path: Optional[str] = None,
     index: Optional[int] = None,
     enabled: Optional[bool] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {}
     if path is not None:
         params["path"] = path
@@ -143,18 +157,21 @@ async def add_apt_repo(
 
 @confirm_required
 async def update_apt_repo(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     path: Optional[str] = None,
     index: Optional[int] = None,
     enabled: Optional[bool] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    resolved_node = await client.resolve_node(node)
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {}
     if path is not None:
         params["path"] = path
@@ -172,13 +189,16 @@ async def update_apt_repo(
 
 
 async def list_apt_changelog(
-    client: ProxmoxClient,
+    client: MultiClient,
     node: Optional[str] = None,
     name: Optional[str] = None,
     version: Optional[str] = None,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
-    resolved_node = await client.resolve_node(node)
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     params: dict[str, Any] = {}
     if name is not None:
@@ -187,7 +207,7 @@ async def list_apt_changelog(
         params["version"] = version
     params.update(kwargs)
     result = await client.safe_api_call(
-        _api(client).nodes(resolved_node).apt.changelog.get,
+        _api(client, endpoint=ep).nodes(resolved_node).apt.changelog.get,
         **params,
     )
     lines = [f"📦 **APT Changelog on {resolved_node}**\n"]

@@ -18,6 +18,35 @@ from proxmox_mcp.exceptions import (
     ProxmoxTaskError,
 )
 
+
+class ResolvedNode:
+    def __init__(self, endpoint: str, node: str):
+        self.endpoint = endpoint
+        self.node = node
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ResolvedNode):
+            return NotImplemented
+        return self.endpoint == other.endpoint and self.node == other.node
+
+    def __repr__(self) -> str:
+        return f"ResolvedNode(endpoint={self.endpoint!r}, node={self.node!r})"
+
+
+class ResolvedGuest:
+    def __init__(self, endpoint: str, node: str, vmid: int):
+        self.endpoint = endpoint
+        self.node = node
+        self.vmid = vmid
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ResolvedGuest):
+            return NotImplemented
+        return self.endpoint == other.endpoint and self.node == other.node and self.vmid == other.vmid
+
+    def __repr__(self) -> str:
+        return f"ResolvedGuest(endpoint={self.endpoint!r}, node={self.node!r}, vmid={self.vmid!r})"
+
 logger = logging.getLogger(__name__)
 
 PVE_UPLOAD_FILE_FIELD = "filename"

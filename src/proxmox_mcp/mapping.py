@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import confirm_required
 
 
-def _api(client: ProxmoxClient) -> Any:
-    return client.get_client(elevated=False)
+def _api(client: MultiClient, endpoint: str | None = None) -> Any:
+    return client.get_client(elevated=False, endpoint=endpoint)
 
 
-async def list_pci_mappings(client: ProxmoxClient) -> str:
+async def list_pci_mappings(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.mapping.pci.get,
+        _api(client, endpoint=ep).cluster.mapping.pci.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -36,12 +37,14 @@ async def list_pci_mappings(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_pci_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for PCI mapping creation")
@@ -49,7 +52,7 @@ async def create_pci_mapping(
     if description is not None:
         params["description"] = description
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.pci.post,
         elevated=True,
@@ -58,11 +61,13 @@ async def create_pci_mapping(
     return f"PCI mapping {id!r} created"
 
 
-async def get_pci_mapping(client: ProxmoxClient, id: str = "") -> str:
+async def get_pci_mapping(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.mapping.pci(id).get,
+        _api(client, endpoint=ep).cluster.mapping.pci(id).get,
     )
     lines = [f"🖥️ **PCI Mapping: {id}**\n"]
     if isinstance(result, dict):
@@ -73,12 +78,14 @@ async def get_pci_mapping(client: ProxmoxClient, id: str = "") -> str:
 
 @confirm_required
 async def update_pci_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for PCI mapping update")
@@ -88,7 +95,7 @@ async def update_pci_mapping(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.pci(id).put,
         elevated=True,
@@ -100,14 +107,15 @@ async def update_pci_mapping(
 
 @confirm_required
 async def delete_pci_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for PCI mapping deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.pci(id).delete,
         elevated=True,
@@ -115,9 +123,10 @@ async def delete_pci_mapping(
     return f"PCI mapping {id!r} deleted"
 
 
-async def list_usb_mappings(client: ProxmoxClient) -> str:
+async def list_usb_mappings(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.mapping.usb.get,
+        _api(client, endpoint=ep).cluster.mapping.usb.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -141,12 +150,14 @@ async def list_usb_mappings(client: ProxmoxClient) -> str:
 
 @confirm_required
 async def create_usb_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for USB mapping creation")
@@ -154,7 +165,7 @@ async def create_usb_mapping(
     if description is not None:
         params["description"] = description
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.usb.post,
         elevated=True,
@@ -163,11 +174,13 @@ async def create_usb_mapping(
     return f"USB mapping {id!r} created"
 
 
-async def get_usb_mapping(client: ProxmoxClient, id: str = "") -> str:
+async def get_usb_mapping(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.mapping.usb(id).get,
+        _api(client, endpoint=ep).cluster.mapping.usb(id).get,
     )
     lines = [f"🔌 **USB Mapping: {id}**\n"]
     if isinstance(result, dict):
@@ -178,12 +191,14 @@ async def get_usb_mapping(client: ProxmoxClient, id: str = "") -> str:
 
 @confirm_required
 async def update_usb_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for USB mapping update")
@@ -193,7 +208,7 @@ async def update_usb_mapping(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.usb(id).put,
         elevated=True,
@@ -205,14 +220,15 @@ async def update_usb_mapping(
 
 @confirm_required
 async def delete_usb_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for USB mapping deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.usb(id).delete,
         elevated=True,
@@ -220,9 +236,10 @@ async def delete_usb_mapping(
     return f"USB mapping {id!r} deleted"
 
 
-async def mapping_index(client: ProxmoxClient) -> str:
+async def mapping_index(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.mapping.get,
+        _api(client, endpoint=ep).cluster.mapping.get,
     )
     type_labels = {"pci": "PCI", "usb": "USB", "dir": "Directory"}
     lines = ["\U0001f4bb **Mapping Index**\n"]
@@ -252,9 +269,10 @@ async def mapping_index(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def list_dir_mappings(client: ProxmoxClient) -> str:
+async def list_dir_mappings(client: MultiClient, endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(
-        _api(client).cluster.mapping.dir.get,
+        _api(client, endpoint=ep).cluster.mapping.dir.get,
     )
     if not isinstance(result, list):
         result = [result] if result else []
@@ -273,11 +291,13 @@ async def list_dir_mappings(client: ProxmoxClient) -> str:
     return "\n".join(lines)
 
 
-async def get_dir_mapping(client: ProxmoxClient, id: str = "") -> str:
+async def get_dir_mapping(client: MultiClient, id: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     if not id:
         raise ValueError("id is required")
     result = await client.safe_api_call(
-        _api(client).cluster.mapping.dir(id).get,
+        _api(client, endpoint=ep).cluster.mapping.dir(id).get,
     )
     lines = [f"\U0001f4c1 **Directory Mapping: {id}**\n"]
     if isinstance(result, dict):
@@ -288,12 +308,14 @@ async def get_dir_mapping(client: ProxmoxClient, id: str = "") -> str:
 
 @confirm_required
 async def create_dir_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for directory mapping creation")
@@ -301,7 +323,7 @@ async def create_dir_mapping(
     if description is not None:
         params["description"] = description
     params.update(kwargs)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.dir.post,
         elevated=True,
@@ -312,12 +334,14 @@ async def create_dir_mapping(
 
 @confirm_required
 async def update_dir_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     description: Optional[str] = None,
     confirm: bool = False,
+    endpoint: str | None = None,
     **kwargs: Any,
 ) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for directory mapping update")
@@ -327,7 +351,7 @@ async def update_dir_mapping(
     params.update(kwargs)
     if not params:
         raise ValueError("At least one parameter must be provided to update")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.dir(id).put,
         elevated=True,
@@ -339,14 +363,15 @@ async def update_dir_mapping(
 
 @confirm_required
 async def delete_dir_mapping(
-    client: ProxmoxClient,
+    client: MultiClient,
     id: str = "",
     confirm: bool = False,
-) -> str:
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     if not id:
         raise ValueError("id is required for directory mapping deletion")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.cluster.mapping.dir(id).delete,
         elevated=True,

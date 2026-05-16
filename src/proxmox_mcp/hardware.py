@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from typing import Optional
 
-from proxmox_mcp.client import ProxmoxClient
+from proxmox_mcp.multi_client import MultiClient
 from proxmox_mcp.utils import validate_node_name
 
 
-async def list_pci(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_pci(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).hardware.pci.get,
         elevated=True,
@@ -37,10 +40,13 @@ async def list_pci(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-async def list_usb(client: ProxmoxClient, node: Optional[str] = None) -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_usb(client: MultiClient, node: Optional[str] = None,
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).hardware.usb.get,
         elevated=True,
@@ -69,12 +75,15 @@ async def list_usb(client: ProxmoxClient, node: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-async def get_pci_device(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def get_pci_device(client: MultiClient, node: Optional[str] = None, pciid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not pciid:
         raise ValueError("pciid is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).hardware.pci(pciid).get,
         elevated=True,
@@ -88,12 +97,15 @@ async def get_pci_device(client: ProxmoxClient, node: Optional[str] = None, pcii
     return "\n".join(lines)
 
 
-async def list_pci_mdev(client: ProxmoxClient, node: Optional[str] = None, pciid: str = "") -> str:
-    resolved_node = await client.resolve_node(node)
+async def list_pci_mdev(client: MultiClient, node: Optional[str] = None, pciid: str = "",
+    endpoint: str | None = None) -> str:
+    ep = endpoint or client.default_endpoint
+    resolved = await client.resolve_node(node, endpoint=endpoint)
+    ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
     if not pciid:
         raise ValueError("pciid is required")
-    elevated = client.get_client(elevated=True)
+    elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).hardware.pci(pciid).mdev.get,
         elevated=True,
