@@ -285,12 +285,7 @@ async def prune_backups(
         elevated=True,
         **params,
     )
-    if isinstance(result, dict):
-        upid = result.get("data", str(result))
-    elif isinstance(result, str):
-        upid = result
-    else:
-        upid = str(result)
+    upid = extract_upid(result)
     return f"Backup prune initiated on {resolved_node}/{storage}. UPID: {upid}"
 
 

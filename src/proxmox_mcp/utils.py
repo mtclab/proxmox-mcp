@@ -121,10 +121,12 @@ def extract_upid(result: Any) -> str:
     if result is None:
         return "N/A"
     if isinstance(result, str):
-        return result
+        return result if result else "N/A"
     if isinstance(result, dict):
         data = result.get("data", result)
-        return str(data) if data is not None else "N/A"
+        if data is None or data == "":
+            return "N/A"
+        return str(data)
     return str(result)
 
 
