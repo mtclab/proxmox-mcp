@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, format_bytes, validate_storage_name, validate_url
+from proxmox_mcp.utils import confirm_required, extract_upid, format_bytes, validate_storage_name, validate_url
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -90,7 +90,7 @@ async def download_template(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Template download initiated on {resolved_node}/{storage}. UPID: {upid}"
 
 
@@ -128,5 +128,5 @@ async def upload_template(
             elevated=True,
             endpoint=ep,
         )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Template upload initiated to {resolved_node}/{storage}. UPID: {upid}"

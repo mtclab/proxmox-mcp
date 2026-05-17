@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxNotFoundError, ProxmoxPermissionError
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import format_bytes, format_uptime, validate_node_name
+from proxmox_mcp.utils import extract_data, format_bytes, format_uptime, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -456,7 +456,7 @@ async def node_version(client: MultiClient, node: Optional[str] = None,
     result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).version.get)
     lines = [f"📦 **Node Version: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for k, v in sorted(data.items()):
                 lines.append(f"   • {k}: {v}")
@@ -476,7 +476,7 @@ async def node_dns(client: MultiClient, node: Optional[str] = None,
     result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).dns.get)
     lines = [f"🌐 **Node DNS: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for k, v in sorted(data.items()):
                 lines.append(f"   • {k}: {v}")
@@ -496,7 +496,7 @@ async def node_hosts(client: MultiClient, node: Optional[str] = None,
     result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).hosts.get)
     lines = [f"📋 **Node Hosts: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, str):
             for line in data.strip().splitlines():
                 lines.append(f"   {line}")
@@ -519,7 +519,7 @@ async def node_time(client: MultiClient, node: Optional[str] = None,
     result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).time.get)
     lines = [f"🕐 **Node Time: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for k, v in sorted(data.items()):
                 lines.append(f"   • {k}: {v}")

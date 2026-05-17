@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_data, extract_upid, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -168,7 +168,7 @@ async def cluster_config(client: MultiClient, endpoint: str | None = None) -> st
     )
     lines = ["\u2699\ufe0f **Cluster Config (Corosync)**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -251,7 +251,7 @@ async def bulk_migrate_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk migrate initiated: {vmids} → {target}. UPID: {upid}"
 
 
@@ -275,7 +275,7 @@ async def bulk_shutdown_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk shutdown initiated: {vmids}. UPID: {upid}"
 
 
@@ -299,7 +299,7 @@ async def bulk_start_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk start initiated: {vmids}. UPID: {upid}"
 
 
@@ -323,7 +323,7 @@ async def bulk_suspend_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk suspend initiated: {vmids}. UPID: {upid}"
 
 
@@ -334,7 +334,7 @@ async def cluster_config_apiversion(client: MultiClient, endpoint: str | None = 
     )
     lines = ["📋 **Cluster API Version**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -410,7 +410,7 @@ async def api_version(client: MultiClient, endpoint: str | None = None) -> str:
     )
     lines = ["\U0001f4cb **API Version**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -428,7 +428,7 @@ async def cluster_config_totem(client: MultiClient, endpoint: str | None = None)
     )
     lines = ["\U0001f527 **Cluster Config Totem**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -446,7 +446,7 @@ async def cluster_config_qdevice(client: MultiClient, endpoint: str | None = Non
     )
     lines = ["\U0001f527 **Cluster QDevice Status**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -486,7 +486,7 @@ async def backup_job_included_volumes(client: MultiClient, id: str = "",
     )
     lines = [f"\U0001f4be **Backup Job Included Volumes: {id}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, list):
             for entry in data:
                 if isinstance(entry, dict):
@@ -538,7 +538,7 @@ async def generate_cluster_config(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Cluster config generation initiated. UPID: {upid}"
 
 

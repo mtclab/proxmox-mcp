@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -154,7 +154,7 @@ async def init_gpt(
         elevated=True,
         disk=disk,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Disk {disk!r} initialized with GPT on {resolved_node}. UPID: {upid}"
 
 
@@ -185,7 +185,7 @@ async def wipe_disk(
             f"API tokens (even with Administrator role) lack permission for this operation. "
             f"Use the PVE web UI or SSH with root@pam to wipe disk {disk!r} on {resolved_node}."
         )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Disk {disk!r} wiped on {resolved_node}. UPID: {upid}"
 
 
@@ -230,6 +230,8 @@ async def zfs_create(
         raise ValueError("name is required")
     if not devices:
         raise ValueError("'devices' is required for ZFS pool creation (comma-separated disk paths)")
+    if not raidlevel:
+        raise ValueError("'raidlevel' is required for ZFS pool creation")
     elevated = client.get_client(elevated=True, endpoint=ep)
     params: dict[str, Any] = {"name": name, "devices": devices, "raidlevel": raidlevel}
     if ashift is not None:
@@ -240,7 +242,7 @@ async def zfs_create(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"ZFS pool {name!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -268,7 +270,7 @@ async def zfs_destroy(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"ZFS pool {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -299,7 +301,7 @@ async def lvm_create(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"LVM VG {name!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -347,7 +349,7 @@ async def lvm_destroy(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"LVM VG {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -357,6 +359,8 @@ async def lvmthin_create(
     node: Optional[str] = None,
     name: str = "",
     devices: str = "",
+    thinpool: Optional[str] = None,
+    vgname: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None,
     **kwargs: Any,
@@ -369,18 +373,20 @@ async def lvmthin_create(
     if not name:
         raise ValueError("name is required")
     elevated = client.get_client(elevated=True, endpoint=ep)
-    # Note: PVE auto-generates thinpool and vgname from the name parameter.
-    # Pass thinpool/vgname via **kwargs only if custom names are needed.
     params: dict[str, Any] = {"name": name}
     if devices:
         params["devices"] = devices
+    if thinpool:
+        params["thinpool"] = thinpool
+    if vgname:
+        params["vgname"] = vgname
     params.update(kwargs)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).disks.lvmthin.post,
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"LVM thin pool {name!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -408,7 +414,7 @@ async def lvmthin_destroy(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"LVM thin pool {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -460,7 +466,7 @@ async def directory_create(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Directory storage {name!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -488,7 +494,7 @@ async def directory_destroy(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Directory storage {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 

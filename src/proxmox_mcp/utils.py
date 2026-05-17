@@ -117,6 +117,27 @@ def validate_iface_name(name: str) -> None:
         raise ValueError(f"Invalid interface name: {name!r}")
 
 
+def extract_upid(result: Any) -> str:
+    if result is None:
+        return "N/A"
+    if isinstance(result, str):
+        return result
+    if isinstance(result, dict):
+        data = result.get("data", result)
+        return str(data) if data is not None else "N/A"
+    return str(result)
+
+
+def extract_data(result: Any) -> Any:
+    if result is None:
+        return None
+    if isinstance(result, str):
+        return result
+    if isinstance(result, dict):
+        return result.get("data", result)
+    return result
+
+
 def format_error(exc: Exception) -> str:
     msg = str(exc)
     if hasattr(exc, "response") and hasattr(exc.response, "text"):

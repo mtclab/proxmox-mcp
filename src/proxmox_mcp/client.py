@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 from proxmoxer import ProxmoxAPI
 from proxmoxer.core import ResourceException
+from requests.exceptions import Timeout as RequestsTimeout
 
 from proxmox_mcp.config import Config
 from proxmox_mcp.exceptions import (
@@ -95,6 +96,37 @@ class ProxmoxClient:
                 "Elevated operations are not allowed. Set PROXMOX_ALLOW_ELEVATED=true to enable admin-level operations."
             )
 
+    _NOT_FOUND_PATTERNS = (
+        "does not exist",
+        "no such",
+        "not found",
+        "404 Not Found",
+        "VM/CT does not exist",
+        "config file does not exist",
+    )
+
+    @classmethod
+    def _is_not_found_500(cls, exc: ResourceException) -> bool:
+        if exc.status_code != 500:
+            return False
+        content = str(getattr(exc, "content", "") or "")
+        return any(pat in content for pat in cls._NOT_FOUND_PATTERNS)
+
+    @classmethod
+    def _extract_resource_from_500(cls, exc: ResourceException) -> tuple[str, str | None]:
+        content = str(getattr(exc, "content", "") or "")
+        vmid = None
+        node = None
+        path_match = re.search(r"'(nodes/[^']+)'", content)
+        if path_match:
+            segments = path_match.group(1).split("/")
+            if len(segments) >= 2:
+                node = segments[1]
+            fname = segments[-1] if segments else ""
+            vmid = fname.replace(".conf", "")
+        resource = f"Guest {vmid}" if vmid else "Resource"
+        return resource, node
+
     async def retry_with_backoff(
         self,
         func,
@@ -138,20 +170,9 @@ class ProxmoxClient:
                         "Set PROXMOX_ALLOW_ELEVATED=true and use an admin token "
                         "with appropriate PVE permissions."
                     ) from exc
-                if exc.status_code == 500:
-                    content = str(getattr(exc, "content", "") or "")
-                    if "does not exist" in content:
-                        vmid = None
-                        node = None
-                        path_match = re.search(r"'(nodes/[^']+)'", content)
-                        if path_match:
-                            segments = path_match.group(1).split("/")
-                            if len(segments) >= 2:
-                                node = segments[1]
-                            fname = segments[-1] if segments else ""
-                            vmid = fname.replace(".conf", "")
-                        resource = f"Guest {vmid}" if vmid else "Resource"
-                        raise ProxmoxNotFoundError(resource, node) from exc
+                if self._is_not_found_500(exc):
+                    resource, node = self._extract_resource_from_500(exc)
+                    raise ProxmoxNotFoundError(resource, node) from exc
                 raise
             except ssl.SSLCertVerificationError as exc:
                 raise ProxmoxConnectionError(
@@ -160,7 +181,16 @@ class ProxmoxClient:
                 ) from exc
         raise ProxmoxConnectionError(f"PVE 595 error after {max_retries} retries: {last_exc}")
 
-    async def safe_api_call(self, func, *args, elevated: bool = False, **kwargs) -> Any:
+    async def safe_api_call(
+        self,
+        func,
+        *args,
+        elevated: bool = False,
+        timeout: float | None = None,
+        **kwargs,
+    ) -> Any:
+        if timeout is not None:
+            kwargs["timeout"] = timeout
         try:
             return await self.retry_with_backoff(func, *args, elevated=elevated, **kwargs)
         except ProxmoxNodeError:
@@ -183,6 +213,17 @@ class ProxmoxClient:
             raise
         except ProxmoxTaskError:
             raise
+        except ResourceException as exc:
+            if exc.status_code == 404:
+                raise ProxmoxNotFoundError("Resource") from exc
+            if self._is_not_found_500(exc):
+                resource, node = self._extract_resource_from_500(exc)
+                raise ProxmoxNotFoundError(resource, node) from exc
+            raise
+        except RequestsTimeout as exc:
+            raise ProxmoxConnectionError(
+                f"PVE API request timed out: {exc}"
+            ) from exc
 
     async def wait_for_task(
         self,
@@ -248,6 +289,8 @@ class ProxmoxClient:
                 guests = await self.safe_api_call(
                     self.monitor_client.nodes(resolved_node).__getattr__(vmtype).get,
                 )
+                if not guests:
+                    continue
                 for guest in guests:
                     if str(guest.get("name", "")) == identifier:
                         return resolved_node, int(guest["vmid"])

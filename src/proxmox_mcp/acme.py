@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required
+from proxmox_mcp.utils import confirm_required, extract_data
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -122,7 +122,7 @@ async def acme_meta(client: MultiClient, endpoint: str | None = None) -> str:
     )
     lines = ["\U0001f512 **ACME Meta**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -267,7 +267,7 @@ async def get_acme_challenge_schema(client: MultiClient, endpoint: str | None = 
     )
     lines = ["\U0001f512 **ACME Challenge Schema**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -285,7 +285,7 @@ async def list_acme_tos(client: MultiClient, endpoint: str | None = None) -> str
     )
     lines = ["\U0001f512 **ACME Terms of Service**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")

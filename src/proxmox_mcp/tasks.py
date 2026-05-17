@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_data, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -55,5 +55,5 @@ async def stop_task(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).tasks(upid).delete, elevated=True, endpoint=ep)
-    data = result if isinstance(result, str) else result.get("data", result)
+    data = extract_data(result)
     return f"Task {upid} stopped on {resolved_node}: {data}"

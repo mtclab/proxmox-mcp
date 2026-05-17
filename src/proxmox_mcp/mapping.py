@@ -248,20 +248,26 @@ async def mapping_index(client: MultiClient, endpoint: str | None = None) -> str
             label = type_labels.get(key, key)
             if isinstance(entries, list):
                 for entry in entries:
-                    mid = entry.get("id", "unknown") if isinstance(entry, dict) else str(entry)
+                    mid = entry.get("id", entry.get("name", "unknown")) if isinstance(entry, dict) else str(entry)
+                    description = entry.get("description", entry.get("comment", "")) if isinstance(entry, dict) else ""
                     lines.append(f"   • {mid} ({label})")
+                    if description:
+                        lines.append(f"     {description}")
             else:
                 lines.append(f"   • {entries} ({label})")
     elif isinstance(result, list):
         for entry in result:
             if isinstance(entry, dict):
                 mid = entry.get("id", entry.get("name", "unknown"))
-                raw_type = entry.get("type", entry.get("name", ""))
+                raw_type = entry.get("type", "")
                 mtype = type_labels.get(raw_type, raw_type) if raw_type else ""
+                description = entry.get("description", entry.get("comment", ""))
                 if mtype:
                     lines.append(f"   • {mid} ({mtype})")
                 else:
                     lines.append(f"   • {mid}")
+                if description:
+                    lines.append(f"     {description}")
             else:
                 lines.append(f"   • {entry}")
     if not result:
