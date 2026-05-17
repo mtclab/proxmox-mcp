@@ -318,7 +318,9 @@ async def openid_auth_url(client: MultiClient, realm: str = "",
     )
     lines = ["\U0001f517 **OpenID Auth URL**\n"]
     if isinstance(result, dict):
-        url = result.get("data", result.get("url", ""))
+        url = extract_data(result)
+        if isinstance(url, dict):
+            url = url.get("url", "")
         if url:
             lines.append(f"   URL: {url}")
         else:

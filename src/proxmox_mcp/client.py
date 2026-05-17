@@ -181,6 +181,8 @@ class ProxmoxClient:
                 ) from exc
         raise ProxmoxConnectionError(f"PVE 595 error after {max_retries} retries: {last_exc}")
 
+    MAX_API_TIMEOUT = 300.0
+
     async def safe_api_call(
         self,
         func,
@@ -190,7 +192,7 @@ class ProxmoxClient:
         **kwargs,
     ) -> Any:
         if timeout is not None:
-            kwargs["timeout"] = timeout
+            kwargs["timeout"] = min(timeout, self.MAX_API_TIMEOUT)
         try:
             return await self.retry_with_backoff(func, *args, elevated=elevated, **kwargs)
         except ProxmoxNodeError:
