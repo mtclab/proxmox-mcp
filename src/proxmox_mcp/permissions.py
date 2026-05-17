@@ -38,21 +38,25 @@ async def set_acl(
     roles: str = "",
     path: str = "",
     propagate: bool = True,
+    groups: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
     ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    if not users:
-        raise ValueError("users is required for ACL creation")
+    if not users and not groups:
+        raise ValueError("users or groups is required for ACL creation")
     if not roles:
         raise ValueError("roles is required for ACL creation")
     if not path:
         raise ValueError("path is required for ACL creation")
     params: dict[str, Any] = {
-        "users": users,
         "roles": roles,
         "path": path,
     }
+    if users:
+        params["users"] = users
+    if groups:
+        params["groups"] = groups
     if not propagate:
         params["propagate"] = 0
     elevated = client.get_client(elevated=True, endpoint=ep)
@@ -61,7 +65,7 @@ async def set_acl(
         elevated=True,
         **params,
     )
-    return f"ACL set: users={users!r} roles={roles!r} path={path!r} propagate={propagate}"
+    return f"ACL set: users={users!r} groups={groups!r} roles={roles!r} path={path!r} propagate={propagate}"
 
 
 @confirm_required
@@ -71,22 +75,26 @@ async def delete_acl(
     roles: str = "",
     path: str = "",
     propagate: bool = True,
+    groups: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
     ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
-    if not users:
-        raise ValueError("users is required for ACL deletion")
+    if not users and not groups:
+        raise ValueError("users or groups is required for ACL deletion")
     if not roles:
         raise ValueError("roles is required for ACL deletion")
     if not path:
         raise ValueError("path is required for ACL deletion")
     params: dict[str, Any] = {
-        "users": users,
         "roles": roles,
         "path": path,
         "delete": 1,
     }
+    if users:
+        params["users"] = users
+    if groups:
+        params["groups"] = groups
     if not propagate:
         params["propagate"] = 0
     elevated = client.get_client(elevated=True, endpoint=ep)
@@ -99,9 +107,9 @@ async def delete_acl(
     except ProxmoxNotFoundError:
         return (
             f"ACL entry not found (may have been auto-removed with role deletion): "
-            f"path={path!r} roles={roles!r} users={users!r}"
+            f"path={path!r} roles={roles!r} users={users!r} groups={groups!r}"
         )
-    return f"ACL deleted: users={users!r} roles={roles!r} path={path!r}"
+    return f"ACL deleted: users={users!r} groups={groups!r} roles={roles!r} path={path!r}"
 
 
 async def list_roles(client: MultiClient, endpoint: str | None = None) -> str:
@@ -174,9 +182,9 @@ async def create_user(
     client.raise_if_not_elevated()
     if not userid:
         raise ValueError("userid is required for user creation")
-    if not password:
-        raise ValueError("password is required for user creation")
-    params: dict[str, Any] = {"userid": userid, "password": password}
+    params: dict[str, Any] = {"userid": userid}
+    if password is not None and password != "":
+        params["password"] = password
     if comment is not None:
         params["comment"] = comment
     if email is not None:

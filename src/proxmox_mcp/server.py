@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
@@ -173,6 +174,17 @@ async def proxmox_create_lxc(
     rootfs: str | None = None,
     storage: str | None = None,
     password: str | None = None,
+    swap: int | None = None,
+    features: str | None = None,
+    unprivileged: bool | None = None,
+    onboot: bool | None = None,
+    description: str | None = None,
+    pool: str | None = None,
+    net0: str | None = None,
+    nameserver: str | None = None,
+    searchdomain: str | None = None,
+    ssh_public_keys: str | None = None,
+    tags: str | None = None,
     start: bool = False,
     confirm: bool = False,
     endpoint: str | None = None,
@@ -189,6 +201,17 @@ async def proxmox_create_lxc(
         rootfs=rootfs,
         storage=storage,
         password=password,
+        swap=swap,
+        features=features,
+        unprivileged=unprivileged,
+        onboot=onboot,
+        description=description,
+        pool=pool,
+        net0=net0,
+        nameserver=nameserver,
+        searchdomain=searchdomain,
+        ssh_public_keys=ssh_public_keys,
+        tags=tags,
         start=start,
         confirm=confirm,
     )
@@ -242,6 +265,7 @@ async def proxmox_configure_lxc(
     memory: int | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
+    **kwargs: str | None,
 ) -> str:
     """(elevated, confirm required). Configure an LXC container"""
     return await lifecycle.configure_lxc(
@@ -251,6 +275,7 @@ async def proxmox_configure_lxc(
         cores=cores,
         memory=memory,
         confirm=confirm,
+        **kwargs,
     )
 
 
@@ -351,16 +376,26 @@ async def proxmox_create_vm(
     iso: str | None = None,
     ostype: str | None = None,
     net0: str | None = None,
+    description: str | None = None,
+    boot: str | None = None,
+    scsihw: str | None = None,
+    onboot: bool | None = None,
+    start: bool | None = None,
+    pool: str | None = None,
+    cpu: str | None = None,
+    bios: str | None = None,
+    agent: str | None = None,
+    tags: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
 ) -> str:
-    """(elevated, confirm required). Create a VM disk_size uses scsi0 format."""
+    """(elevated, confirm required). Create a VM. disk_size uses scsi0 format."""
     return await lifecycle.create_vm(
         client,
         node=node,
         vmid=vmid,
         name=name,
-        memory=memory,
+        memory=str(memory) if memory is not None else None,
         cores=cores,
         sockets=sockets,
         disk_size=disk_size,
@@ -368,6 +403,16 @@ async def proxmox_create_vm(
         iso=iso,
         ostype=ostype,
         net0=net0,
+        description=description,
+        boot=boot,
+        scsihw=scsihw,
+        onboot=onboot,
+        start=start,
+        pool=pool,
+        cpu=cpu,
+        bios=bios,
+        agent=agent,
+        tags=tags,
         confirm=confirm,
     )
 
@@ -419,6 +464,8 @@ async def proxmox_clone_vm(
     newid: int | None = None,
     name: str | None = None,
     full: bool = True,
+    target: str | None = None,
+    snapname: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
 ) -> str:
@@ -430,7 +477,10 @@ async def proxmox_clone_vm(
         newid=newid,
         name=name,
         full=full,
+        target=target,
+        snapname=snapname,
         confirm=confirm,
+        endpoint=endpoint,
     )
 
 
@@ -439,6 +489,9 @@ async def proxmox_migrate_vm(
     node: str | None = None,
     vmid: int | None = None,
     target: str | None = None,
+    online: bool | None = None,
+    with_local_disks: bool | None = None,
+    targetstorage: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
 ) -> str:
@@ -448,7 +501,11 @@ async def proxmox_migrate_vm(
         node=node,
         vmid=vmid,
         target=target,
+        online=online,
+        with_local_disks=with_local_disks,
+        targetstorage=targetstorage,
         confirm=confirm,
+        endpoint=endpoint,
     )
 
 
@@ -457,18 +514,21 @@ async def proxmox_configure_vm(
     node: str | None = None,
     vmid: int | None = None,
     cores: int | None = None,
-    memory: int | None = None,
+    memory: str | None = None,
+    kwargs: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
 ) -> str:
-    """(elevated, confirm required). Configure a VM"""
+    """(elevated, confirm required). Configure a VM (elevated, confirm required, asynchronous API)."""
     return await lifecycle.configure_vm(
         client,
         node=node,
         vmid=vmid,
         cores=cores,
         memory=memory,
+        kwargs=kwargs,
         confirm=confirm,
+        endpoint=endpoint,
     )
 
 
@@ -723,6 +783,12 @@ async def proxmox_create_network(
     netmask: str | None = None,
     gateway: str | None = None,
     bridge_ports: str | None = None,
+    cidr: str | None = None,
+    address6: str | None = None,
+    gateway6: str | None = None,
+    cidr6: str | None = None,
+    autostart: bool | None = None,
+    mtu: int | None = None,
     confirm: bool = False,
     apply: bool = False,
     endpoint: str | None = None,
@@ -737,6 +803,12 @@ async def proxmox_create_network(
         netmask=netmask,
         gateway=gateway,
         bridge_ports=bridge_ports,
+        cidr=cidr,
+        address6=address6,
+        gateway6=gateway6,
+        cidr6=cidr6,
+        autostart=autostart,
+        mtu=mtu,
         confirm=confirm,
         apply=apply,
     )
@@ -749,6 +821,13 @@ async def proxmox_update_network(
     address: str | None = None,
     netmask: str | None = None,
     gateway: str | None = None,
+    cidr: str | None = None,
+    address6: str | None = None,
+    gateway6: str | None = None,
+    cidr6: str | None = None,
+    autostart: bool | None = None,
+    mtu: int | None = None,
+    delete: str | None = None,
     confirm: bool = False,
     apply: bool = False,
     endpoint: str | None = None,
@@ -761,6 +840,13 @@ async def proxmox_update_network(
         address=address,
         netmask=netmask,
         gateway=gateway,
+        cidr=cidr,
+        address6=address6,
+        gateway6=gateway6,
+        cidr6=cidr6,
+        autostart=autostart,
+        mtu=mtu,
+        delete=delete,
         confirm=confirm,
         apply=apply,
     )
@@ -792,17 +878,20 @@ async def proxmox_set_acl(
     roles: str = "",
     path: str = "",
     propagate: bool = True,
+    groups: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
 ) -> str:
-    """(elevated, confirm required). Set ACL rules"""
+    """(elevated, confirm required). Set ACL rules. Supports both users and groups."""
     return await permissions.set_acl(
         client,
         users=users,
         roles=roles,
         path=path,
         propagate=propagate,
+        groups=groups,
         confirm=confirm,
+        endpoint=endpoint,
     )
 
 
@@ -812,17 +901,20 @@ async def proxmox_delete_acl(
     roles: str = "",
     path: str = "",
     propagate: bool = True,
+    groups: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
 ) -> str:
-    """(elevated, confirm required). Delete ACL rules"""
+    """(elevated, confirm required). Delete ACL rules. Supports both users and groups."""
     return await permissions.delete_acl(
         client,
         users=users,
         roles=roles,
         path=path,
         propagate=propagate,
+        groups=groups,
         confirm=confirm,
+        endpoint=endpoint,
     )
 
 
@@ -1433,6 +1525,22 @@ async def proxmox_create_storage(
     path: str | None = None,
     content: str | None = None,
     nodes: str | None = None,
+    server: str | None = None,
+    pool: str | None = None,
+    monhost: str | None = None,
+    fs_name: str | None = None,
+    blocksize: str | None = None,
+    compression: str | None = None,
+    thinpool: str | None = None,
+    share: str | None = None,
+    subdir: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
+    data_pool: str | None = None,
+    keyring: str | None = None,
+    krbd: bool | None = None,
+    prefech: int | None = None,
+    target: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
 ) -> str:
@@ -1444,6 +1552,22 @@ async def proxmox_create_storage(
         path=path,
         content=content,
         nodes=nodes,
+        server=server,
+        pool=pool,
+        monhost=monhost,
+        fs_name=fs_name,
+        blocksize=blocksize,
+        compression=compression,
+        thinpool=thinpool,
+        share=share,
+        subdir=subdir,
+        username=username,
+        password=password,
+        data_pool=data_pool,
+        keyring=keyring,
+        krbd=krbd,
+        prefech=prefech,
+        target=target,
         confirm=confirm,
     )
 
@@ -1456,8 +1580,21 @@ async def proxmox_update_storage(
     delete: str | None = None,
     confirm: bool = False,
     endpoint: str | None = None,
+    kwargs: str | None = None,
 ) -> str:
     """(elevated, confirm required). Update a storage pool configuration"""
+    import json
+    extra: dict[str, Any] = {}
+    if kwargs:
+        try:
+            parsed = json.loads(kwargs)
+            if isinstance(parsed, dict):
+                extra = parsed
+        except json.JSONDecodeError:
+            for pair in kwargs.split():
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    extra[k.strip()] = v.strip()
     return await storage_mod.update_storage(
         client,
         storage=storage,
@@ -1465,6 +1602,7 @@ async def proxmox_update_storage(
         nodes=nodes,
         delete=delete,
         confirm=confirm,
+        **extra,
     )
 
 

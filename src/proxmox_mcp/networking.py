@@ -81,6 +81,12 @@ async def create_network(
     netmask: Optional[str] = None,
     gateway: Optional[str] = None,
     bridge_ports: Optional[str] = None,
+    cidr: Optional[str] = None,
+    address6: Optional[str] = None,
+    gateway6: Optional[str] = None,
+    cidr6: Optional[str] = None,
+    autostart: Optional[bool] = None,
+    mtu: Optional[int] = None,
     confirm: bool = False,
     apply: bool = False,
     endpoint: str | None = None) -> str:
@@ -100,6 +106,18 @@ async def create_network(
         params["gateway"] = gateway
     if bridge_ports:
         params["bridge_ports"] = bridge_ports
+    if cidr is not None:
+        params["cidr"] = cidr
+    if address6 is not None:
+        params["address6"] = address6
+    if gateway6 is not None:
+        params["gateway6"] = gateway6
+    if cidr6 is not None:
+        params["cidr6"] = cidr6
+    if autostart is not None:
+        params["autostart"] = 1 if autostart else 0
+    if mtu is not None:
+        params["mtu"] = mtu
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).network.post,
@@ -134,6 +152,13 @@ async def update_network(
     address: Optional[str] = None,
     netmask: Optional[str] = None,
     gateway: Optional[str] = None,
+    cidr: Optional[str] = None,
+    address6: Optional[str] = None,
+    gateway6: Optional[str] = None,
+    cidr6: Optional[str] = None,
+    autostart: Optional[bool] = None,
+    mtu: Optional[int] = None,
+    delete: Optional[str] = None,
     confirm: bool = False,
     apply: bool = False,
     endpoint: str | None = None) -> str:
@@ -145,12 +170,26 @@ async def update_network(
         raise ValueError("iface is required for network interface update")
     validate_iface_name(iface)
     params: dict[str, Any] = {}
-    if address:
+    if address is not None:
         params["address"] = address
-    if netmask:
+    if netmask is not None:
         params["netmask"] = netmask
-    if gateway:
+    if gateway is not None:
         params["gateway"] = gateway
+    if cidr is not None:
+        params["cidr"] = cidr
+    if address6 is not None:
+        params["address6"] = address6
+    if gateway6 is not None:
+        params["gateway6"] = gateway6
+    if cidr6 is not None:
+        params["cidr6"] = cidr6
+    if autostart is not None:
+        params["autostart"] = 1 if autostart else 0
+    if mtu is not None:
+        params["mtu"] = mtu
+    if delete is not None:
+        params["delete"] = delete
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).network(iface).put,
