@@ -111,6 +111,22 @@ async def create_storage(
     path: Optional[str] = None,
     content: Optional[str] = None,
     nodes: Optional[str] = None,
+    server: Optional[str] = None,
+    pool: Optional[str] = None,
+    monhost: Optional[str] = None,
+    fs_name: Optional[str] = None,
+    blocksize: Optional[str] = None,
+    compression: Optional[str] = None,
+    thinpool: Optional[str] = None,
+    share: Optional[str] = None,
+    subdir: Optional[str] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    data_pool: Optional[str] = None,
+    keyring: Optional[str] = None,
+    krbd: Optional[bool] = None,
+    prefech: Optional[int] = None,
+    target: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
     ep = endpoint or client.default_endpoint
@@ -128,6 +144,38 @@ async def create_storage(
         params["content"] = content
     if nodes is not None:
         params["nodes"] = nodes
+    if server is not None:
+        params["server"] = server
+    if pool is not None:
+        params["pool"] = pool
+    if monhost is not None:
+        params["monhost"] = monhost
+    if fs_name is not None:
+        params["fs_name"] = fs_name
+    if blocksize is not None:
+        params["blocksize"] = blocksize
+    if compression is not None:
+        params["compression"] = compression
+    if thinpool is not None:
+        params["thinpool"] = thinpool
+    if share is not None:
+        params["share"] = share
+    if subdir is not None:
+        params["subdir"] = subdir
+    if username is not None:
+        params["username"] = username
+    if password is not None:
+        params["password"] = password
+    if data_pool is not None:
+        params["data_pool"] = data_pool
+    if keyring is not None:
+        params["keyring"] = keyring
+    if krbd is not None:
+        params["krbd"] = 1 if krbd else 0
+    if prefech is not None:
+        params["prefech"] = prefech
+    if target is not None:
+        params["target"] = target
     elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.storage.post,
@@ -145,7 +193,9 @@ async def update_storage(
     nodes: Optional[str] = None,
     delete: Optional[str] = None,
     confirm: bool = False,
-    endpoint: str | None = None) -> str:
+    endpoint: str | None = None,
+    **kwargs: Any,
+) -> str:
     ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     validate_storage_name(storage)
@@ -156,6 +206,7 @@ async def update_storage(
         params["nodes"] = nodes
     if delete is not None:
         params["delete"] = delete
+    params.update(kwargs)
     elevated = client.get_client(elevated=True, endpoint=ep)
     await client.safe_api_call(
         elevated.storage(storage).put,

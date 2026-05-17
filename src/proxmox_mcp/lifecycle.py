@@ -48,6 +48,17 @@ async def create_lxc(
     rootfs: Optional[str] = None,
     storage: Optional[str] = None,
     password: Optional[str] = None,
+    swap: Optional[int] = None,
+    features: Optional[str] = None,
+    unprivileged: Optional[bool] = None,
+    onboot: Optional[bool] = None,
+    description: Optional[str] = None,
+    pool: Optional[str] = None,
+    net0: Optional[str] = None,
+    nameserver: Optional[str] = None,
+    searchdomain: Optional[str] = None,
+    ssh_public_keys: Optional[str] = None,
+    tags: Optional[str] = None,
     start: bool = False,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
@@ -80,6 +91,28 @@ async def create_lxc(
         params["storage"] = storage
     if password:
         params["password"] = password
+    if swap is not None:
+        params["swap"] = swap
+    if features:
+        params["features"] = features
+    if unprivileged is not None:
+        params["unprivileged"] = 1 if unprivileged else 0
+    if onboot is not None:
+        params["onboot"] = 1 if onboot else 0
+    if description:
+        params["description"] = description
+    if pool:
+        params["pool"] = pool
+    if net0:
+        params["net0"] = net0
+    if nameserver:
+        params["nameserver"] = nameserver
+    if searchdomain:
+        params["searchdomain"] = searchdomain
+    if ssh_public_keys:
+        params["ssh-public-keys"] = ssh_public_keys
+    if tags:
+        params["tags"] = tags
     if start:
         params["start"] = 1
 
@@ -196,7 +229,9 @@ async def configure_lxc(
     cores: Optional[int] = None,
     memory: Optional[int] = None,
     confirm: bool = False,
-    endpoint: str | None = None) -> str:
+    endpoint: str | None = None,
+    **kwargs: Any,
+) -> str:
     ep = endpoint or client.default_endpoint
     client.raise_if_not_elevated()
     resolved = await client.resolve_node(node, endpoint=endpoint)
@@ -209,6 +244,8 @@ async def configure_lxc(
         params["cores"] = cores
     if memory is not None:
         params["memory"] = memory
+    parsed = _parse_kwargs(kwargs)
+    params.update(parsed)
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).config.put, elevated=True, **params)
@@ -222,7 +259,7 @@ async def create_vm(
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     name: Optional[str] = None,
-    memory: Optional[int] = None,
+    memory: Optional[str] = None,
     cores: Optional[int] = None,
     sockets: Optional[int] = None,
     disk_size: Optional[str] = None,
@@ -230,6 +267,16 @@ async def create_vm(
     iso: Optional[str] = None,
     ostype: Optional[str] = None,
     net0: Optional[str] = None,
+    description: Optional[str] = None,
+    boot: Optional[str] = None,
+    scsihw: Optional[str] = None,
+    onboot: Optional[bool] = None,
+    start: Optional[bool] = None,
+    pool: Optional[str] = None,
+    cpu: Optional[str] = None,
+    bios: Optional[str] = None,
+    agent: Optional[str] = None,
+    tags: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
     ep = endpoint or client.default_endpoint
@@ -272,6 +319,26 @@ async def create_vm(
         params["ostype"] = ostype
     if net0:
         params["net0"] = net0
+    if description is not None:
+        params["description"] = description
+    if boot is not None:
+        params["boot"] = boot
+    if scsihw is not None:
+        params["scsihw"] = scsihw
+    if onboot is not None:
+        params["onboot"] = 1 if onboot else 0
+    if start is not None:
+        params["start"] = 1 if start else 0
+    if pool is not None:
+        params["pool"] = pool
+    if cpu is not None:
+        params["cpu"] = cpu
+    if bios is not None:
+        params["bios"] = bios
+    if agent is not None:
+        params["agent"] = agent
+    if tags is not None:
+        params["tags"] = tags
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu.post, elevated=True, **params)
@@ -386,6 +453,8 @@ async def clone_vm(
     newid: Optional[int] = None,
     name: Optional[str] = None,
     full: bool = True,
+    target: Optional[str] = None,
+    snapname: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
     ep = endpoint or client.default_endpoint
@@ -403,6 +472,10 @@ async def clone_vm(
     if name:
         params["name"] = name
     params["full"] = 1 if full else 0
+    if target is not None:
+        params["target"] = target
+    if snapname is not None:
+        params["snapname"] = snapname
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).clone.post, elevated=True, **params)
@@ -416,6 +489,9 @@ async def migrate_vm(
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     target: Optional[str] = None,
+    online: Optional[bool] = None,
+    with_local_disks: Optional[bool] = None,
+    targetstorage: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
     ep = endpoint or client.default_endpoint
@@ -426,6 +502,12 @@ async def migrate_vm(
     validate_vmid(vmid)
 
     params: dict[str, Any] = {"target": target}
+    if online is not None:
+        params["online"] = 1 if online else 0
+    if with_local_disks is not None:
+        params["with-local-disks"] = 1 if with_local_disks else 0
+    if targetstorage is not None:
+        params["targetstorage"] = targetstorage
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).migrate.post, elevated=True, **params)
@@ -589,7 +671,8 @@ async def configure_vm(
     node: Optional[str] = None,
     vmid: Optional[int] = None,
     cores: Optional[int] = None,
-    memory: Optional[int] = None,
+    memory: Optional[str] = None,
+    kwargs: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
     ep = endpoint or client.default_endpoint
@@ -604,6 +687,8 @@ async def configure_vm(
         params["cores"] = cores
     if memory is not None:
         params["memory"] = memory
+    parsed = _parse_kwargs(kwargs)
+    params.update(parsed)
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)
