@@ -230,6 +230,8 @@ async def configure_lxc(
     vmid: Optional[int] = None,
     cores: Optional[int] = None,
     memory: Optional[int] = None,
+    onboot: Optional[bool] = None,
+    description: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None,
     **kwargs: Any,
@@ -246,6 +248,10 @@ async def configure_lxc(
         params["cores"] = cores
     if memory is not None:
         params["memory"] = memory
+    if onboot is not None:
+        params["onboot"] = 1 if onboot else 0
+    if description is not None:
+        params["description"] = description
     parsed = _parse_kwargs(kwargs)
     params.update(parsed)
 
@@ -674,6 +680,9 @@ async def configure_vm(
     vmid: Optional[int] = None,
     cores: Optional[int] = None,
     memory: Optional[str] = None,
+    onboot: Optional[bool] = None,
+    description: Optional[str] = None,
+    tags: Optional[str] = None,
     kwargs: Optional[str] = None,
     confirm: bool = False,
     endpoint: str | None = None) -> str:
@@ -689,6 +698,12 @@ async def configure_vm(
         params["cores"] = cores
     if memory is not None:
         params["memory"] = memory
+    if onboot is not None:
+        params["onboot"] = 1 if onboot else 0
+    if description is not None:
+        params["description"] = description
+    if tags is not None:
+        params["tags"] = tags
     parsed = _parse_kwargs(kwargs)
     params.update(parsed)
 

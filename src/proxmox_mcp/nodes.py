@@ -325,7 +325,7 @@ async def node_report(
     resolved = await client.resolve_node(node, endpoint=endpoint)
     ep, resolved_node = resolved.endpoint, resolved.node
     validate_node_name(resolved_node)
-    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).report.get)
+    result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).report.get, timeout=30)
     lines = [f"📋 **Node Report: {resolved_node}**\n"]
     if isinstance(result, dict):
         data = result.get("data", result)

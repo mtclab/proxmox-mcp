@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import urllib.parse
 from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxPermissionError
@@ -56,7 +57,8 @@ async def set_cloudinit(
     if ipconfig0:
         params["ipconfig0"] = ipconfig0
     if sshkeys:
-        params["sshkeys"] = sshkeys
+        formatted_keys = "\n".join(k.strip() for k in sshkeys.strip().splitlines() if k.strip())
+        params["sshkeys"] = urllib.parse.quote(formatted_keys, safe="")
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)

@@ -97,6 +97,11 @@ async def create_network(
     if not iface:
         raise ValueError("iface is required for network interface creation")
     validate_iface_name(iface)
+    existing = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).network.get)
+    if isinstance(existing, list):
+        for ent in existing:
+            if ent.get("iface") == iface:
+                raise ValueError(f"Network interface {iface!r} already exists on {resolved_node}")
     params: dict[str, Any] = {"iface": iface, "type": type}
     if address:
         params["address"] = address
