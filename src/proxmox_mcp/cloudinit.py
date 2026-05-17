@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
+from proxmox_mcp.utils import confirm_required, extract_data, extract_upid, validate_node_name, validate_vmid
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -60,7 +60,7 @@ async def set_cloudinit(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Cloud-init configured for VM {vmid} on {resolved_node}. UPID: {upid}"
 
 
@@ -81,7 +81,7 @@ async def regenerate_cloudinit(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).cloudinit.put, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Cloud-init drive regenerated for VM {vmid} on {resolved_node}. UPID: {upid}"
 
 
@@ -133,7 +133,7 @@ async def agent_ping(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("ping").post, elevated=True,
         endpoint=ep)
-    data = result if isinstance(result, str) else result.get("data", result)
+    data = extract_data(result)
     return f"Agent ping for VM {vmid} on {resolved_node}: {data}"
 
 
@@ -151,7 +151,7 @@ async def agent_info(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("info").get, elevated=True,
         endpoint=ep)
-    data = result if isinstance(result, dict) else result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = []
     if isinstance(data, dict):
         for k, v in data.items():
@@ -295,7 +295,7 @@ async def agent_fsfreeze(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-freeze").post, elevated=True
     )
-    data = result if isinstance(result, str) else result.get("data", result)
+    data = extract_data(result)
     return f"Filesystem frozen for VM {vmid} on {resolved_node}: {data}"
 
 
@@ -316,7 +316,7 @@ async def agent_fsthaw(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-thaw").post, elevated=True
     )
-    data = result if isinstance(result, str) else result.get("data", result)
+    data = extract_data(result)
     return f"Filesystem thawed for VM {vmid} on {resolved_node}: {data}"
 
 
@@ -336,7 +336,7 @@ async def agent_fstrim(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("fstrim").post, elevated=True,
         endpoint=ep)
-    data = result if isinstance(result, str) else result.get("data", result)
+    data = extract_data(result)
     return f"Fstrim executed for VM {vmid} on {resolved_node}: {data}"
 
 
@@ -355,7 +355,7 @@ async def agent_fsfreeze_status(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("fsfreeze-status").post, elevated=True
     )
-    data = result if isinstance(result, str) else result.get("data", result)
+    data = extract_data(result)
     lines = [f"**Fsfreeze status for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -576,7 +576,7 @@ async def agent_set_user_password(
         username=username,
         password=password,
     )
-    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    data = extract_data(result)
     return f"Password set for user {username!r} on VM {vmid} on {resolved_node}: {data}"
 
 
@@ -657,7 +657,7 @@ async def agent_shutdown(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("shutdown").post, elevated=True,
         endpoint=ep)
-    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    data = extract_data(result)
     return f"Agent shutdown initiated for VM {vmid} on {resolved_node}: {data}"
 
 
@@ -678,7 +678,7 @@ async def agent_suspend_disk(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("suspend-disk").post, elevated=True
     )
-    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    data = extract_data(result)
     return f"Agent suspend-to-disk initiated for VM {vmid} on {resolved_node}: {data}"
 
 
@@ -699,7 +699,7 @@ async def agent_suspend_ram(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("suspend-ram").post, elevated=True
     )
-    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    data = extract_data(result)
     return f"Agent suspend-to-RAM initiated for VM {vmid} on {resolved_node}: {data}"
 
 
@@ -720,5 +720,5 @@ async def agent_suspend_hybrid(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("suspend-hybrid").post, elevated=True
     )
-    data = result if isinstance(result, str) else (result.get("data", result) if isinstance(result, dict) else result)
+    data = extract_data(result)
     return f"Agent hybrid suspend initiated for VM {vmid} on {resolved_node}: {data}"

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -68,7 +68,7 @@ async def order_acme_certificate(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"ACME certificate order initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -95,7 +95,7 @@ async def renew_acme_certificate(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"ACME certificate renewal initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -122,7 +122,7 @@ async def revoke_certificate(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Certificate revocation initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -153,7 +153,7 @@ async def upload_custom_certificate(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Custom certificate uploaded on {resolved_node}. UPID: {upid}"
 
 
@@ -180,7 +180,7 @@ async def delete_custom_certificate(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Custom certificate deleted on {resolved_node}. UPID: {upid}"
 
 

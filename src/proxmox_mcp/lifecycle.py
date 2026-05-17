@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxNotFoundError
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_disk_size, validate_node_name, validate_vmid
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_disk_size, validate_node_name, validate_vmid
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -14,6 +14,8 @@ def _api(client: MultiClient, endpoint: str | None = None) -> Any:
 async def _get_next_vmid(client: MultiClient, endpoint: str | None = None) -> int:
     ep = endpoint or client.default_endpoint
     result = await client.safe_api_call(_api(client, endpoint=ep).cluster.nextid.get)
+    if result is None:
+        raise ProxmoxNotFoundError("Failed to get next VMID from cluster")
     return int(result)
 
 
@@ -118,7 +120,7 @@ async def create_lxc(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc.post, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC container {vmid} created on {resolved_node}. UPID: {upid}"
 
 
@@ -138,7 +140,7 @@ async def start_lxc(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.start.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} start initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -158,7 +160,7 @@ async def stop_lxc(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.stop.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} stop initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -178,7 +180,7 @@ async def shutdown_lxc(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.shutdown.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} shutdown initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -198,7 +200,7 @@ async def reboot_lxc(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.reboot.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} reboot initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -217,7 +219,7 @@ async def delete_lxc(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).delete, elevated=True, endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} deleted on {resolved_node}. UPID: {upid}"
 
 
@@ -249,7 +251,7 @@ async def configure_lxc(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).config.put, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} configured on {resolved_node}. UPID: {upid}"
 
 
@@ -342,7 +344,7 @@ async def create_vm(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu.post, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} created on {resolved_node}. UPID: {upid}"
 
 
@@ -362,7 +364,7 @@ async def start_vm(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.start.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} start initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -382,7 +384,7 @@ async def stop_vm(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.stop.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} stop initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -402,7 +404,7 @@ async def shutdown_vm(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.shutdown.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} shutdown initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -422,7 +424,7 @@ async def reboot_vm(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reboot.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} reboot initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -441,7 +443,7 @@ async def delete_vm(
     validate_vmid(vmid)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).delete, elevated=True, endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} deleted on {resolved_node}. UPID: {upid}"
 
 
@@ -479,7 +481,7 @@ async def clone_vm(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).clone.post, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} clone initiated → {newid} on {resolved_node}. UPID: {upid}"
 
 
@@ -511,7 +513,7 @@ async def migrate_vm(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).migrate.post, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} migration to {target} initiated. UPID: {upid}"
 
 
@@ -535,7 +537,7 @@ async def resize_lxc(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).resize.put, elevated=True, disk=disk, size=size
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} disk {disk} resize to {size} initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -555,7 +557,7 @@ async def suspend_lxc(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.suspend.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} suspend initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -575,7 +577,7 @@ async def resume_lxc(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).status.resume.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} resume initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -610,7 +612,7 @@ async def clone_lxc(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).clone.post, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} clone initiated → {newid} on {resolved_node}. UPID: {upid}"
 
 
@@ -633,7 +635,7 @@ async def migrate_lxc(
 
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).migrate.post, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} migration to {target} initiated. UPID: {upid}"
 
 
@@ -694,7 +696,7 @@ async def configure_vm(
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **params)
     if result is None:
         return f"VM {vmid} configuration updated on {resolved_node} (no pending changes)"
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} configured on {resolved_node}. UPID: {upid}"
 
 
@@ -717,7 +719,7 @@ async def resize_vm(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).resize.put, elevated=True, disk=disk, size=size
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} disk {disk} resize to {size} initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -737,7 +739,7 @@ async def reset_vm(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.reset.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} reset initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -757,7 +759,7 @@ async def suspend_vm(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.suspend.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} suspend initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -777,7 +779,7 @@ async def resume_vm(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).status.resume.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} resume initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -806,7 +808,7 @@ async def move_vm_disk(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).move_disk.post, elevated=True, **params
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} disk {disk} move to {storage} initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -826,7 +828,7 @@ async def convert_to_template(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).template.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} convert to template initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -846,7 +848,7 @@ async def convert_lxc_to_template(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).template.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} convert to template initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -1006,7 +1008,7 @@ async def send_vm_key(
         raise ValueError("key is required")
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).sendkey.put, elevated=True, key=key)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Key {key!r} sent to VM {vmid} on {resolved_node}. UPID: {upid}"
 
 
@@ -1077,7 +1079,7 @@ async def unlink_vm_disk(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).unlink.put, elevated=True, idlist=idlist
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} disks {idlist!r} unlinked on {resolved_node}. UPID: {upid}"
 
 
@@ -1212,7 +1214,7 @@ async def remote_migrate_lxc(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).remote_migrate.post, elevated=True, endpoint=ep, **params
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} remote migration to {target} via {target_endpoint} initiated. UPID: {upid}"
 
 
@@ -1247,7 +1249,7 @@ async def move_lxc_volume(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).lxc(vmid).move_volume.post, elevated=True, **params
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"LXC {vmid} volume {volume} move initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -1390,7 +1392,7 @@ async def update_vm_config(
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).config.put, elevated=True, **parsed)
     if result is None:
         return f"VM {vmid} config updated on {resolved_node} (no pending changes)"
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} config updated on {resolved_node}. UPID: {upid}"
 
 
@@ -1449,7 +1451,7 @@ async def remote_migrate_vm(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).remote_migrate.post, elevated=True, endpoint=ep, **params
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"VM {vmid} remote migration to {target_address} initiated. UPID: {upid}"
 
 
@@ -1471,5 +1473,5 @@ async def lxc_sendkey(
         raise ValueError("key is required")
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).sendkey.put, elevated=True, key=key)
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result) if isinstance(result, dict) else result
     return f"Key {key!r} sent to LXC {vmid} on {resolved_node}. UPID: {upid}"

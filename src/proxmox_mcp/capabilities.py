@@ -78,7 +78,7 @@ async def list_machine_types(client: MultiClient, node: Optional[str] = None,
         if isinstance(machine, str):
             lines.append(f"   • **{machine}**")
         else:
-            name = machine.get("id", machine.get("name", "unknown"))
+            name = machine.get("name", machine.get("id", "unknown"))
             mtype = machine.get("type", "")
             version = machine.get("version", "")
             lines.append(f"   • **{name}**")

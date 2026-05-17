@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, format_bytes, validate_storage_name, validate_vmid
+from proxmox_mcp.utils import confirm_required, extract_upid, format_bytes, validate_storage_name, validate_vmid
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -66,7 +66,7 @@ async def create_backup(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Backup creation initiated for {vmtype} {vmid} on {resolved_node}. UPID: {upid}"
 
 
@@ -115,5 +115,5 @@ async def restore_backup(
             elevated=True,
             **params,
         )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Backup restore initiated for {vmtype} {vmid} from {archive!r} on {resolved_node}. UPID: {upid}"

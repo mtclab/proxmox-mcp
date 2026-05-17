@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -157,7 +157,7 @@ async def create_ceph_fs(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph filesystem {name!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -426,7 +426,7 @@ async def create_ceph_osd(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph OSD created on {resolved_node} from device {dev!r}. UPID: {upid}"
 
 
@@ -454,7 +454,7 @@ async def destroy_ceph_osd(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph OSD {osdid} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -475,7 +475,7 @@ async def ceph_osd_in(
         elevated.nodes(resolved_node).ceph.osd(osdid)("in").post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph OSD {osdid} marked in on {resolved_node}. UPID: {upid}"
 
 
@@ -496,7 +496,7 @@ async def ceph_osd_out(
         elevated.nodes(resolved_node).ceph.osd(osdid)("out").post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph OSD {osdid} marked out on {resolved_node}. UPID: {upid}"
 
 
@@ -517,7 +517,7 @@ async def ceph_osd_scrub(
         elevated.nodes(resolved_node).ceph.osd(osdid).scrub.post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph OSD {osdid} scrub started on {resolved_node}. UPID: {upid}"
 
 
@@ -599,7 +599,7 @@ async def create_ceph_pool(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph pool {name!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -682,7 +682,7 @@ async def destroy_ceph_pool(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph pool {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -762,7 +762,7 @@ async def create_ceph_mds(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph MDS {name!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -792,7 +792,7 @@ async def destroy_ceph_mds(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph MDS {name!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -822,7 +822,7 @@ async def create_ceph_mgr(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph MGR {id!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -852,7 +852,7 @@ async def destroy_ceph_mgr(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph MGR {id!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -882,7 +882,7 @@ async def create_ceph_mon(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph MON {monid!r} created on {resolved_node}. UPID: {upid}"
 
 
@@ -912,7 +912,7 @@ async def destroy_ceph_mon(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph MON {monid!r} destroyed on {resolved_node}. UPID: {upid}"
 
 
@@ -932,7 +932,7 @@ async def start_ceph(
         elevated.nodes(resolved_node).ceph.start.post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph services started on {resolved_node}. UPID: {upid}"
 
 
@@ -952,7 +952,7 @@ async def stop_ceph(
         elevated.nodes(resolved_node).ceph.stop.post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph services stopped on {resolved_node}. UPID: {upid}"
 
 
@@ -972,7 +972,7 @@ async def restart_ceph(
         elevated.nodes(resolved_node).ceph.restart.post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph services restarted on {resolved_node}. UPID: {upid}"
 
 
@@ -1139,5 +1139,5 @@ async def init_ceph(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Ceph initialized on {resolved_node}. UPID: {upid}"

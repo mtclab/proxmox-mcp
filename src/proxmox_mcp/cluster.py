@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -251,7 +251,7 @@ async def bulk_migrate_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk migrate initiated: {vmids} → {target}. UPID: {upid}"
 
 
@@ -275,7 +275,7 @@ async def bulk_shutdown_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk shutdown initiated: {vmids}. UPID: {upid}"
 
 
@@ -299,7 +299,7 @@ async def bulk_start_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk start initiated: {vmids}. UPID: {upid}"
 
 
@@ -323,7 +323,7 @@ async def bulk_suspend_guests(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Bulk suspend initiated: {vmids}. UPID: {upid}"
 
 
@@ -538,7 +538,7 @@ async def generate_cluster_config(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Cluster config generation initiated. UPID: {upid}"
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_node_name, validate_vmid
 
 ALLOWED_VMTYPES = ("qemu", "lxc")
 
@@ -95,7 +95,7 @@ async def create_snapshot(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Snapshot {snapname!r} creation initiated for {vmtype} {vmid} on {resolved_node}. UPID: {upid}"
 
 
@@ -126,7 +126,7 @@ async def delete_snapshot(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).delete,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Snapshot {snapname!r} deletion initiated for {vmtype} {vmid} on {resolved_node}. UPID: {upid}"
 
 
@@ -181,5 +181,5 @@ async def rollback_snapshot(
         getattr(elevated.nodes(resolved_node), vmtype)(vmid).snapshot(snapname).rollback.post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Rollback to snapshot {snapname!r} initiated for {vmtype} {vmid} on {resolved_node}. UPID: {upid}"

@@ -248,6 +248,8 @@ class ProxmoxClient:
                 guests = await self.safe_api_call(
                     self.monitor_client.nodes(resolved_node).__getattr__(vmtype).get,
                 )
+                if not guests:
+                    continue
                 for guest in guests:
                     if str(guest.get("name", "")) == identifier:
                         return resolved_node, int(guest["vmid"])

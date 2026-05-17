@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, format_bytes, validate_node_name, validate_storage_name
+from proxmox_mcp.utils import confirm_required, extract_upid, format_bytes, validate_node_name, validate_storage_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -73,7 +73,7 @@ async def upload_iso(
             elevated=True,
             endpoint=ep,
         )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"ISO upload initiated to {resolved_node}/{storage}. UPID: {upid}"
 
 
@@ -421,7 +421,7 @@ async def allocate_disk(
         elevated=True,
         **params,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Disk allocation initiated on {resolved_node}/{storage}. UPID: {upid}"
 
 
@@ -474,7 +474,7 @@ async def copy_volume(
         elevated=True,
         target=target,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Volume {volume!r} copy to {target} initiated on {resolved_node}/{storage}. UPID: {upid}"
 
 
@@ -639,7 +639,7 @@ async def oci_registry_pull(
         elevated=True,
         image=image,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"OCI registry pull of {image!r} initiated on {resolved_node}/{storage}. UPID: {upid}"
 
 

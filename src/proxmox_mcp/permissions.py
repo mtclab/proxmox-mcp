@@ -21,7 +21,7 @@ async def list_acl(client: MultiClient, endpoint: str | None = None) -> str:
         path = rule.get("path", "?")
         ugid = rule.get("ugid", "?")
         entry_type = rule.get("type", "?")
-        roleid = rule.get("roleid", "?")
+        roleid = rule.get("roleid", rule.get("roles", "?"))
         if isinstance(roleid, list):
             roleid = ", ".join(str(r) for r in roleid)
         propagate = "Yes" if rule.get("propagate", 1) else "No"

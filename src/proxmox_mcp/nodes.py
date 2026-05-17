@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.utils import confirm_required, validate_iface_name, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_iface_name, validate_node_name
 
 
 def _api(client: Any, endpoint: str | None = None) -> Any:
@@ -48,7 +48,7 @@ async def update_node_config(
         params["timezone"] = time_zone
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).config.put, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Node {resolved_node} config updated. UPID: {upid}"
 
 
@@ -65,7 +65,7 @@ async def reboot_node(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="reboot")
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Node {resolved_node} reboot initiated. UPID: {upid}"
 
 
@@ -82,7 +82,7 @@ async def shutdown_node(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).status.post, elevated=True, command="shutdown")
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Node {resolved_node} shutdown initiated. UPID: {upid}"
 
 
@@ -99,7 +99,7 @@ async def start_all(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).startall.post, elevated=True, endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Start all on node {resolved_node} initiated. UPID: {upid}"
 
 
@@ -116,7 +116,7 @@ async def stop_all(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).stopall.post, elevated=True, endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Stop all on node {resolved_node} initiated. UPID: {upid}"
 
 
@@ -133,7 +133,7 @@ async def suspend_all(
     validate_node_name(resolved_node)
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).suspendall.post, elevated=True, endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Suspend all on node {resolved_node} initiated. UPID: {upid}"
 
 
@@ -154,7 +154,7 @@ async def migrate_all(
         params["target"] = target
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).migrateall.post, elevated=True, **params)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Migrate all on node {resolved_node} initiated. UPID: {upid}"
 
 
@@ -234,7 +234,7 @@ async def start_service(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).start.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Service {service!r} start initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -255,7 +255,7 @@ async def stop_service(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).stop.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Service {service!r} stop initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -276,7 +276,7 @@ async def restart_service(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).restart.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Service {service!r} restart initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -620,7 +620,7 @@ async def wake_on_lan(
         elevated=True,
         macaddr=macaddr,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Wake-on-LAN sent to {macaddr} via {resolved_node}. UPID: {upid}"
 
 
@@ -667,7 +667,7 @@ async def update_subscription(
         elevated=True,
         key=key,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Subscription key updated on {resolved_node}. UPID: {upid}"
 
 
@@ -706,7 +706,7 @@ async def check_subscription(
         elevated.nodes(resolved_node).subscription.post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Subscription check initiated on {resolved_node}. UPID: {upid}"
 
 
@@ -727,7 +727,7 @@ async def reload_service(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).services(service).reload.post, elevated=True,
         endpoint=ep)
-    upid = result if isinstance(result, str) else result.get("data", result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Service {service!r} reload initiated on {resolved_node}. UPID: {upid}"
 
 

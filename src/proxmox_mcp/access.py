@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required
+from proxmox_mcp.utils import confirm_required, extract_upid
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -214,7 +214,7 @@ async def sync_domain(
         elevated.access.domains(realm).sync.post,
         elevated=True,
     )
-    upid = result if isinstance(result, str) else result.get("data", result)
+    upid = extract_upid(result)
     return f"Auth domain {realm!r} sync initiated. UPID: {upid}"
 
 
