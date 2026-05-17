@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, extract_upid
+from proxmox_mcp.utils import confirm_required, extract_data, extract_upid
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -392,7 +392,7 @@ async def create_ticket(
     )
     lines = ["\U0001f511 **Authentication Ticket**\n"]
     if isinstance(result, dict):
-        ticket = result.get("data", result)
+        ticket = extract_data(result)
         if isinstance(ticket, dict):
             for key, value in sorted(ticket.items()):
                 lines.append(f"   • {key}: {value}")

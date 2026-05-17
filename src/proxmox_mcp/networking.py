@@ -4,7 +4,7 @@ import logging
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_iface_name
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_iface_name
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ async def create_network(
     elif isinstance(result, str):
         upid = result
     elif isinstance(result, dict):
-        upid = result.get("data", result)
+        upid = extract_upid(result)
     else:
         upid = result
     staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""
@@ -206,7 +206,7 @@ async def update_network(
     elif isinstance(result, str):
         upid = result
     elif isinstance(result, dict):
-        upid = result.get("data", result)
+        upid = extract_upid(result)
     else:
         upid = result
     staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""
@@ -246,7 +246,7 @@ async def delete_network(
     elif isinstance(result, str):
         upid = result
     elif isinstance(result, dict):
-        upid = result.get("data", result)
+        upid = extract_upid(result)
     else:
         upid = result
     staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""
@@ -281,7 +281,7 @@ async def revert_network(
     elif isinstance(result, str):
         upid = result
     elif isinstance(result, dict):
-        upid = result.get("data", result)
+        upid = extract_upid(result)
     else:
         upid = result
     staged_suffix = " (changes staged, not yet applied)" if upid == "staged" else ""

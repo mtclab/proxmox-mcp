@@ -1488,5 +1488,5 @@ async def lxc_sendkey(
         raise ValueError("key is required")
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).lxc(vmid).sendkey.put, elevated=True, key=key)
-    upid = extract_upid(result) if isinstance(result, dict) else result
+    upid = extract_upid(result)
     return f"Key {key!r} sent to LXC {vmid} on {resolved_node}. UPID: {upid}"

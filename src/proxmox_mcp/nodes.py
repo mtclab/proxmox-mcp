@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from proxmox_mcp.utils import confirm_required, extract_upid, validate_iface_name, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_data, extract_upid, validate_iface_name, validate_node_name
 
 
 def _api(client: Any, endpoint: str | None = None) -> Any:
@@ -307,7 +307,7 @@ async def node_hosts(
     result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).hosts.get)
     lines = [f"📋 **Hosts File: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, str):
             for line in data.strip().splitlines():
                 lines.append(f"   {line}")
@@ -328,7 +328,7 @@ async def node_report(
     result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).report.get, timeout=30)
     lines = [f"📋 **Node Report: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, str):
             for line in data.strip().splitlines()[:100]:
                 lines.append(f"   {line}")
@@ -370,7 +370,7 @@ async def node_netstat(
         if len(result) > 50:
             lines.append(f"   ... {len(result) - 50} more entries")
     elif isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, list):
             for entry in data[:50]:
                 if isinstance(entry, dict):
@@ -589,7 +589,7 @@ async def query_url_metadata(
     )
     lines = [f"🔗 **URL Metadata: {url}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -637,7 +637,7 @@ async def get_subscription(
     )
     lines = [f"📋 **Subscription: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -765,7 +765,7 @@ async def node_execute(
     )
     lines = [f"⚡ **Execute on {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -898,7 +898,7 @@ async def vzdump_defaults(
     )
     lines = [f"\U0001f4be **VZDump Defaults: {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -926,7 +926,7 @@ async def extract_backup_config(
     )
     lines = [f"\U0001f4be **Backup Config: {archive} ({resolved_node})**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")

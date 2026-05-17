@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, extract_upid, validate_node_name
+from proxmox_mcp.utils import confirm_required, extract_data, extract_upid, validate_node_name
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -68,7 +68,7 @@ async def list_repositories(client: MultiClient, node: Optional[str] = None,
     )
     lines = [f"📦 **APT Repositories on {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, list):
             for repo in data:
                 path = repo.get("Path", repo.get("path", "N/A"))
@@ -212,7 +212,7 @@ async def list_apt_changelog(
     )
     lines = [f"📦 **APT Changelog on {resolved_node}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, str):
             for line in data.strip().splitlines()[:100]:
                 lines.append(f"   {line}")

@@ -5,7 +5,7 @@ from typing import Any, Optional
 from proxmoxer.core import ResourceException
 
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, validate_node_name, validate_vmid
+from proxmox_mcp.utils import confirm_required, extract_upid, validate_node_name, validate_vmid
 
 ALLOWED_VMTYPES = ("qemu", "lxc")
 
@@ -99,7 +99,7 @@ async def create_cluster_firewall_rule(
         elevated=True,
         **params,
     )
-    pos = result if isinstance(result, str) else result.get("data", result)
+    pos = extract_upid(result)
     return f"Cluster firewall rule created: action={action}, pos={pos}"
 
 
@@ -395,7 +395,7 @@ async def create_node_firewall_rule(
         elevated=True,
         **params,
     )
-    pos = result if isinstance(result, str) else result.get("data", result)
+    pos = extract_upid(result)
     return f"Node {resolved_node} firewall rule created: action={action}, pos={pos}"
 
 
@@ -530,7 +530,7 @@ async def create_vm_firewall_rule(
         elevated=True,
         **params,
     )
-    pos = result if isinstance(result, str) else result.get("data", result)
+    pos = extract_upid(result)
     return f"VM firewall rule created for {vmtype} {vmid} on {resolved_node}: action={action}, pos={pos}"
 
 

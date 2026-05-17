@@ -28,7 +28,7 @@ async def cloudinit_dump(
         params["type"] = type
     result = await client.safe_api_call(_api(client, endpoint=ep).nodes(resolved_node).qemu(vmid).cloudinit.dump.get,
         **params)
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     return str(data)
 
 
@@ -116,7 +116,7 @@ async def exec_vm(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("exec").post, elevated=True, **params
     )
-    pid = result if isinstance(result, str) else result.get("data", result)
+    pid = extract_upid(result)
     return f"Command executed in VM {vmid} on {resolved_node}. PID: {pid}"
 
 
@@ -178,7 +178,7 @@ async def agent_network_interfaces(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("network-get-interfaces").get, elevated=True
     )
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     if not isinstance(data, list):
         return f"Network interfaces for VM {vmid} on {resolved_node}: {data}"
 
@@ -209,7 +209,7 @@ async def agent_osinfo(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-osinfo").get, elevated=True,
         endpoint=ep)
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"OS info for VM {vmid} on {resolved_node}:"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -233,7 +233,7 @@ async def agent_fsinfo(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-fsinfo").get, elevated=True,
         endpoint=ep)
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     if not isinstance(data, list):
         return f"Filesystem info for VM {vmid} on {resolved_node}: {data}"
 
@@ -270,7 +270,7 @@ async def agent_exec_status(
         elevated=True,
         pid=pid,
     )
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"Exec status for PID {pid} in VM {vmid} on {resolved_node}:"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -382,7 +382,7 @@ async def agent_get_host_name(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("get-host-name").get, elevated=True
     )
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"**Host name for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -407,7 +407,7 @@ async def agent_get_memory_block_info(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("get-memory-block-info").get, elevated=True
     )
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"**Memory block info for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -432,7 +432,7 @@ async def agent_get_memory_blocks(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("get-memory-blocks").get, elevated=True
     )
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"**Memory blocks for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -456,7 +456,7 @@ async def agent_get_time(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-time").get, elevated=True,
         endpoint=ep)
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"**Time for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -481,7 +481,7 @@ async def agent_get_timezone(
     result = await client.safe_api_call(
         elevated.nodes(resolved_node).qemu(vmid).agent("get-timezone").get, elevated=True
     )
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"**Timezone for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
         for k, v in data.items():
@@ -505,7 +505,7 @@ async def agent_get_users(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-users").get, elevated=True,
         endpoint=ep)
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     if not isinstance(data, list):
         data = [data] if data else []
     lines = [f"**Users for VM {vmid} on {resolved_node}:**"]
@@ -534,7 +534,7 @@ async def agent_get_vcpus(
     elevated = client.get_client(elevated=True, endpoint=ep)
     result = await client.safe_api_call(elevated.nodes(resolved_node).qemu(vmid).agent("get-vcpus").get, elevated=True,
         endpoint=ep)
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"**VCPUs for VM {vmid} on {resolved_node}:**"]
     if isinstance(data, list):
         for vcpu in data:
@@ -602,7 +602,7 @@ async def agent_file_read(
         elevated=True,
         file=filepath,
     )
-    data = result.get("data", result) if isinstance(result, dict) else result
+    data = extract_data(result)
     lines = [f"**File read from VM {vmid} on {resolved_node}:**"]
     if isinstance(data, dict):
         lines.append(f"  Path: {filepath}")

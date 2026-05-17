@@ -6,7 +6,14 @@ from typing import Any, Optional
 
 from proxmox_mcp.exceptions import ProxmoxPermissionError
 from proxmox_mcp.multi_client import MultiClient
-from proxmox_mcp.utils import confirm_required, extract_upid, format_bytes, validate_node_name, validate_storage_name
+from proxmox_mcp.utils import (
+    confirm_required,
+    extract_data,
+    extract_upid,
+    format_bytes,
+    validate_node_name,
+    validate_storage_name,
+)
 
 
 def _api(client: MultiClient, endpoint: str | None = None) -> Any:
@@ -334,7 +341,7 @@ async def get_volume_info(
     )
     lines = [f"\U0001f4be **Volume: {volume}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -559,7 +566,7 @@ async def file_restore_download(
     )
     lines = [f"📥 **File Restore Download: {filepath}**\n"]
     if isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, dict):
             for key, value in sorted(data.items()):
                 lines.append(f"   • {key}: {value}")
@@ -597,7 +604,7 @@ async def storage_import_metadata(
         if not result:
             lines.append("   No import metadata found.")
     elif isinstance(result, dict):
-        data = result.get("data", result)
+        data = extract_data(result)
         if isinstance(data, list):
             for entry in data:
                 if isinstance(entry, dict):
